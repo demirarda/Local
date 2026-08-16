@@ -1,0 +1,12 @@
+{
+  "name": "ritual-live-activity",
+  "version": "1.0.0",
+  "description": "LOCAL ritual Live Activity (ActivityKit / Dynamic Island)",
+  "main": "index.js",
+  "license": "MIT",
+  "homepage": "https://local.app",
+  "peerDependencies": {
+    "expo": "*",
+    "expo-modules-core": "*"
+  }
+}

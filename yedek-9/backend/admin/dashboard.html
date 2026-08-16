@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOCAL Admin - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#3c83f6",
+            "background-light": "#f5f7f8",
+            "background-dark": "#101722",
+            "slate-850": "#1e293b",
+          },
+          fontFamily: {
+            display: ["Inter"],
+          },
+          borderRadius: {
+            DEFAULT: "0.5rem",
+            lg: "1rem",
+            xl: "1.5rem",
+            full: "9999px",
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased font-display">
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside
+      class="w-64 border-r border-slate-200 dark:border-slate-800 flex flex-col fixed inset-y-0 left-0 bg-white dark:bg-background-dark z-50">
+      <div class="p-6">
+        <div class="flex items-center gap-3 mb-8">
+          <div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+            <span class="material-symbols-outlined">analytics</span>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold leading-none">LOCAL Admin</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Analitik Paneli</p>
+          </div>
+        </div>
+        <nav class="space-y-1">
+          <a href="hub.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">hub</span>
+            <span class="text-sm font-medium">Sistem Haritası</span>
+          </a>
+          <a href="dashboard.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary group">
+            <span class="material-symbols-outlined text-[20px] fill-1">dashboard</span>
+            <span class="text-sm font-medium">Dashboard</span>
+          </a>
+          <a href="kullanici.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">group</span>
+            <span class="text-sm font-medium">Kullanıcılar</span>
+          </a>
+          <a href="rite.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+            <span class="text-sm font-medium">Ritüeller</span>
+          </a>
+          <a href="mekan.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">location_on</span>
+            <span class="text-sm font-medium">Mekanlar</span>
+          </a>
+          <a href="bildirim.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">notifications</span>
+            <span class="text-sm font-medium">Bildirimler</span>
+          </a>
+          <a href="anilar.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">history</span>
+            <span class="text-sm font-medium">Anılar</span>
+          </a>
+          <div class="pt-4 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3">
+            Yönetim
+          </div>
+          <a href="dogrulama.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">verified_user</span>
+            <span class="text-sm font-medium">Doğrulama</span>
+          </a>
+          <a href="config.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">tune</span>
+            <span class="text-sm font-medium">Config §12</span>
+          </a>
+          <a href="founder-decisions.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">gavel</span>
+            <span class="text-sm font-medium">Founder §10</span>
+          </a>
+          <a href="badge-llm.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">military_tech</span>
+            <span class="text-sm font-medium">Badge LLM</span>
+          </a>
+          <a href="score-events.html"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">timeline</span>
+            <span class="text-sm font-medium">Score Events</span>
+          </a>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 ml-64 p-8 space-y-8">
+      <!-- Header -->
+      <header class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold tracking-tight">Analiz Paneli</h2>
+          <p class="text-slate-500 dark:text-slate-400">Sistem performansı ve kullanıcı aktivitesine genel bakış.</p>
+        </div>
+      </header>
+
+      <!-- Summary cards (JS burayı dolduracak) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- dashboard.js bu grid'in içini tamamen yeniliyor -->
+      </div>
+
+      <!-- Activity chart container -->
+      <div class="bg-white dark:bg-slate-850 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h3 class="text-lg font-bold">Haftalık Aktivite</h3>
+            <p class="text-sm text-slate-500">Platform genelindeki etkileşim hacmi</p>
+          </div>
+        </div>
+        <div class="relative h-64 w-full">
+          <!-- dashboard.js içini dolduracak -->
+        </div>
+      </div>
+
+      <!-- Recent users + by city -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div
+          class="lg:col-span-2 bg-white dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h3 class="font-bold">Son kayıt olan kullanıcılar</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="bg-slate-50 dark:bg-slate-800/50">
+                  <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Kullanıcı</th>
+                  <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Durum</th>
+                  <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Kayıt Tarihi</th>
+                  <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">İşlem</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                <!-- dashboard.js dolduracak -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div
+          class="bg-white dark:bg-slate-850 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+          <h3 class="font-bold mb-6">Şehirlere göre ritüel</h3>
+          <div class="space-y-4">
+            <!-- dashboard.js dolduracak -->
+          </div>
+        </div>
+      </div>
+
+      <!-- RS anomalies + notification -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div
+          class="bg-white dark:bg-slate-850 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold">RS Anomalileri</h3>
+          </div>
+          <div class="space-y-4">
+            <!-- dashboard.js dolduracak -->
+          </div>
+        </div>
+
+        <div
+          class="bg-white dark:bg-slate-850 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+          <h3 class="font-bold mb-4">Bildirim Performansı</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <!-- dashboard.js dolduracak -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Safety overview -->
+      <section
+        class="bg-white dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <h3 class="font-bold">Güvenlik görünümü (raporlar)</h3>
+            <p class="text-xs text-slate-500">Son 24 saat içindeki güvenlik ve ihlal raporları</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="bg-slate-50 dark:bg-slate-800/50">
+                <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Kimlik</th>
+                <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Tür</th>
+                <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Öncelik</th>
+                <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Kaynak</th>
+                <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Durum</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- dashboard.js dolduracak -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/admin/common.js"></script>
+  <script src="/admin/dashboard.js"></script>
+</body>
+</html>
+

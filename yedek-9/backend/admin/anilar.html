@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOCAL Admin - Anılar</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&display=swap" rel="stylesheet" />
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#3c83f6",
+            "background-light": "#f5f7f8",
+            "background-dark": "#101722",
+          },
+          fontFamily: {
+            display: ["Inter"],
+          },
+          borderRadius: {
+            DEFAULT: "0.5rem",
+            lg: "1rem",
+            xl: "1.5rem",
+            full: "9999px",
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+  <div class="flex min-h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside
+      class="w-64 shrink-0 bg-slate-50 dark:bg-[#0b101a] border-r border-slate-200 dark:border-slate-800 flex flex-col">
+      <div class="p-6 flex items-center gap-3">
+        <div class="size-10 rounded-full bg-primary flex items-center justify-center text-white">
+          <span class="material-symbols-outlined">history</span>
+        </div>
+        <div>
+          <h1 class="text-base font-bold leading-none">LOCAL Admin</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Yönetici Paneli</p>
+        </div>
+      </div>
+      <nav class="flex-1 px-4 space-y-1 mt-4">
+        <a href="dashboard.html"
+          class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+          <span class="material-symbols-outlined text-[22px]">dashboard</span>
+          <span class="text-sm font-medium">Panel</span>
+        </a>
+        <a href="kullanici.html"
+          class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+          <span class="material-symbols-outlined text-[22px]">group</span>
+          <span class="text-sm font-medium">Kullanıcılar</span>
+        </a>
+        <a href="rite.html"
+          class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+          <span class="material-symbols-outlined text-[22px]">auto_awesome</span>
+          <span class="text-sm font-medium">Ritüeller</span>
+        </a>
+        <a href="bildirim.html"
+          class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+          <span class="material-symbols-outlined text-[22px]">notifications</span>
+          <span class="text-sm font-medium">Bildirimler</span>
+        </a>
+        <a href="anilar.html"
+          class="flex items-center gap-3 px-3 py-2 bg-primary/10 text-primary rounded-lg transition-colors">
+          <span class="material-symbols-outlined text-[22px] fill-1">photo_library</span>
+          <span class="text-sm font-medium">Anılar</span>
+        </a>
+        <a href="dogrulama.html"
+          class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+          <span class="material-symbols-outlined text-[22px]">verified_user</span>
+          <span class="text-sm font-medium">Doğrulama</span>
+        </a>
+        <a href="mekan.html"
+          class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+          <span class="material-symbols-outlined text-[22px]">location_on</span>
+          <span class="text-sm font-medium">Mekanlar</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-background-dark">
+      <!-- Header -->
+      <header
+        class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-[#0b101a] sticky top-0 z-10">
+        <div class="flex items-center gap-4">
+          <h2 class="text-lg font-bold">Anılar</h2>
+          <span
+            class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-500">İçerik
+            Moderasyonu</span>
+        </div>
+      </header>
+
+      <div class="p-8 space-y-6">
+        <!-- Filter -->
+        <section
+          class="bg-white dark:bg-[#161f2e] p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-wrap gap-4 items-end">
+          <div class="flex-1 min-w-[220px]">
+            <label
+              class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 ml-1 uppercase tracking-wider">
+              Ritüel ID
+            </label>
+            <div class="relative">
+              <span
+                class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+              <input id="memories-ritual-id"
+                class="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-lg pl-10 text-sm focus:ring-2 focus:ring-primary/50 text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
+                placeholder="Belirli bir ritüele ait anıları getir..." type="text" />
+            </div>
+          </div>
+          <!-- optional / hidden limit select (memories.js destekliyor) -->
+          <select id="memories-limit"
+            class="hidden bg-slate-50 dark:bg-slate-900 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/50 text-slate-700 dark:text-slate-200">
+            <option value="12" selected>12</option>
+            <option value="24">24</option>
+            <option value="48">48</option>
+          </select>
+          <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
+            Onay bekleyen veya raporlanan anıları hızlıca gözden geçirip onaylayabilir ya da kaldırabilirsiniz.
+          </p>
+        </section>
+
+        <!-- Grid -->
+        <section>
+          <div
+            class="bg-transparent rounded-xl">
+            <div id="memories-grid"
+              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <!-- memories.js kartları buraya basacak -->
+            </div>
+          </div>
+          <div class="flex items-center justify-between mt-4">
+            <p id="memories-info" class="text-sm text-slate-500 dark:text-slate-400"></p>
+            <div id="memories-pagination" class="flex items-center gap-2"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="/admin/common.js"></script>
+  <script src="/admin/memories.js"></script>
+</body>
+</html>
+

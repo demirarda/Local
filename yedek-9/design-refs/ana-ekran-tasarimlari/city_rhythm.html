@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>City Rhythm · Cartographic Almanac</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1B2E4A;
+  --navy-deep: #0E1B2E;
+  --navy-soft: #2A4470;
+  --gold: #C8A96A;
+  --gold-light: #E8D49A;
+  --gold-deep: #8B6F36;
+  --bg: #F5F2EB;
+  --bg-paper: #EFEAE0;
+  --card: #FFFFFF;
+  --ink: #1B2E4A;
+  --ink-soft: #4A6688;
+  --muted: #8A8275;
+  --line: rgba(27, 46, 74, 0.08);
+  --green: #4A6B3A;
+  --green-pale: #DDE5D0;
+  --amber: #B8721F;
+  --amber-pale: #F2E4C9;
+  --rose: #B45249;
+  --rose-pale: #F2D9D6;
+  --plum: #5B3A52;
+  /* Map colors (Mapbox dark style) */
+  --map-bg: #0B1520;
+  --map-water: #091828;
+  --map-roads: rgba(255,255,255,0.05);
+  --map-buildings: #141E2E;
+  --map-buildings-hi: #253E65;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #2D2A23;
+  background-image: radial-gradient(ellipse at top, #3D3A30 0%, #2D2A23 55%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px;
+  min-height: 100vh;
+}
+.scaffold {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+/* ─── PHONE FRAME ─── */
+.frame {
+  width: 390px;
+  background: var(--bg);
+  border-radius: 44px;
+  height: 844px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 11px #0A0A0C,
+    0 0 0 12px #1C1C1F,
+    0 32px 90px rgba(0,0,0,0.45);
+}
+.frame::before {
+  content: "";
+  position: absolute;
+  top: 11px; left: 50%;
+  transform: translateX(-50%);
+  width: 120px; height: 32px;
+  background: #0A0A0C;
+  border-radius: 100px;
+  z-index: 100;
+}
+.frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.1, 0 0 0 0 0.1, 0 0 0 0 0.1, 0 0 0 0.018 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  z-index: 50;
+  border-radius: 44px;
+}
+
+/* ─── STATUS BAR ─── */
+.status-bar {
+  height: 52px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.status-icons { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.signal-bars { display: inline-flex; gap: 2px; align-items: flex-end; }
+.signal-bars span { width: 3px; background: var(--ink); border-radius: 1px; }
+.signal-bars span:nth-child(1) { height: 4px; }
+.signal-bars span:nth-child(2) { height: 6px; }
+.signal-bars span:nth-child(3) { height: 8px; }
+.signal-bars span:nth-child(4) { height: 10px; }
+.battery {
+  width: 26px; height: 12px;
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  position: relative;
+  padding: 1.5px;
+}
+.battery::after {
+  content: "";
+  position: absolute;
+  right: -3px; top: 3px;
+  width: 2px; height: 4px;
+  background: var(--ink);
+  border-radius: 0 1px 1px 0;
+}
+.battery-fill { height: 100%; width: 70%; background: var(--ink); border-radius: 1px; }
+
+/* Status bar dark variant for map frame */
+.frame.dark .status-bar { color: #fff; }
+.frame.dark .signal-bars span { background: #fff; }
+.frame.dark .battery { border-color: #fff; }
+.frame.dark .battery::after { background: #fff; }
+.frame.dark .battery-fill { background: #fff; }
+
+/* ─── MASTHEAD ─── */
+.masthead {
+  padding: 4px 22px 6px;
+}
+.mh-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.mh-meta .left { display: flex; gap: 12px; align-items: center; }
+.mh-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(27,46,74,0.18), transparent);
+  margin: 4px 0 8px;
+}
+.mh-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.mh-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 38px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
+}
+.mh-title .it { font-style: italic; color: var(--gold-deep); }
+.mh-icons { display: flex; gap: 6px; }
+.icon-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: rgba(27, 46, 74, 0.05);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink);
+}
+.icon-btn svg { width: 17px; height: 17px; }
+.mh-tagline {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+/* ─── 24h RHYTHM TIMELINE ─── */
+.timeline {
+  margin: 0 22px 14px;
+  padding: 14px 16px;
+  background: var(--bg-paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.timeline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.timeline-title {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.timeline-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--rose-pale);
+  color: var(--rose);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 100px;
+  letter-spacing: 0.1em;
+}
+.timeline-now::before {
+  content: "";
+  width: 5px; height: 5px;
+  background: var(--rose);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.timeline-graph {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 36px;
+  margin-bottom: 6px;
+  position: relative;
+}
+.tg-bar {
+  flex: 1;
+  background: var(--gold-deep);
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  opacity: 0.5;
+  position: relative;
+}
+.tg-bar.now {
+  opacity: 1;
+  background: var(--rose);
+}
+.tg-bar.now::after {
+  content: "";
+  position: absolute;
+  top: -8px; left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--rose);
+}
+.tg-bar.peak { background: var(--gold); opacity: 0.85; }
+.timeline-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* ─── VIEW SWITCH ─── */
+.view-switch {
+  margin: 0 22px 14px;
+  display: flex;
+  background: rgba(27, 46, 74, 0.05);
+  border-radius: 100px;
+  padding: 3px;
+}
+.vs-btn {
+  flex: 1;
+  text-align: center;
+  padding: 9px 14px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  letter-spacing: -0.01em;
+  transition: all 0.18s;
+}
+.vs-btn.active {
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(27,46,74,0.06);
+}
+.vs-btn svg { width: 14px; height: 14px; }
+
+/* ─── CATEGORIES SCROLL ─── */
+.cat-row {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 0 22px 14px;
+  scrollbar-width: none;
+}
+.cat-row::-webkit-scrollbar { display: none; }
+.cat-chip {
+  flex-shrink: 0;
+  padding: 7px 13px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: -0.01em;
+}
+.cat-chip.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* ─── FEED ─── */
+.feed {
+  height: calc(100% - 380px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 0 22px 96px;
+}
+.feed::-webkit-scrollbar { display: none; }
+
+/* TIME GROUP HEADER */
+.time-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 18px 0 12px;
+}
+.time-group:first-child { margin-top: 4px; }
+.tg-label {
+  font-family: 'Instrument Serif', serif;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.tg-label .it { font-style: italic; color: var(--gold-deep); }
+.tg-meta {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+  margin-left: auto;
+}
+.tg-count {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ─── RITUAL ROW · Premium ─── */
+.ritual-row {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.ritual-row.featured {
+  background: linear-gradient(135deg, rgba(200,169,106,0.06) 0%, rgba(200,169,106,0.02) 100%);
+  border-color: rgba(200, 169, 106, 0.3);
+}
+.r-thumb {
+  width: 76px; height: 76px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+.r-thumb.t1 { background: url('https://images.unsplash.com/photo-1543269865-cbf427effbad?w=200&q=80') center / cover; }
+.r-thumb.t2 { background: url('https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=200&q=80') center / cover; }
+.r-thumb.t3 { background: url('https://images.unsplash.com/photo-1574894709920-11b28e7367e9?w=200&q=80') center / cover; }
+.r-thumb.t4 { background: url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=200&q=80') center / cover; }
+.r-thumb.t5 { background: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200&q=80') center / cover; }
+.r-thumb.t6 { background: url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&q=80') center / cover; }
+.r-thumb.t7 { background: url('https://images.unsplash.com/photo-1518568814500-bf0f8d125f46?w=200&q=80') center / cover; }
+.r-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.7) 100%);
+}
+.r-time {
+  position: absolute;
+  bottom: 5px; left: 5px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.r-thumb-live {
+  position: absolute;
+  top: 5px; left: 5px;
+  background: var(--rose);
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+.r-info { flex: 1; min-width: 0; }
+.r-tags {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.r-tag {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.r-tag.live {
+  background: var(--rose); color: #fff;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.r-tag.live::before { content: ""; width: 4px; height: 4px; background: #fff; border-radius: 50%; }
+.r-tag.pivot { background: var(--gold); color: var(--ink); }
+.r-tag.special { background: var(--plum); color: #fff; }
+.r-tag.verified { background: var(--green-pale); color: var(--green); }
+.r-tag.free { background: var(--amber-pale); color: var(--amber); }
+.r-tag.uni { background: rgba(27,46,74,0.05); color: var(--ink); }
+.r-tag.recurring { background: rgba(200,169,106,0.18); color: var(--gold-deep); }
+
+.r-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px;
+  color: var(--ink);
+  line-height: 1.1;
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.r-meta {
+  font-size: 10.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+.r-meta .dot { width: 2.5px; height: 2.5px; border-radius: 50%; background: var(--muted); }
+.r-meta strong { color: var(--ink-soft); font-weight: 500; }
+
+.r-mood {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.mood-pill {
+  font-size: 9.5px;
+  background: rgba(27,46,74,0.04);
+  color: var(--ink-soft);
+  padding: 2px 7px;
+  border-radius: 100px;
+  font-weight: 500;
+}
+.mood-pill.italic {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 10.5px;
+}
+
+.r-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.r-attendance {
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.r-attendance strong { color: var(--ink); font-size: 13px; font-family: 'Instrument Serif', serif; }
+.r-progress {
+  width: 56px;
+  height: 3px;
+  background: rgba(27,46,74,0.06);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.r-progress-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 100px;
+}
+.r-btn {
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 100px;
+  border: none;
+  font-family: 'DM Sans';
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+.r-btn.gold {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(200,169,106,0.4);
+}
+.r-btn.locked {
+  background: rgba(27,46,74,0.06);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+}
+.ritual-row.locked { opacity: 0.65; }
+.ritual-row.locked .r-thumb { filter: grayscale(0.6); }
+.r-rs-warn {
+  font-size: 10px;
+  color: var(--rose);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* "Tonight's pulse" mini card */
+.tonight-card {
+  margin: 0 22px 14px;
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  border-radius: 14px;
+  padding: 14px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.tonight-card::before {
+  content: "";
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,169,106,0.18) 0%, transparent 60%);
+}
+.tc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 2;
+}
+.tc-icon {
+  width: 38px; height: 38px;
+  background: rgba(200,169,106,0.18);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold-light);
+  flex-shrink: 0;
+}
+.tc-icon svg { width: 18px; height: 18px; }
+.tc-text { flex: 1; }
+.tc-tag {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  color: var(--gold-light);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.tc-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 15px;
+  line-height: 1.15;
+  margin-bottom: 2px;
+  letter-spacing: -0.01em;
+}
+.tc-meta {
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.65);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.tc-meta .dot { width: 2.5px; height: 2.5px; border-radius: 50%; background: rgba(255,255,255,0.5); }
+.tc-arrow { color: var(--gold-light); font-size: 14px; }
+
+/* ────────────────────────────────────────
+   MAP FRAME (Right side)
+──────────────────────────────────────── */
+.map-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--map-bg);
+  background-image:
+    /* Sea/water (Naviglio diagonal) */
+    linear-gradient(135deg, transparent 70%, var(--map-water) 70%, var(--map-water) 73%, transparent 73%),
+    linear-gradient(135deg, transparent 80%, var(--map-water) 80%, var(--map-water) 84%, transparent 84%),
+    /* Streets grid (sparse, like Mapbox dark style) */
+    linear-gradient(90deg, transparent 49.5%, var(--map-roads) 49.5%, var(--map-roads) 50.5%, transparent 50.5%),
+    linear-gradient(0deg, transparent 49.5%, var(--map-roads) 49.5%, var(--map-roads) 50.5%, transparent 50.5%),
+    linear-gradient(63deg, transparent 49.7%, var(--map-roads) 49.7%, var(--map-roads) 50.3%, transparent 50.3%),
+    /* Base */
+    var(--map-bg);
+  background-size: 100% 100%, 100% 100%, 60px 100%, 100% 60px, 80px 80px, 100% 100%;
+}
+.map-buildings {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+.bld {
+  position: absolute;
+  background: linear-gradient(180deg, var(--map-buildings-hi) 0%, var(--map-buildings) 70%);
+  border-radius: 1px;
+  box-shadow: 1px 0 0 rgba(0,0,0,0.3);
+}
+.bld.b1 { top: 25%; left: 18%; width: 16px; height: 12px; }
+.bld.b2 { top: 28%; left: 22%; width: 18px; height: 16px; }
+.bld.b3 { top: 30%; left: 35%; width: 14px; height: 18px; }
+.bld.b4 { top: 35%; left: 50%; width: 18px; height: 22px; }
+.bld.b5 { top: 38%; left: 65%; width: 22px; height: 16px; }
+.bld.b6 { top: 50%; left: 30%; width: 18px; height: 18px; }
+.bld.b7 { top: 55%; left: 45%; width: 24px; height: 14px; }
+.bld.b8 { top: 60%; left: 60%; width: 16px; height: 20px; }
+.bld.b9 { top: 65%; left: 75%; width: 20px; height: 14px; }
+.bld.b10 { top: 45%; left: 78%; width: 16px; height: 18px; }
+.bld.b11 { top: 22%; left: 70%; width: 14px; height: 14px; }
+
+/* Heat zones */
+.heat-zone {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(20px);
+  z-index: 3;
+  pointer-events: none;
+}
+.heat-zone.h1 {
+  top: 15%; left: 14%; width: 130px; height: 130px;
+  background: radial-gradient(circle, rgba(180,82,73,0.4) 0%, transparent 60%);
+}
+.heat-zone.h2 {
+  top: 35%; left: 50%; width: 140px; height: 140px;
+  background: radial-gradient(circle, rgba(200,169,106,0.4) 0%, transparent 60%);
+}
+.heat-zone.h3 {
+  top: 55%; left: 25%; width: 100px; height: 100px;
+  background: radial-gradient(circle, rgba(180,82,73,0.3) 0%, transparent 60%);
+}
+.heat-zone.h4 {
+  top: 60%; left: 70%; width: 110px; height: 110px;
+  background: radial-gradient(circle, rgba(91,58,82,0.35) 0%, transparent 60%);
+}
+
+/* Connection arcs */
+.arcs {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* Neighborhood labels */
+.nbhd-label {
+  position: absolute;
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  z-index: 5;
+}
+.nbhd-label.brera { top: 20%; left: 22%; }
+.nbhd-label.sempione { top: 35%; left: 8%; }
+.nbhd-label.navigli { top: 70%; left: 30%; }
+.nbhd-label.porta-romana { top: 65%; left: 60%; }
+.nbhd-label.isola { top: 18%; left: 65%; }
+
+/* Map pins */
+.pin-big {
+  position: absolute;
+  z-index: 8;
+  cursor: pointer;
+}
+.pin-big.live {
+  width: 22px; height: 22px;
+}
+.pin-big.live::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: rgba(180,82,73,0.3);
+  animation: ringPulse 2s infinite;
+}
+.pin-big.live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--rose);
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(180,82,73,0.4);
+}
+@keyframes ringPulse {
+  0% { transform: scale(0.7); opacity: 1; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+.pin-big.gold {
+  width: 18px; height: 18px;
+  background: var(--gold);
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(200,169,106,0.4);
+}
+.pin-big.amber {
+  width: 18px; height: 18px;
+  background: var(--amber);
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(184,114,31,0.4);
+}
+.pin-big.plum {
+  width: 18px; height: 18px;
+  background: var(--plum);
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(91,58,82,0.4);
+}
+/* University pins (square gold-edged) */
+.pin-big.uni {
+  width: 28px; height: 28px;
+  background: rgba(200,169,106,0.18);
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Instrument Serif', serif;
+  font-size: 14px;
+  color: var(--gold-light);
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+/* Pin positions */
+.p-r1 { top: 28%; left: 22%; }
+.p-r2 { top: 60%; left: 33%; }
+.p-r3 { top: 62%; left: 20%; }
+.p-g1 { top: 48%; left: 65%; }
+.p-a1 { top: 22%; left: 58%; }
+.p-pl1 { top: 70%; left: 75%; }
+.p-uni1 { top: 75%; left: 50%; }
+.p-uni2 { top: 25%; left: 75%; }
+
+/* Live ritual count badge on pin */
+.pin-count {
+  position: absolute;
+  top: -6px; right: -8px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 100px;
+  width: 18px; height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.18);
+  z-index: 2;
+}
+
+/* Map overlay UI */
+.map-frame-content {
+  position: relative;
+  z-index: 30;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.map-header {
+  padding: 8px 22px 10px;
+}
+.map-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.map-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 32px;
+  color: #fff;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.map-title .it { font-style: italic; color: var(--gold-light); }
+.map-icon-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-icon-btn svg { width: 16px; height: 16px; }
+.map-stats {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.map-stat-pill {
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 100px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: -0.01em;
+}
+.map-stat-pill.live {
+  background: rgba(180,82,73,0.95);
+  color: #fff;
+}
+.map-stat-pill.live::before {
+  content: ""; width: 5px; height: 5px;
+  background: #fff; border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+/* Map view switch */
+.map-view-switch {
+  display: flex;
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 100px;
+  padding: 3px;
+  margin: 0 22px;
+  align-self: flex-start;
+}
+.map-view-switch .vs-btn {
+  color: rgba(255,255,255,0.65);
+  font-size: 11.5px;
+  padding: 6px 12px;
+}
+.map-view-switch .vs-btn.active {
+  background: #fff;
+  color: var(--ink);
+}
+
+/* Filter / zoom controls floating */
+.map-controls {
+  position: absolute;
+  right: 22px;
+  top: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 25;
+}
+.map-ctl {
+  width: 38px; height: 38px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+}
+.map-ctl-stack {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+}
+.map-ctl-stack .map-ctl {
+  background: transparent;
+  border-bottom: 1px solid rgba(27,46,74,0.08);
+  border-radius: 0;
+  box-shadow: none;
+}
+.map-ctl-stack .map-ctl:last-child { border-bottom: 0; }
+
+/* Bottom sheet */
+.map-sheet {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--bg);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  padding: 12px 22px 100px;
+  z-index: 40;
+  box-shadow: 0 -16px 40px rgba(0,0,0,0.25);
+  max-height: 56%;
+  overflow: hidden;
+}
+.sheet-handle {
+  width: 38px; height: 4px;
+  background: rgba(27,46,74,0.18);
+  border-radius: 100px;
+  margin: 0 auto 14px;
+}
+.sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.sheet-area {
+  font-family: 'Instrument Serif', serif;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.sheet-area .it { font-style: italic; color: var(--gold-deep); }
+.sheet-meta {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.sheet-quick-stat {
+  text-align: right;
+}
+.sheet-quick-stat .num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--rose);
+}
+.sheet-quick-stat .lbl {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Mini-stats inside sheet */
+.sheet-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.sheet-stat {
+  background: var(--bg-paper);
+  border-radius: 10px;
+  padding: 10px;
+}
+.sheet-stat .lbl {
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.sheet-stat .val {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.sheet-stat .val .small {
+  font-family: 'DM Sans';
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Sheet ritual list */
+.sheet-list-title {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* ─── TAB BAR ─── */
+.tab-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 92px;
+  background: rgba(245, 242, 235, 0.85);
+  backdrop-filter: blur(24px) saturate(140%);
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-around;
+  padding: 14px 16px 32px;
+  z-index: 60;
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  position: relative;
+}
+.tab svg { width: 22px; height: 22px; }
+.tab.active { color: var(--ink); }
+.tab.active::before {
+  content: "";
+  position: absolute;
+  top: -14px;
+  width: 32px;
+  height: 3px;
+  background: var(--gold);
+  border-radius: 100px;
+}
+
+/* Frame label */
+.frame-label {
+  position: absolute;
+  top: -12px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.95);
+  color: var(--ink);
+  padding: 5px 14px;
+  border-radius: 100px;
+  font-size: 10.5px;
+  font-weight: 600;
+  z-index: 200;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.frame-label .num {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  color: var(--gold-deep);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* Annotation */
+.annot-wrap {
+  position: fixed;
+  top: 32px;
+  left: 32px;
+  z-index: 200;
+  font-family: 'DM Sans';
+}
+.annot-pill {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  color: var(--ink);
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 11px;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.annot-pill .lbl {
+  font-family: 'Instrument Serif', serif;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--gold-deep);
+  margin-right: 4px;
+}
+.annot-pill .id {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.annot-handwriting {
+  font-family: 'Caveat', cursive;
+  font-size: 16px;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 0.01em;
+  max-width: 280px;
+  margin-left: 14px;
+  line-height: 1.3;
+}
+</style>
+</head>
+<body>
+
+<div class="annot-wrap">
+  <div class="annot-pill">
+    <span class="lbl">City Rhythm</span>
+    <span class="id">Tab 3 · Liste + Map v2</span>
+  </div>
+  <div class="annot-handwriting">Almanak gibi okunan bir keşif —<br>24h ritim grafiği, Mapbox dark zemin,<br>mahalle isimleri italik etiket olarak.</div>
+</div>
+
+<div class="scaffold">
+
+<!-- ─── LIST FRAME ─── -->
+<div class="frame">
+  <div class="frame-label">
+    <span class="num">CR-01</span>
+    <span>LİSTE GÖRÜNÜMÜ</span>
+  </div>
+
+  <div class="status-bar">
+    <span>9:41</span>
+    <div class="status-icons">
+      <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+      <span style="font-size: 11px; font-weight: 600;">5G</span>
+      <div class="battery"><div class="battery-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- Masthead -->
+  <div class="masthead">
+    <div class="mh-meta">
+      <div class="left">
+        <span>Sabato · 1 Maggio</span>
+        <span style="color: var(--gold);">·</span>
+        <span>Milano</span>
+      </div>
+      <span style="color: var(--gold-deep);">№ 087</span>
+    </div>
+    <div class="mh-divider"></div>
+    <div class="mh-row">
+      <h1 class="mh-title">City <span class="it">rhythm</span></h1>
+      <div class="mh-icons">
+        <button class="icon-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M16 16l4 4" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h18M6 12h12M10 18h4" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="mh-tagline">Şehrin nabzı · 14 ritual açık · 3 canlı şimdi</div>
+  </div>
+
+  <!-- 24h Timeline -->
+  <div class="timeline">
+    <div class="timeline-head">
+      <span class="timeline-title">24 Saatlik Ritim</span>
+      <span class="timeline-now">CANLI · 9:41</span>
+    </div>
+    <div class="timeline-graph">
+      <!-- 24 bars, 0-23h -->
+      <div class="tg-bar" style="height: 8%"></div>
+      <div class="tg-bar" style="height: 4%"></div>
+      <div class="tg-bar" style="height: 4%"></div>
+      <div class="tg-bar" style="height: 4%"></div>
+      <div class="tg-bar" style="height: 8%"></div>
+      <div class="tg-bar" style="height: 12%"></div>
+      <div class="tg-bar" style="height: 35%"></div>
+      <div class="tg-bar" style="height: 55%"></div>
+      <div class="tg-bar peak" style="height: 78%"></div>
+      <div class="tg-bar now" style="height: 65%"></div>
+      <div class="tg-bar" style="height: 58%"></div>
+      <div class="tg-bar" style="height: 50%"></div>
+      <div class="tg-bar" style="height: 65%"></div>
+      <div class="tg-bar" style="height: 75%"></div>
+      <div class="tg-bar peak" style="height: 88%"></div>
+      <div class="tg-bar peak" style="height: 95%"></div>
+      <div class="tg-bar peak" style="height: 90%"></div>
+      <div class="tg-bar" style="height: 75%"></div>
+      <div class="tg-bar peak" style="height: 92%"></div>
+      <div class="tg-bar peak" style="height: 100%"></div>
+      <div class="tg-bar peak" style="height: 85%"></div>
+      <div class="tg-bar" style="height: 60%"></div>
+      <div class="tg-bar" style="height: 35%"></div>
+      <div class="tg-bar" style="height: 18%"></div>
+    </div>
+    <div class="timeline-axis">
+      <span>0</span>
+      <span>6</span>
+      <span>9</span>
+      <span>12</span>
+      <span>15</span>
+      <span>18</span>
+      <span>21</span>
+      <span>24</span>
+    </div>
+  </div>
+
+  <!-- View switch -->
+  <div class="view-switch">
+    <div class="vs-btn active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M3 12h18M3 18h18" stroke-linecap="round"/></svg>
+      <span>Liste</span>
+    </div>
+    <div class="vs-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 4l-6 2v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Harita</span>
+    </div>
+  </div>
+
+  <!-- Categories -->
+  <div class="cat-row">
+    <div class="cat-chip active">Tümü</div>
+    <div class="cat-chip">☕ Kahve</div>
+    <div class="cat-chip">📚 Felsefe</div>
+    <div class="cat-chip">🏃 Spor</div>
+    <div class="cat-chip">🎵 Müzik</div>
+    <div class="cat-chip">🎨 Sanat</div>
+    <div class="cat-chip">🍷 Yemek</div>
+  </div>
+
+  <div class="feed">
+
+    <!-- Featured: Tonight's pulse -->
+    <div class="tonight-card">
+      <div class="tc-row">
+        <div class="tc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v6m0 8v6M2 12h6m8 0h6m-3.5-7l-4 4m0 6l-4 4m0-14l4 4m6 0l4-4" stroke-linecap="round"/></svg>
+        </div>
+        <div class="tc-text">
+          <div class="tc-tag">★ Tonight's pulse</div>
+          <div class="tc-title">3 canlı · 9 yaklaşan · peak 18:00</div>
+          <div class="tc-meta">
+            <span>Brera</span><span class="dot"></span>
+            <span>Sempione</span><span class="dot"></span>
+            <span>Navigli</span>
+          </div>
+        </div>
+        <span class="tc-arrow">›</span>
+      </div>
+    </div>
+
+    <!-- TODAY -->
+    <div class="time-group">
+      <span class="tg-label">Bugün <span class="it">— Sabato</span></span>
+      <span class="tg-meta">8 ritual</span>
+    </div>
+
+    <!-- Featured ritual -->
+    <div class="ritual-row featured">
+      <div class="r-thumb t1">
+        <div class="r-thumb-overlay"></div>
+        <span class="r-thumb-live"></span>
+        <span class="r-time">13:30</span>
+      </div>
+      <div class="r-info">
+        <div class="r-tags">
+          <span class="r-tag live">CANLI</span>
+          <span class="r-tag pivot">★ PİVOT</span>
+        </div>
+        <h3 class="r-title">Felsefe Çevresi</h3>
+        <div class="r-meta">
+          <strong>Marco Rossi</strong>
+          <span class="dot"></span>
+          <span>Bar Magenta · Brera</span>
+          <span class="dot"></span>
+          <span>3h pencere</span>
+        </div>
+        <div class="r-mood">
+          <span class="mood-pill italic">~ entelektüel</span>
+          <span class="mood-pill italic">~ derin</span>
+          <span class="mood-pill italic">~ yavaş</span>
+        </div>
+      </div>
+      <div class="r-action">
+        <div class="r-attendance"><strong>7</strong>/12</div>
+        <div class="r-progress"><div class="r-progress-fill" style="width: 58%"></div></div>
+        <button class="r-btn gold">Yer Kap</button>
+      </div>
+    </div>
+
+    <div class="ritual-row">
+      <div class="r-thumb t2">
+        <div class="r-thumb-overlay"></div>
+        <span class="r-time">17:00</span>
+      </div>
+      <div class="r-info">
+        <div class="r-tags">
+          <span class="r-tag verified">✓ VERIFIED</span>
+          <span class="r-tag free">ÜCRETSİZ</span>
+        </div>
+        <h3 class="r-title">Sunset Run · Sempione</h3>
+        <div class="r-meta">
+          <strong>Sofia Marini</strong>
+          <span class="dot"></span>
+          <span>Parco Sempione · 5 km</span>
+        </div>
+        <div class="r-mood">
+          <span class="mood-pill italic">~ enerjik</span>
+          <span class="mood-pill italic">~ outdoor</span>
+        </div>
+      </div>
+      <div class="r-action">
+        <div class="r-attendance"><strong>14</strong>/20</div>
+        <div class="r-progress"><div class="r-progress-fill" style="width: 70%"></div></div>
+        <button class="r-btn">Yer Kap</button>
+      </div>
+    </div>
+
+    <div class="ritual-row locked">
+      <div class="r-thumb t3">
+        <div class="r-thumb-overlay"></div>
+        <span class="r-time">19:30</span>
+      </div>
+      <div class="r-info">
+        <div class="r-tags">
+          <span class="r-tag special">★ ÖZEL</span>
+          <span class="r-tag uni">🎓 BOCCONI</span>
+        </div>
+        <h3 class="r-title">Aperitivo Sunset · Cantina della Vetra</h3>
+        <div class="r-meta">
+          <strong>Lorenzo Ferrari</strong>
+          <span class="dot"></span>
+          <span>Brera · 3h pencere</span>
+        </div>
+        <div class="r-rs-warn">🔒 Min RS 7.5 · Senin: 7.13</div>
+      </div>
+      <div class="r-action">
+        <div class="r-attendance"><strong>3</strong>/8</div>
+        <button class="r-btn locked">🔒 Kilitli</button>
+      </div>
+    </div>
+
+    <div class="ritual-row">
+      <div class="r-thumb t4">
+        <div class="r-thumb-overlay"></div>
+        <span class="r-time">21:00</span>
+      </div>
+      <div class="r-info">
+        <div class="r-tags">
+          <span class="r-tag verified">✓ VERIFIED</span>
+          <span class="r-tag recurring">🔄 Haftalık</span>
+        </div>
+        <h3 class="r-title">Calvino Okuma Gecesi</h3>
+        <div class="r-meta">
+          <strong>Beatrice Costa</strong>
+          <span class="dot"></span>
+          <span>Libreria Verso · Porta Romana</span>
+        </div>
+        <div class="r-mood">
+          <span class="mood-pill italic">~ sakin</span>
+          <span class="mood-pill italic">~ felsefi</span>
+          <span class="mood-pill italic">~ niş</span>
+        </div>
+      </div>
+      <div class="r-action">
+        <div class="r-attendance"><strong>14</strong>/16</div>
+        <div class="r-progress"><div class="r-progress-fill" style="width: 88%"></div></div>
+        <button class="r-btn">Yer Kap</button>
+      </div>
+    </div>
+
+    <!-- TOMORROW -->
+    <div class="time-group">
+      <span class="tg-label">Yarın <span class="it">— Domenica</span></span>
+      <span class="tg-meta">12 ritual</span>
+    </div>
+
+    <div class="ritual-row">
+      <div class="r-thumb t5">
+        <div class="r-thumb-overlay"></div>
+        <span class="r-time">9:00</span>
+      </div>
+      <div class="r-info">
+        <div class="r-tags">
+          <span class="r-tag pivot">★ PİVOT</span>
+          <span class="r-tag verified">✓</span>
+          <span class="r-tag recurring">🔄</span>
+        </div>
+        <h3 class="r-title">Pazar Sabah Kahve</h3>
+        <div class="r-meta">
+          <strong>Marco Rossi</strong>
+          <span class="dot"></span>
+          <span>Caffè Vergnano · Navigli</span>
+        </div>
+        <div class="r-mood">
+          <span class="mood-pill italic">~ sıcak</span>
+          <span class="mood-pill italic">~ mahrem</span>
+          <span class="mood-pill italic">~ sabah</span>
+        </div>
+      </div>
+      <div class="r-action">
+        <div class="r-attendance"><strong>2</strong>/6</div>
+        <div class="r-progress"><div class="r-progress-fill" style="width: 33%"></div></div>
+        <button class="r-btn">Yer Kap</button>
+      </div>
+    </div>
+
+    <div class="ritual-row">
+      <div class="r-thumb t7">
+        <div class="r-thumb-overlay"></div>
+        <span class="r-time">20:00</span>
+      </div>
+      <div class="r-info">
+        <div class="r-tags">
+          <span class="r-tag special">★ ÖZEL</span>
+          <span class="r-tag free">ÜCRETSİZ</span>
+        </div>
+        <h3 class="r-title">Cinema Sotto le Stelle</h3>
+        <div class="r-meta">
+          <strong>Triennale Milano</strong>
+          <span class="dot"></span>
+          <span>Açık hava · "La Dolce Vita"</span>
+        </div>
+        <div class="r-mood">
+          <span class="mood-pill italic">~ yaratıcı</span>
+          <span class="mood-pill italic">~ outdoor</span>
+        </div>
+      </div>
+      <div class="r-action">
+        <div class="r-attendance"><strong>9</strong>/30</div>
+        <div class="r-progress"><div class="r-progress-fill" style="width: 30%"></div></div>
+        <button class="r-btn">Yer Kap</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h3l3-9 6 18 3-9h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Pulse</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+      <span>Local</span>
+    </div>
+    <div class="tab active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M9 3v4M15 3v4" stroke-linecap="round"/></svg>
+      <span>Rhythm</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+      <span>Passport</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MAP FRAME ─── -->
+<div class="frame dark">
+  <div class="frame-label">
+    <span class="num">CR-03</span>
+    <span>HARİTA · DARK STYLE</span>
+  </div>
+
+  <!-- Map background layers -->
+  <div class="map-bg"></div>
+  <div class="map-buildings">
+    <div class="bld b1"></div>
+    <div class="bld b2"></div>
+    <div class="bld b3"></div>
+    <div class="bld b4"></div>
+    <div class="bld b5"></div>
+    <div class="bld b6"></div>
+    <div class="bld b7"></div>
+    <div class="bld b8"></div>
+    <div class="bld b9"></div>
+    <div class="bld b10"></div>
+    <div class="bld b11"></div>
+  </div>
+  <div class="heat-zone h1"></div>
+  <div class="heat-zone h2"></div>
+  <div class="heat-zone h3"></div>
+  <div class="heat-zone h4"></div>
+
+  <!-- Connection arcs -->
+  <svg class="arcs" viewBox="0 0 390 844" preserveAspectRatio="none" fill="none">
+    <defs>
+      <linearGradient id="arc1" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#C8A96A" stop-opacity="0.05"/>
+        <stop offset="50%" stop-color="#C8A96A" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#C8A96A" stop-opacity="0.05"/>
+      </linearGradient>
+      <linearGradient id="arc2" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#B45249" stop-opacity="0.05"/>
+        <stop offset="50%" stop-color="#B45249" stop-opacity="0.5"/>
+        <stop offset="100%" stop-color="#B45249" stop-opacity="0.05"/>
+      </linearGradient>
+    </defs>
+    <path d="M 90 235 Q 195 100 255 188" stroke="url(#arc1)" stroke-width="1.5"/>
+    <path d="M 130 510 Q 220 380 260 410" stroke="url(#arc2)" stroke-width="1.2"/>
+    <path d="M 90 510 Q 280 600 290 590" stroke="url(#arc1)" stroke-width="1.2"/>
+  </svg>
+
+  <!-- Labels -->
+  <span class="nbhd-label brera">brera</span>
+  <span class="nbhd-label sempione">parco sempione</span>
+  <span class="nbhd-label navigli">navigli</span>
+  <span class="nbhd-label porta-romana">porta romana</span>
+  <span class="nbhd-label isola">isola</span>
+
+  <!-- PINS -->
+  <div class="pin-big live p-r1"><span class="pin-count">1</span></div>
+  <div class="pin-big live p-r2"><span class="pin-count">1</span></div>
+  <div class="pin-big live p-r3"></div>
+  <div class="pin-big gold p-g1"></div>
+  <div class="pin-big amber p-a1"></div>
+  <div class="pin-big plum p-pl1"></div>
+  <div class="pin-big uni p-uni1">B</div>
+  <div class="pin-big uni p-uni2">P</div>
+
+  <div class="map-frame-content">
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="status-icons">
+        <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+        <span style="font-size: 11px; font-weight: 600;">5G</span>
+        <div class="battery"><div class="battery-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="map-header">
+      <div class="map-header-row">
+        <h2 class="map-title">Milano <span class="it">tonight</span></h2>
+        <div style="display: flex; gap: 6px;">
+          <button class="map-icon-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M16 16l4 4" stroke-linecap="round"/></svg>
+          </button>
+          <button class="map-icon-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h18M3 12h12M3 18h6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="map-stats">
+        <span class="map-stat-pill live">3 canlı</span>
+        <span class="map-stat-pill">9 yaklaşan</span>
+        <span class="map-stat-pill" style="background: rgba(200,169,106,0.95); color: var(--ink);">★ 2 pivot</span>
+      </div>
+    </div>
+
+    <div class="map-view-switch">
+      <div class="vs-btn">
+        <span style="margin-right: 4px;">≡</span>Liste
+      </div>
+      <div class="vs-btn active">
+        <span style="margin-right: 4px;">📍</span>Harita
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating controls -->
+  <div class="map-controls">
+    <div class="map-ctl-stack">
+      <div class="map-ctl">+</div>
+      <div class="map-ctl">−</div>
+    </div>
+    <div class="map-ctl">⌖</div>
+    <div class="map-ctl">⛶</div>
+  </div>
+
+  <!-- Bottom sheet -->
+  <div class="map-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div>
+        <h3 class="sheet-area">Brera <span class="it">tonight</span></h3>
+        <div class="sheet-meta">3 ritual · 1 canlı · peak 19:30 — 22:00</div>
+      </div>
+      <div class="sheet-quick-stat">
+        <div class="num">94%</div>
+        <div class="lbl">Doluluk</div>
+      </div>
+    </div>
+
+    <div class="sheet-stats">
+      <div class="sheet-stat">
+        <div class="lbl">Avg RS</div>
+        <div class="val">7.4 <span class="small">/10</span></div>
+      </div>
+      <div class="sheet-stat">
+        <div class="lbl">Aktif Ritual</div>
+        <div class="val">3 <span class="small">canlı</span></div>
+      </div>
+      <div class="sheet-stat">
+        <div class="lbl">Yeni Anı</div>
+        <div class="val">12 <span class="small">/24h</span></div>
+      </div>
+    </div>
+
+    <div class="sheet-list-title">Bu Mahalledeki Ritual'lar</div>
+
+    <div class="ritual-row featured" style="margin: 0 0 8px;">
+      <div class="r-thumb t1">
+        <div class="r-thumb-overlay"></div>
+        <span class="r-thumb-live"></span>
+        <span class="r-time">13:30</span>
+      </div>
+      <div class="r-info">
+        <div class="r-tags">
+          <span class="r-tag live">CANLI</span>
+          <span class="r-tag pivot">★</span>
+        </div>
+        <h3 class="r-title" style="font-size: 16px;">Felsefe Çevresi</h3>
+        <div class="r-meta">
+          <strong>Marco R.</strong>
+          <span class="dot"></span>
+          <span>Bar Magenta</span>
+        </div>
+      </div>
+      <div class="r-action">
+        <div class="r-attendance"><strong>7</strong>/12</div>
+        <button class="r-btn gold">Katıl</button>
+      </div>
+    </div>
+
+    <div class="ritual-row locked" style="margin: 0;">
+      <div class="r-thumb t3">
+        <div class="r-thumb-overlay"></div>
+        <span class="r-time">19:30</span>
+      </div>
+      <div class="r-info">
+        <div class="r-tags">
+          <span class="r-tag special">★ ÖZEL</span>
+        </div>
+        <h3 class="r-title" style="font-size: 16px;">Aperitivo Sunset</h3>
+        <div class="r-meta">
+          <strong>Lorenzo F.</strong>
+          <span class="dot"></span>
+          <span>Cantina</span>
+        </div>
+      </div>
+      <div class="r-action">
+        <div class="r-attendance"><strong>3</strong>/8</div>
+        <button class="r-btn locked">🔒</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h3l3-9 6 18 3-9h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Pulse</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+      <span>Local</span>
+    </div>
+    <div class="tab active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M9 3v4M15 3v4" stroke-linecap="round"/></svg>
+      <span>Rhythm</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+      <span>Passport</span>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</body>
+</html>

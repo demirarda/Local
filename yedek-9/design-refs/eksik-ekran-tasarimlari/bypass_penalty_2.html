@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bypass · 2. Sefer Direkt Ceza</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1B2E4A;
+  --gold: #C8A96A;
+  --bg: #F8F6F2;
+  --card: #FFFFFF;
+  --text: #1B2E4A;
+  --muted: #737373;
+  --border: rgba(27, 46, 74, 0.08);
+  --red: #DC2626;
+  --red-pale: #FEE2E2;
+  --red-deep: #7F1D1D;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #E5E3DD;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  min-height: 100vh;
+}
+.frame {
+  width: 390px;
+  background: linear-gradient(180deg, #FEE2E2 0%, var(--bg) 35%);
+  border-radius: 38px;
+  height: 844px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.18);
+}
+
+/* Status bar */
+.status-bar {
+  height: 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px 16px;
+}
+.back-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(27, 46, 74, 0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  color: var(--text);
+}
+.brand {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+}
+.brand .dot { color: var(--gold); }
+
+/* Content */
+.content {
+  padding: 4px 24px 24px;
+  text-align: center;
+}
+
+/* Penalty icon */
+.penalty-icon-wrap {
+  width: 110px;
+  height: 110px;
+  border-radius: 32px;
+  background: linear-gradient(135deg, #FECACA 0%, #DC2626 110%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px auto 20px;
+  position: relative;
+  box-shadow: 0 12px 30px rgba(220, 38, 38, 0.25);
+}
+.penalty-icon-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 38px;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+}
+.penalty-icon {
+  font-size: 50px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.penalty-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 5px 12px;
+  border-radius: 100px;
+  margin-bottom: 12px;
+}
+.penalty-tag::before { content: "↓"; font-weight: bold; }
+
+.penalty-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 28px;
+  line-height: 1.15;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.penalty-sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-bottom: 22px;
+  padding: 0 4px;
+}
+.penalty-sub strong { color: var(--text); }
+
+/* RS card with delta */
+.rs-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.rs-delta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.rs-delta {
+  font-family: 'Instrument Serif', serif;
+  font-size: 38px;
+  line-height: 1;
+  color: var(--red);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.rs-delta-arrow {
+  font-size: 22px;
+  color: var(--red);
+}
+.rs-delta-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+.rs-transition {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(220, 38, 38, 0.04);
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.rs-from-block, .rs-to-block {
+  flex: 1;
+  text-align: center;
+}
+.rs-block-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.rs-block-num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 24px;
+  line-height: 1;
+}
+.rs-from-block .rs-block-num { color: var(--text); }
+.rs-to-block .rs-block-num { color: var(--red); }
+.rs-arrow-mid {
+  font-size: 18px;
+  color: var(--red);
+}
+.rs-bar {
+  height: 6px;
+  background: rgba(27, 46, 74, 0.06);
+  border-radius: 100px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 6px;
+}
+.rs-fill-old {
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%;
+  width: 71%;
+  background: rgba(200, 169, 106, 0.4);
+  border-radius: 100px;
+}
+.rs-fill-new {
+  position: relative;
+  height: 100%;
+  width: 70%;
+  background: var(--red);
+  border-radius: 100px;
+}
+.rs-fill-loss {
+  position: absolute;
+  left: 70%;
+  top: 0;
+  height: 100%;
+  width: 1%;
+  background: repeating-linear-gradient(45deg, var(--red), var(--red) 3px, rgba(220,38,38,0.4) 3px, rgba(220,38,38,0.4) 6px);
+  border-radius: 100px;
+}
+.rs-marks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+/* Pipeline note */
+.pipeline-note {
+  background: rgba(27, 46, 74, 0.04);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+.pn-icon { font-size: 14px; }
+.pn-text { font-size: 11px; color: var(--text); line-height: 1.4; }
+.pn-text strong { color: var(--red); }
+
+/* Why card */
+.why-card {
+  background: rgba(254, 226, 226, 0.5);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+.why-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--red-deep);
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.why-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 12px;
+  border-top: 1px dashed rgba(220, 38, 38, 0.18);
+}
+.why-row:first-of-type { border-top: 0; }
+.why-key { color: var(--red-deep); }
+.why-val { color: var(--red); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Footer */
+.footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 16px 24px 30px;
+  background: linear-gradient(180deg, transparent 0%, var(--bg) 30%);
+}
+.btn-primary {
+  width: 100%;
+  background: var(--text);
+  color: #fff;
+  font-family: 'DM Sans';
+  font-size: 14px;
+  font-weight: 600;
+  padding: 15px;
+  border: none;
+  border-radius: 100px;
+  margin-bottom: 8px;
+}
+.btn-secondary {
+  width: 100%;
+  background: transparent;
+  color: var(--muted);
+  font-family: 'DM Sans';
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px;
+  border: none;
+}
+
+/* Annotation */
+.annot {
+  position: fixed;
+  top: 24px; left: 24px;
+  background: var(--text);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  z-index: 100;
+}
+.annot strong { color: var(--gold); margin-right: 6px; }
+.annot .pip {
+  background: var(--red);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+</style>
+</head>
+<body>
+<div class="annot"><strong>BYPASS</strong>2. Sefer · Direkt RS Cezası <span class="pip">−0.10</span></div>
+
+<div class="frame">
+  <div class="status-bar">
+    <span>9:41</span>
+    <span style="font-size: 13px;">●●● 5G ▮</span>
+  </div>
+
+  <div class="header">
+    <div class="back-btn">×</div>
+    <div class="brand">L<span class="dot">.</span></div>
+    <div style="width: 36px;"></div>
+  </div>
+
+  <div class="content">
+    <div class="penalty-icon-wrap">
+      <span class="penalty-icon">↘</span>
+    </div>
+
+    <div class="penalty-tag">2. SEFER · DOĞRUDAN CEZA</div>
+
+    <h2 class="penalty-title">No-show tekrarlandı —<br>RS düştü</h2>
+    <p class="penalty-sap penalty-sub"><strong>Sabah Koşusu</strong> ritualine 2. kez gelmedin. Sistem otomatik olarak <strong>−0.10 RS</strong> uyguladı. Pipeline ve MD bypass edildi — ceza anında geçerli.</p>
+
+    <!-- RS Delta card -->
+    <div class="rs-card">
+      <div class="rs-delta-row">
+        <span class="rs-delta-arrow">↘</span>
+        <span class="rs-delta">−0.10</span>
+        <span class="rs-delta-label" style="margin-left: auto;">Bypass cezası</span>
+      </div>
+
+      <div class="rs-transition">
+        <div class="rs-from-block">
+          <div class="rs-block-label">Önceki</div>
+          <div class="rs-block-num">7.13</div>
+        </div>
+        <span class="rs-arrow-mid">→</span>
+        <div class="rs-to-block">
+          <div class="rs-block-label">Yeni</div>
+          <div class="rs-block-num">7.03</div>
+        </div>
+      </div>
+
+      <div class="rs-bar">
+        <div class="rs-fill-old"></div>
+        <div class="rs-fill-new"></div>
+      </div>
+      <div class="rs-marks">
+        <span>1.0</span><span>5.0</span><span>10.0</span>
+      </div>
+    </div>
+
+    <!-- Pipeline note -->
+    <div class="pipeline-note">
+      <span class="pn-icon">⚡</span>
+      <span class="pn-text"><strong>11 adımlı LTE-3 pipeline atlandı.</strong> Bypass cezaları MD ve BR'a tabi değildir — anında uygulanır.</span>
+    </div>
+
+    <!-- Why -->
+    <div class="why-card">
+      <div class="why-title">📊 NEDEN BU CEZA</div>
+      <div class="why-row">
+        <span class="why-key">Olay tipi</span>
+        <span class="why-val">No-show (2.+)</span>
+      </div>
+      <div class="why-row">
+        <span class="why-key">Sayaç</span>
+        <span class="why-val">2. tekrar</span>
+      </div>
+      <div class="why-row">
+        <span class="why-key">Direkt ceza</span>
+        <span class="why-val">−0.10 RS</span>
+      </div>
+      <div class="why-row">
+        <span class="why-key">Geç iptal cezası</span>
+        <span class="why-val">−0.05 RS</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="btn-primary">Anladım, devam et</button>
+    <button class="btn-secondary">RS detaylarını gör</button>
+  </div>
+</div>
+
+</body>
+</html>

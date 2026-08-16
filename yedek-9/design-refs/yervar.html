@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Pulse · Yer Var</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --purple:#7C3AED;--purple-pale:#EDE9FE;
+  --teal:#0F766E;--teal-pale:#CCFBF1;
+  --g50:#FAFAFA;--g100:#F5F5F5;--g150:#F0F0F0;
+  --g200:#E5E5E5;--g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:#fff;max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;height:44px;background:#fff}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 10px;background:#fff}
+.tb-logo{font-family:'Instrument Serif',serif;font-size:26px;color:#000;letter-spacing:-.5px}
+.tb-logo span{display:inline-block;width:5px;height:5px;background:#000;border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:4px}
+.tb-right{display:flex;gap:8px;align-items:center}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:all .15s}
+.icon-btn:hover{border-color:var(--navy)}
+.notif-dot{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.profile-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4a3728,#C4956A);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:14px;color:#fff;cursor:pointer;border:2px solid var(--gold)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:6px;padding:0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px}
+.filter-row::-webkit-scrollbar{display:none}
+.fc{display:flex;align-items:center;gap:4px;padding:6px 13px;border-radius:100px;font-size:10px;font-weight:600;border:1.5px solid var(--g200);color:var(--g500);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.fc:hover{border-color:var(--g300)}
+.fc.live{background:var(--red-pale);border-color:rgba(220,38,38,.25);color:var(--red)}
+.fc-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.fc.on-green{background:var(--green);color:#fff;border-color:var(--green)}
+.fc.on-amber{background:var(--amber);color:#fff;border-color:var(--amber)}
+.fc.on-navy{background:var(--navy);color:#fff;border-color:var(--navy)}
+.fc-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px}
+.fc.on-green .fc-badge{background:rgba(255,255,255,.25);color:#fff}
+.fc:not([class*="on-"]) .fc-badge{background:var(--g200);color:var(--g500)}
+
+.scroll-content{padding-bottom:90px}
+
+/* ── CONTEXT BANNER ── */
+.context-banner{
+  margin:0 16px 14px;
+  border-radius:16px;overflow:hidden;position:relative;
+}
+.cb-bg{
+  position:absolute;inset:0;
+  background:linear-gradient(135deg,#F0FDF4 0%,#DCFCE7 60%,#F0FDF4 100%);
+}
+.cb-pattern{
+  position:absolute;inset:0;opacity:.4;
+  background-image:radial-gradient(circle at 15% 50%,rgba(22,163,74,.08) 0%,transparent 40%),
+    radial-gradient(circle at 85% 20%,rgba(22,163,74,.06) 0%,transparent 40%);
+}
+.cb-body{
+  position:relative;z-index:2;
+  padding:13px 14px;
+  border:1.5px solid rgba(22,163,74,.2);
+  border-radius:16px;
+}
+.cb-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.cb-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:4px}
+.cb-title{font-family:'Instrument Serif',serif;font-size:18px;color:#000;line-height:1.25}
+.cb-sub{font-size:10px;color:var(--g500);margin-top:2px}
+.cb-total{text-align:right}
+.cb-num{font-family:'Instrument Serif',serif;font-size:36px;color:var(--green);line-height:1}
+.cb-unit{font-size:9px;color:var(--green);opacity:.6;font-weight:600}
+
+/* STAT PILLS */
+.cb-stats{display:flex;gap:6px;flex-wrap:wrap}
+.cb-stat{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.18);
+  padding:4px 10px;border-radius:100px;
+  font-size:9px;font-weight:700;color:var(--green);
+}
+.cb-stat-icon{font-size:10px}
+
+/* ── SORT ROW ── */
+.sort-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px 8px;
+}
+.sr-label{font-size:10px;color:var(--g400);font-weight:500}
+.sr-sort{
+  display:flex;gap:5px;
+}
+.sort-btn{
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:600;
+  border:1.5px solid var(--g200);color:var(--g500);
+  cursor:pointer;transition:all .15s;
+}
+.sort-btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* ── SPOT METER (merkezi görsel element) ── */
+.spot-meter{
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+}
+.sm-bar-wrap{
+  width:70px;height:6px;
+  background:var(--g100);border-radius:3px;overflow:hidden;
+}
+.sm-bar{height:100%;border-radius:3px;transition:width .4s}
+.sm-bar.plenty{background:var(--green)}   /* >60% boş */
+.sm-bar.some{background:var(--amber)}     /* 30-60% boş */
+.sm-bar.few{background:var(--red)}        /* <30% boş */
+.sm-count{font-size:10px;font-weight:700;white-space:nowrap}
+.sm-count.plenty{color:var(--green)}
+.sm-count.some{color:var(--amber)}
+.sm-count.few{color:var(--red)}
+
+/* ── SECTION DIVIDER ── */
+.sec-div{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 18px 6px;
+}
+.sd-icon{font-size:10px;flex-shrink:0}
+.sd-text{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px}
+.sd-text.green{color:var(--green)}
+.sd-text.amber{color:var(--amber)}
+.sd-text.navy{color:var(--navy-l)}
+.sd-line{flex:1;height:1px;background:var(--g100)}
+.sd-count{font-size:9px;color:var(--g300);background:var(--g100);padding:2px 7px;border-radius:100px;font-weight:600}
+
+/* ── CARD BASE ── */
+.yer-card{
+  margin:0 16px 8px;
+  background:#fff;
+  border:1px solid var(--g200);
+  border-radius:16px;overflow:hidden;
+  cursor:pointer;transition:all .2s;
+  position:relative;
+}
+.yer-card:hover{box-shadow:0 3px 14px rgba(0,0,0,.07);transform:translateY(-1px)}
+
+/* Plenty — çok yer var */
+.yer-card.plenty{border-color:rgba(22,163,74,.25)}
+.yer-card.plenty::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),rgba(22,163,74,.4))}
+
+/* Some — az yer kaldı */
+.yer-card.some{border-color:rgba(217,119,6,.25)}
+.yer-card.some::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--amber),rgba(217,119,6,.4))}
+
+/* Few — son 1-2 yer */
+.yer-card.few{border-color:rgba(220,38,38,.2)}
+.yer-card.few::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),rgba(220,38,38,.4))}
+
+/* HERO */
+.yc-hero{width:100%;height:150px;position:relative;overflow:hidden}
+.yc-hero-img{width:100%;height:100%}
+.yc-hero-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.06) 0%,rgba(0,0,0,.55) 65%,rgba(0,0,0,.85) 100%)}
+.yc-hero-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between;align-items:flex-start}
+.yc-hero-bot{position:absolute;bottom:0;left:0;right:0;padding:9px 12px;z-index:2}
+.yc-name{font-family:'Instrument Serif',serif;font-size:17px;color:#fff;line-height:1.25;margin-bottom:2px}
+.yc-venue{font-size:10px;color:rgba(255,255,255,.6)}
+
+/* SPOT BADGE on hero */
+.spot-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:700;
+}
+.sb-plenty{background:rgba(22,163,74,.9);color:#fff}
+.sb-some{background:rgba(217,119,6,.9);color:#fff}
+.sb-few{background:rgba(220,38,38,.9);color:#fff;animation:pulse-few .9s ease-in-out infinite}
+@keyframes pulse-few{0%,100%{opacity:1}50%{opacity:.7}}
+.sb-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.8)}
+
+/* time chip on hero */
+.time-chip-hero{
+  background:rgba(0,0,0,.5);backdrop-filter:blur(4px);
+  border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.8);font-size:8px;font-weight:600;
+  padding:3px 8px;border-radius:5px;
+}
+
+/* CARD BODY */
+.yc-body{padding:10px 13px 6px}
+.yc-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.yc-left{flex:1;min-width:0}
+.yc-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.yc-venue-txt{font-size:10px;color:var(--g400);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.yc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.yt{font-size:8px;font-weight:600;padding:2px 7px;border-radius:4px}
+.yt-navy{background:var(--navy-pale);color:var(--navy)}
+.yt-green{background:var(--green-pale);color:var(--green)}
+.yt-amber{background:var(--amber-pale);color:#92400E}
+.yt-dark{background:#000;color:#fff}
+.yt-gold{background:rgba(200,169,106,.15);color:#92400E}
+.yt-grey{background:var(--g100);color:var(--g500)}
+.yt-blue{background:#DBEAFE;color:#1D4ED8}
+.yt-red{background:var(--red-pale);color:var(--red)}
+.yt-purple{background:var(--purple-pale);color:var(--purple)}
+.yt-teal{background:var(--teal-pale);color:var(--teal)}
+.yc-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.yc-action{
+  padding:9px 16px;border-radius:10px;
+  font-size:11px;font-weight:700;border:none;
+  cursor:pointer;font-family:'DM Sans',sans-serif;
+  transition:opacity .15s;white-space:nowrap;
+}
+.yc-action:hover{opacity:.85}
+.btn-g{background:var(--green);color:#fff}
+.btn-a{background:var(--amber);color:#fff}
+.btn-r{background:var(--red);color:#fff}
+.btn-n{background:var(--navy);color:#fff}
+.btn-k{background:var(--gold);color:#000}
+.btn-o{background:#fff;color:var(--g400);border:1.5px solid var(--g200);cursor:not-allowed;opacity:.5}
+
+/* OCCUPANCY METER inside body */
+.occ-meter{
+  display:flex;align-items:center;gap:8px;
+  margin:8px 0 4px;
+}
+.occ-bar-bg{flex:1;height:5px;background:var(--g100);border-radius:3px;overflow:hidden}
+.occ-bar-fill{height:100%;border-radius:3px}
+.occ-fill-green{background:var(--green)}
+.occ-fill-amber{background:var(--amber)}
+.occ-fill-red{background:var(--red)}
+.occ-label{font-size:10px;font-weight:600;white-space:nowrap}
+
+/* CARD FOOTER */
+.yc-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 13px 10px;border-top:1px solid var(--g100);
+  margin-top:6px;
+}
+.yf-avs{display:flex}
+.yf-av{
+  width:20px;height:20px;border-radius:50%;
+  border:2px solid #fff;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:8px;
+}
+.yf-av:not(:first-child){margin-left:-7px}
+.yf-text{font-size:10px;color:var(--g500);margin-left:6px}
+.yf-right{display:flex;gap:5px}
+.yf-btn{
+  width:28px;height:28px;border-radius:8px;
+  border:1.5px solid var(--g200);background:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;cursor:pointer;transition:all .15s;
+}
+.yf-btn:hover{border-color:var(--navy)}
+.yf-btn.saved{background:var(--navy-pale);border-color:var(--navy)}
+
+/* ── HORIZONTAL SCROLL GROUP ── */
+.h-scroll{
+  display:flex;gap:10px;
+  overflow-x:auto;padding:0 16px 4px;
+  scrollbar-width:none;margin-bottom:6px;
+}
+.h-scroll::-webkit-scrollbar{display:none}
+.h-card{
+  flex-shrink:0;width:175px;
+  background:#fff;border-radius:14px;
+  border:1px solid var(--g200);overflow:hidden;
+  cursor:pointer;transition:all .2s;position:relative;
+}
+.h-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);transform:translateY(-1px)}
+.h-card.h-plenty{border-color:rgba(22,163,74,.25)}
+.h-card.h-some{border-color:rgba(217,119,6,.25)}
+.hc-img{width:100%;height:85px;position:relative;overflow:hidden}
+.hc-img-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 0%,rgba(0,0,0,.45) 100%)}
+.hc-top{position:absolute;top:6px;left:7px;z-index:2}
+.hc-bottom{position:absolute;bottom:6px;left:7px;right:7px;z-index:2}
+.hc-name{font-family:'Instrument Serif',serif;font-size:12px;color:#fff;line-height:1.2}
+.hc-venue{font-size:8px;color:rgba(255,255,255,.6)}
+.hc-body{padding:8px 9px 9px}
+.hc-tags{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:7px}
+.hc-tag{font-size:7px;font-weight:600;padding:2px 6px;border-radius:3px}
+.hcf-row{display:flex;align-items:center;justify-content:space-between}
+.hcf-spots{font-size:10px;font-weight:700}
+.hcf-spots.green{color:var(--green)}
+.hcf-spots.amber{color:var(--amber)}
+.hcf-btn{
+  padding:5px 10px;border-radius:7px;
+  font-size:9px;font-weight:700;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+}
+.hcfb-g{background:var(--green);color:#fff}
+.hcfb-a{background:var(--amber);color:#fff}
+.hcfb-n{background:var(--navy);color:#fff}
+
+/* SPOT BADGE mini (horizontal) */
+.spot-mini{
+  display:inline-flex;align-items:center;gap:3px;
+  padding:2px 7px;border-radius:100px;
+  font-size:7px;font-weight:700;
+}
+.sm-green{background:rgba(22,163,74,.9);color:#fff}
+.sm-amber{background:rgba(217,119,6,.9);color:#fff}
+.sm-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.8)}
+
+/* ── DOLU CARD (referans için) ── */
+.dolu-card{
+  margin:0 16px 8px;
+  background:var(--g50);
+  border:1px solid var(--g200);
+  border-radius:14px;
+  padding:11px 13px;
+  display:flex;align-items:center;gap:10px;
+  cursor:pointer;opacity:.55;transition:opacity .15s;
+}
+.dolu-card:hover{opacity:.7}
+.dc-thumb{width:40px;height:40px;border-radius:9px;flex-shrink:0;position:relative;overflow:hidden}
+.dc-thumb-ov{position:absolute;inset:0;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:14px}
+.dc-info{flex:1;min-width:0}
+.dc-name{font-size:12px;font-weight:600;color:var(--g500);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-meta{font-size:10px;color:var(--g300)}
+.dc-badge{font-size:8px;font-weight:700;padding:3px 9px;border-radius:100px;background:var(--g200);color:var(--g400);white-space:nowrap;flex-shrink:0}
+
+/* TOAST */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.82);color:#fff;padding:9px 18px;border-radius:100px;font-size:12px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:76px;border-top:1.5px solid var(--g200);background:rgba(255,255,255,.98);backdrop-filter:blur(10px);display:flex;align-items:flex-start;padding-top:10px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-iw{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-iw.on{background:#000}
+.nav-ic{font-size:16px}
+.nav-ic.inv{filter:invert(1)}
+.nav-l{font-size:8px;font-weight:700;color:#000}
+.nav-lo{font-size:8px;font-weight:500;color:var(--g400)}
+
+/* IMG */
+.i-jazz{background:radial-gradient(circle at 45% 35%,rgba(255,180,80,.45) 0%,transparent 45%),linear-gradient(145deg,#1A1A2E 0%,#2A2040 30%,#3A2850 55%,#1A1520 100%)}
+.i-coffee{background:radial-gradient(circle at 40% 50%,rgba(180,130,80,.5) 0%,transparent 40%),linear-gradient(145deg,#2C1810 0%,#5C3D2E 30%,#8B6B4A 55%,#3A2418 100%)}
+.i-run{background:radial-gradient(circle at 50% 25%,rgba(255,200,100,.5) 0%,transparent 45%),linear-gradient(180deg,#87CEEB 0%,#98D1A8 30%,#6B8E4E 60%,#3A5028 100%)}
+.i-phil{background:linear-gradient(135deg,#4a3728 0%,#8B6345 40%,#C4956A 70%,#5D3A2A 100%)}
+.i-chess{background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 40%,#444 70%,#111 100%)}
+.i-wine{background:linear-gradient(135deg,#4a0a20 0%,#9C1A3A 40%,#E91E63 70%,#2a0512 100%)}
+.i-yoga{background:linear-gradient(135deg,#2d6a2d 0%,#4CAF50 50%,#8BC34A 80%,#1B5E20 100%)}
+.i-art{background:linear-gradient(135deg,#2a1040 0%,#6B21A8 40%,#A855F7 70%,#1a0830 100%)}
+.i-teal{background:linear-gradient(145deg,#0F766E,#14B8A6)}
+.i-sunset{background:radial-gradient(circle at 50% 30%,rgba(255,150,50,.5) 0%,rgba(255,100,50,.3) 30%,transparent 60%),linear-gradient(180deg,#FF8C42 0%,#C4453A 40%,#2A1B3D 100%)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span class="sb-time">19:47</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="tb-logo">L<span></span></div>
+  <div class="tb-right">
+    <div class="icon-btn" onclick="t('Bildirimler')">🔔<div class="notif-dot"></div></div>
+    <div class="profile-av" onclick="t('Profil')">T</div>
+  </div>
+</div>
+
+<!-- FILTER ROW -->
+<div class="filter-row">
+  <div class="fc live" onclick="t('Canlı')">
+    <div class="fc-live-dot"></div>Canlı<span class="fc-badge">4</span>
+  </div>
+  <div class="fc on-amber" onclick="t('Başlamak Üzere')">⏱ Başlamak Üzere<span class="fc-badge">7</span></div>
+  <div class="fc on-green" onclick="t('Yer Var aktif')">
+    ◎ Yer Var<span class="fc-badge">14</span>
+  </div>
+  <div class="fc" onclick="t('Tümü')">Tümü</div>
+  <div class="fc" onclick="t('Arkadaşlar')">👥 Arkadaşlar</div>
+  <div class="fc" onclick="t('Super Event')">★ Super Event</div>
+  <div class="fc" onclick="t('RS')">◈ RS</div>
+</div>
+
+<div class="scroll-content">
+
+  <!-- ── CONTEXT BANNER ── -->
+  <div class="context-banner">
+    <div class="cb-bg"></div>
+    <div class="cb-pattern"></div>
+    <div class="cb-body">
+      <div class="cb-top">
+        <div>
+          <div class="cb-label">◎ Yer Var Filtresi</div>
+          <div class="cb-title">Seni bekleyen<br>ritüeller</div>
+          <div class="cb-sub">Bugün ve bu hafta · Milano</div>
+        </div>
+        <div class="cb-total">
+          <div class="cb-num">14</div>
+          <div class="cb-unit">ritüel</div>
+        </div>
+      </div>
+      <div class="cb-stats">
+        <div class="cb-stat"><span class="cb-stat-icon">🟢</span>8 ritüelde çok yer var</div>
+        <div class="cb-stat"><span class="cb-stat-icon">🟡</span>4 ritüelde az yer kaldı</div>
+        <div class="cb-stat"><span class="cb-stat-icon">🔴</span>2 ritüelde son 1–2 yer</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SORT ROW -->
+  <div class="sort-row">
+    <span class="sr-label">Sırala:</span>
+    <div class="sr-sort">
+      <div class="sort-btn on" onclick="setSort(this,'en-az')">En Az Yer</div>
+      <div class="sort-btn" onclick="setSort(this,'zaman')">Zamana Göre</div>
+      <div class="sort-btn" onclick="setSort(this,'arkadas')">Arkadaş</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════ -->
+  <!-- SON 1-2 YER - ACİL -->
+  <!-- ════════════════════ -->
+  <div class="sec-div">
+    <span class="sd-icon" style="color:var(--red)">🔴</span>
+    <span class="sd-text" style="color:var(--red)">Son 1–2 yer · Acil</span>
+    <div class="sd-line"></div>
+    <span class="sd-count">2</span>
+  </div>
+
+  <!-- CARD: Son 1 yer — hero, arkadaşlar orada -->
+  <div class="yer-card few" onclick="t('Philosophy Walk → Ritual Detail')">
+    <div class="yc-hero">
+      <div class="yc-hero-img i-phil"></div>
+      <div class="yc-hero-ov"></div>
+      <div class="yc-hero-top">
+        <div class="spot-badge sb-few">
+          <div class="sb-dot"></div>Son 1 yer!
+        </div>
+        <div class="time-chip-hero">20:30 · 43 dk</div>
+      </div>
+      <div class="yc-hero-bot">
+        <div class="yc-name">Philosophy Walk · Darsena</div>
+        <div class="yc-venue">📍 Navigli · Alessandro R. host</div>
+      </div>
+    </div>
+    <div class="yc-body">
+      <div class="occ-meter">
+        <div class="occ-bar-bg">
+          <div class="occ-bar-fill occ-fill-red" style="width:92%"></div>
+        </div>
+        <span class="occ-label" style="color:var(--red)">7 / 8 kişi · 1 yer kaldı</span>
+      </div>
+      <div class="yc-row" style="align-items:center">
+        <div class="yc-left">
+          <div class="yc-tags">
+            <span class="yt yt-amber">Min RS 65 · Senin: 7.4 ✓</span>
+            <span class="yt yt-blue">👥 3 Arkadaş</span>
+            <span class="yt yt-dark">★ Pivot Host</span>
+          </div>
+        </div>
+        <button class="yc-action btn-r" onclick="event.stopPropagation();t('Hızlı katıl → Son yer!')">Son Yer → Al</button>
+      </div>
+    </div>
+    <div class="yc-footer">
+      <div style="display:flex;align-items:center">
+        <div class="yf-avs">
+          <div class="yf-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">M</div>
+          <div class="yf-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">E</div>
+          <div class="yf-av" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8)">L</div>
+        </div>
+        <span class="yf-text">Marco, Elena, Luca orada</span>
+      </div>
+      <div class="yf-right">
+        <div class="yf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD: Son 2 yer — basit -->
+  <div class="yer-card few" onclick="t('Chess Evening → Ritual Detail')">
+    <div class="yc-body" style="padding-top:13px">
+      <div class="yc-row">
+        <div class="yc-left">
+          <div class="yc-title">Chess Evening · Isola</div>
+          <div class="yc-venue-txt">📍 Isola Cafe · 21:00 · 1s 13dk</div>
+          <div class="occ-meter">
+            <div class="occ-bar-bg"><div class="occ-bar-fill occ-fill-red" style="width:75%"></div></div>
+            <span class="occ-label" style="color:var(--red)">6 / 8 · 2 yer</span>
+          </div>
+          <div class="yc-tags">
+            <span class="yt yt-amber">Min RS 50 ✓</span>
+            <span class="yt yt-purple">♟ Satranç</span>
+            <span class="yt yt-green">✓ Verified Host</span>
+          </div>
+        </div>
+        <div class="yc-right">
+          <div class="spot-badge sb-few" style="font-size:9px;padding:3px 9px">🔴 2 yer</div>
+          <button class="yc-action btn-r" onclick="event.stopPropagation();t('Satranç → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+    <div class="yc-footer">
+      <div style="display:flex;align-items:center">
+        <div class="yf-avs">
+          <div class="yf-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">D</div>
+        </div>
+        <span class="yf-text">Davide host · L3 Yakın Arkadaşın</span>
+      </div>
+      <div class="yf-right">
+        <div class="yf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════ -->
+  <!-- AZ YER — 3-5 kişi  -->
+  <!-- ════════════════════ -->
+  <div class="sec-div">
+    <span class="sd-icon" style="color:var(--amber)">🟡</span>
+    <span class="sd-text amber">Az Yer Kaldı</span>
+    <div class="sd-line"></div>
+    <span class="sd-count">4</span>
+  </div>
+
+  <!-- CARD: Az yer — hero -->
+  <div class="yer-card some" onclick="t('Jazz Night → Ritual Detail')">
+    <div class="yc-hero">
+      <div class="yc-hero-img i-jazz"></div>
+      <div class="yc-hero-ov"></div>
+      <div class="yc-hero-top">
+        <div class="spot-badge sb-some"><div class="sb-dot"></div>4 yer kaldı</div>
+        <div class="time-chip-hero">● Canlı · 22:30</div>
+      </div>
+      <div class="yc-hero-bot">
+        <div class="yc-name">Jazz Night at Blue Note</div>
+        <div class="yc-venue">📍 Navigli · Şu an devam ediyor</div>
+      </div>
+    </div>
+    <div class="yc-body">
+      <div class="occ-meter">
+        <div class="occ-bar-bg"><div class="occ-bar-fill occ-fill-amber" style="width:67%"></div></div>
+        <span class="occ-label" style="color:var(--amber)">8 / 12 · 4 yer kaldı</span>
+      </div>
+      <div class="yc-row" style="align-items:center">
+        <div class="yc-left">
+          <div class="yc-tags">
+            <span class="yt yt-navy">RS 0+ · Herkese Açık</span>
+            <span class="yt yt-dark">★ Pivot Host</span>
+            <span class="yt yt-green">✓ Verified</span>
+          </div>
+        </div>
+        <button class="yc-action btn-a" onclick="event.stopPropagation();t('Canlı ritüel → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="yc-footer">
+      <div style="display:flex;align-items:center">
+        <div class="yf-avs">
+          <div class="yf-av" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8)">A</div>
+          <div class="yf-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">E</div>
+        </div>
+        <span class="yf-text">Alessandro host · Elena orada</span>
+      </div>
+      <div class="yf-right"><div class="yf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+    </div>
+  </div>
+
+  <!-- HORIZONTAL SCROLL: az yer kalanlar (küçük format) -->
+  <div class="h-scroll">
+
+    <div class="h-card h-some" onclick="t('Wine Tasting → Ritual Detail')">
+      <div class="hc-img i-wine">
+        <div class="hc-img-ov"></div>
+        <div class="hc-top"><div class="spot-mini sm-amber"><div class="sm-dot"></div>3 yer</div></div>
+        <div class="hc-bottom">
+          <div class="hc-name">Wine Tasting</div>
+          <div class="hc-venue">📍 Navigli · 22:00</div>
+        </div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-tags">
+          <span class="hc-tag" style="background:var(--red-pale);color:var(--red)">Min RS 70</span>
+          <span class="hc-tag yt-grey">🔒 Kilitli</span>
+        </div>
+        <div class="occ-meter" style="margin:0">
+          <div class="occ-bar-bg"><div class="occ-bar-fill occ-fill-amber" style="width:70%"></div></div>
+          <span style="font-size:9px;color:var(--amber);font-weight:600">7/10</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="h-card h-some" onclick="t('Sunset Yoga → Ritual Detail')">
+      <div class="hc-img i-yoga">
+        <div class="hc-img-ov"></div>
+        <div class="hc-top"><div class="spot-mini sm-amber"><div class="sm-dot"></div>5 yer</div></div>
+        <div class="hc-bottom">
+          <div class="hc-name">Sunset Yoga</div>
+          <div class="hc-venue">📍 Sempione · 20:30</div>
+        </div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-tags">
+          <span class="hc-tag" style="background:var(--green-pale);color:var(--green)">RS 0+</span>
+        </div>
+        <div class="hcf-row">
+          <span class="hcf-spots amber">11/16 kişi</span>
+          <button class="hcf-btn hcfb-a" onclick="event.stopPropagation();t('Yoga → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════ -->
+  <!-- ÇOK YER VAR        -->
+  <!-- ════════════════════ -->
+  <div class="sec-div">
+    <span class="sd-icon" style="color:var(--green)">🟢</span>
+    <span class="sd-text green">Çok Yer Var</span>
+    <div class="sd-line"></div>
+    <span class="sd-count">8</span>
+  </div>
+
+  <!-- CARD: Çok yer — hero, RS gerektiren -->
+  <div class="yer-card plenty" onclick="t('Art Opening → Ritual Detail')">
+    <div class="yc-hero">
+      <div class="yc-hero-img i-art"></div>
+      <div class="yc-hero-ov"></div>
+      <div class="yc-hero-top">
+        <div class="spot-badge sb-plenty"><div class="sb-dot"></div>8 yer var</div>
+        <div class="time-chip-hero">21:00 · 1s 13dk</div>
+      </div>
+      <div class="yc-hero-bot">
+        <div class="yc-name">Contemporary Art Opening</div>
+        <div class="yc-venue">📍 Brera Gallery · Verified Venue</div>
+      </div>
+    </div>
+    <div class="yc-body">
+      <div class="occ-meter">
+        <div class="occ-bar-bg"><div class="occ-bar-fill occ-fill-green" style="width:40%"></div></div>
+        <span class="occ-label" style="color:var(--green)">8 / 20 · 12 yer var</span>
+      </div>
+      <div class="yc-row" style="align-items:center">
+        <div class="yc-left">
+          <div class="yc-tags">
+            <span class="yt yt-navy">RS 0+ · Herkese Açık</span>
+            <span class="yt yt-green">✓ Verified Venue</span>
+          </div>
+        </div>
+        <button class="yc-action btn-g" onclick="event.stopPropagation();t('Sanat → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="yc-footer">
+      <span class="yf-text" style="color:var(--g300)">Bağlantın yok · Herkese açık</span>
+      <div class="yf-right"><div class="yf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+    </div>
+  </div>
+
+  <!-- CARD: Çok yer — basit, RS var -->
+  <div class="yer-card plenty" onclick="t('Philosophy Club → Ritual Detail')">
+    <div class="yc-body" style="padding-top:13px">
+      <div class="yc-row">
+        <div class="yc-left">
+          <div class="yc-title">Philosophy Reading Club</div>
+          <div class="yc-venue-txt">📍 Caffe Letterario · Brera · Perşembe</div>
+          <div class="occ-meter">
+            <div class="occ-bar-bg"><div class="occ-bar-fill occ-fill-green" style="width:25%"></div></div>
+            <span class="occ-label" style="color:var(--green)">3 / 12 · 9 yer var</span>
+          </div>
+          <div class="yc-tags">
+            <span class="yt yt-amber">Min RS 60 · Senin: 7.4 ✓</span>
+            <span class="yt yt-teal">☕ LOCAL HQ</span>
+            <span class="yt yt-green">✓ Verified Host</span>
+          </div>
+        </div>
+        <div class="yc-right">
+          <div class="spot-badge sb-plenty" style="font-size:9px;padding:3px 9px">🟢 9 yer</div>
+          <button class="yc-action btn-g" onclick="event.stopPropagation();t('Felsefe → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+    <div class="yc-footer">
+      <span class="yf-text" style="color:var(--g300)">Yeni ritüel · Henüz kimse yok</span>
+      <div class="yf-right"><div class="yf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+    </div>
+  </div>
+
+  <!-- HORIZONTAL SCROLL: çok yer kalanlar -->
+  <div class="h-scroll">
+
+    <div class="h-card h-plenty" onclick="t('Morning Run → Ritual Detail')">
+      <div class="hc-img i-run">
+        <div class="hc-img-ov"></div>
+        <div class="hc-top"><div class="spot-mini sm-green"><div class="sm-dot"></div>8 yer</div></div>
+        <div class="hc-bottom">
+          <div class="hc-name">Morning Run Club</div>
+          <div class="hc-venue">📍 Sempione · Yarın 07:00</div>
+        </div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-tags">
+          <span class="hc-tag" style="background:var(--green-pale);color:var(--green)">RS 0+</span>
+          <span class="hc-tag yt-grey">Yarın</span>
+        </div>
+        <div class="hcf-row">
+          <span class="hcf-spots green">4/12 kişi</span>
+          <button class="hcf-btn hcfb-g" onclick="event.stopPropagation();t('Koşu → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="h-card h-plenty" onclick="t('Coffee Circle → Ritual Detail')">
+      <div class="hc-img i-coffee">
+        <div class="hc-img-ov"></div>
+        <div class="hc-top"><div class="spot-mini sm-green"><div class="sm-dot"></div>5 yer</div></div>
+        <div class="hc-bottom">
+          <div class="hc-name">Morning Coffee</div>
+          <div class="hc-venue">📍 Brera · Yarın 09:00</div>
+        </div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-tags">
+          <span class="hc-tag" style="background:var(--navy-pale);color:var(--navy)">RS 65+</span>
+          <span class="hc-tag" style="background:#DBEAFE;color:#1D4ED8">2 Arkadaş</span>
+        </div>
+        <div class="hcf-row">
+          <span class="hcf-spots green">3/8 kişi</span>
+          <button class="hcf-btn hcfb-n" onclick="event.stopPropagation();t('Kahve → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="h-card h-plenty" onclick="t('Tiyatro → Ritual Detail')">
+      <div class="hc-img i-sunset">
+        <div class="hc-img-ov"></div>
+        <div class="hc-top"><div class="spot-mini sm-green"><div class="sm-dot"></div>12 yer</div></div>
+        <div class="hc-bottom">
+          <div class="hc-name">Tiyatro Grubu</div>
+          <div class="hc-venue">📍 Porta Romana · Cuma</div>
+        </div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-tags">
+          <span class="hc-tag" style="background:var(--green-pale);color:var(--green)">RS 0+</span>
+        </div>
+        <div class="hcf-row">
+          <span class="hcf-spots green">3/15 kişi</span>
+          <button class="hcf-btn hcfb-g" onclick="event.stopPropagation();t('Tiyatro → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════ -->
+  <!-- REFERANS: DOLU OLANLAR -->
+  <!-- ════════════════════ -->
+  <div class="sec-div">
+    <span class="sd-icon" style="color:var(--g300)">⊘</span>
+    <span class="sd-text" style="color:var(--g400)">Dolu · Bekleme listesi var</span>
+    <div class="sd-line"></div>
+    <span class="sd-count">3</span>
+  </div>
+
+  <div class="dolu-card" onclick="t('Kanye Sub-Ritual → Dolu')">
+    <div class="dc-thumb i-jazz" style="border-radius:9px;overflow:hidden;position:relative">
+      <div class="dc-thumb-ov">⊘</div>
+    </div>
+    <div class="dc-info">
+      <div class="dc-name">Kanye Öncesi Aperitivo</div>
+      <div class="dc-meta">Arkaoda · 24 / 24 kişi</div>
+    </div>
+    <div class="dc-badge">Bekleme → 4 kişi</div>
+  </div>
+
+  <div class="dolu-card" onclick="t('Wine Tasting → Dolu')">
+    <div class="dc-thumb i-wine" style="border-radius:9px;overflow:hidden;position:relative">
+      <div class="dc-thumb-ov">⊘</div>
+    </div>
+    <div class="dc-info">
+      <div class="dc-name">Late Night Blues</div>
+      <div class="dc-meta">Navigli · 10 / 10 kişi</div>
+    </div>
+    <div class="dc-badge">⊘ Dolu</div>
+  </div>
+
+  <div style="height:10px"></div>
+
+</div><!-- /scroll-content -->
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-iw on"><span class="nav-ic inv">〰</span></div><span class="nav-l">Pulse</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">📅</span></div><span class="nav-lo">City Rhythm</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">◉</span></div><span class="nav-lo">Passport</span></div>
+</div>
+
+<script>
+/* Sort */
+function setSort(el, key) {
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  const labels = { 'en-az':'En az yer olana göre sıralandı', 'zaman':'Zamana göre sıralandı', 'arkadas':'Arkadaş sayısına göre sıralandı' };
+  t(labels[key]);
+}
+
+/* Save */
+function toggleSave(btn) {
+  const saved = btn.dataset.saved;
+  if (saved) { btn.textContent='🔖'; btn.classList.remove('saved'); delete btn.dataset.saved; }
+  else { btn.textContent='❤️'; btn.classList.add('saved'); btn.dataset.saved='1'; t('Kaydedildi'); }
+}
+
+/* Toast */
+function t(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'),2100);
+}
+</script>
+
+</body>
+</html>

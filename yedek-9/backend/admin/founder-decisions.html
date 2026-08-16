@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOCAL Admin - Founder Kararları</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>body{font-family:Inter,sans-serif}</style>
+</head>
+<body class="bg-slate-950 text-slate-100 p-8">
+  <a href="dashboard.html" class="text-blue-400 text-sm">← Dashboard</a>
+  <h1 class="text-2xl font-bold mt-4 mb-2">Founder Kararları (son-part1 §10)</h1>
+  <p class="text-slate-400 text-sm mb-6">12 madde — uygulama snapshot (<code class="text-slate-300">founderDecisions.js</code>)</p>
+  <div id="meta" class="text-sm text-slate-500 mb-4"></div>
+  <div id="list" class="space-y-4"></div>
+  <script src="common.js"></script>
+  <script>
+    api('/api/admin/founder-decisions').then(function (res) {
+      var data = res.data || {};
+      document.getElementById('meta').textContent =
+        'Versiyon ' + (data.version || '—') + ' · ' + (data.resolved_count || 0) + ' karar';
+      document.getElementById('list').innerHTML = (data.decisions || [])
+        .map(function (d) {
+          return (
+            '<article class="border border-slate-800 rounded-xl p-4 bg-slate-900">' +
+            '<div class="text-xs text-violet-400 font-bold mb-1">#' + d.id + '</div>' +
+            '<h2 class="font-semibold text-slate-100 mb-2">' + escapeHtml(d.question) + '</h2>' +
+            '<p class="text-sm text-slate-300 mb-2">' + escapeHtml(d.resolution) + '</p>' +
+            '<p class="text-xs text-slate-500">' +
+            (d.code_refs || []).map(function (r) { return escapeHtml(r); }).join(' · ') +
+            '</p></article>'
+          );
+        })
+        .join('');
+    }).catch(function (e) {
+      document.getElementById('list').innerHTML = '<p class="text-red-400">' + escapeHtml(e.message) + '</p>';
+    });
+  </script>
+</body>
+</html>

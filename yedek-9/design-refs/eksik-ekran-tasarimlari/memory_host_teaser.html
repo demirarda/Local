@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory · Host Teaser</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1B2E4A;
+  --gold: #C8A96A;
+  --gold-light: #E8D49A;
+  --bg: #F8F6F2;
+  --card: #FFFFFF;
+  --text: #1B2E4A;
+  --muted: #737373;
+  --border: rgba(27, 46, 74, 0.08);
+  --green: #27500A;
+  --green-pale: #EAF3DE;
+  --amber: #D97706;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #E5E3DD;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  min-height: 100vh;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.frame {
+  width: 390px;
+  background: var(--bg);
+  border-radius: 38px;
+  padding: 24px 0;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.12);
+}
+.frame-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px;
+  color: var(--text);
+  padding: 0 24px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.frame-title .pip {
+  font-size: 10px;
+  background: var(--gold);
+  color: var(--text);
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-family: 'DM Sans';
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* Memory card */
+.memory-card {
+  margin: 0 16px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* Author row — host with pivot badge */
+.author-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 12px;
+}
+.avatar {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #C8A96A, #8B6F36);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  position: relative;
+}
+.avatar-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+}
+.pivot-star {
+  position: absolute;
+  bottom: -2px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background: var(--gold);
+  border: 2px solid var(--card);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text);
+}
+
+.author-info { flex: 1; }
+.author-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.host-tag {
+  background: var(--text);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.author-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.author-meta .gold-dot { color: var(--gold); }
+
+.teaser-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--gold);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 5px 10px;
+  border-radius: 100px;
+}
+
+/* Hero with venue photo and countdown overlay */
+.teaser-hero {
+  height: 240px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 215, 130, 0.4) 0%, transparent 50%),
+    linear-gradient(135deg, #4A3520 0%, #2A1F12 60%, #0E1B2E 100%);
+}
+.teaser-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 70% 20%, rgba(255,255,255,0.08) 0%, transparent 25%),
+    repeating-linear-gradient(90deg, transparent 0px, transparent 30px, rgba(255,255,255,0.02) 30px, rgba(255,255,255,0.02) 31px);
+}
+.teaser-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.85) 100%);
+}
+
+.upcoming-badge {
+  position: absolute;
+  top: 14px; left: 14px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 5px 10px;
+  border-radius: 100px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.upcoming-badge::before { content: "📢"; font-size: 11px; }
+
+.seats-pill {
+  position: absolute;
+  top: 14px; right: 14px;
+  background: rgba(220, 38, 38, 0.92);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 100px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.seats-pill::before {
+  content: "💺";
+  font-size: 11px;
+}
+
+/* Big countdown */
+.countdown-block {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 22px 20px 18px;
+  z-index: 3;
+  color: #fff;
+}
+.countdown-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.countdown {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.cd-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.cd-num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 38px;
+  line-height: 1;
+  font-weight: 400;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.cd-label {
+  font-size: 9px;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+.cd-colon {
+  font-family: 'Instrument Serif', serif;
+  font-size: 38px;
+  color: rgba(255,255,255,0.3);
+  line-height: 1;
+}
+.ritual-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  line-height: 1.15;
+  margin-bottom: 4px;
+}
+.ritual-meta {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ritual-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.5); }
+
+/* Capacity bar */
+.capacity-block {
+  padding: 14px 16px 10px;
+}
+.cap-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cap-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.cap-value {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.cap-value .filled { color: var(--amber); }
+.cap-bar {
+  height: 4px;
+  background: rgba(27, 46, 74, 0.06);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.cap-fill {
+  height: 100%;
+  width: 75%;
+  background: linear-gradient(90deg, var(--gold) 0%, var(--amber) 100%);
+  border-radius: 100px;
+}
+
+/* Avatar stack */
+.attendee-row {
+  padding: 0 16px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.avatar-stack {
+  display: flex;
+}
+.av-mini {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #aab, #889);
+  border: 2px solid var(--card);
+  margin-left: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: #fff;
+  font-weight: 600;
+}
+.av-mini:first-child { margin-left: 0; }
+.av-mini:nth-child(1) { background: linear-gradient(135deg, #6B8AAD, #4A6688); }
+.av-mini:nth-child(2) { background: linear-gradient(135deg, #B5A485, #8E7A56); }
+.av-mini:nth-child(3) { background: linear-gradient(135deg, #C8A96A, #8B6F36); }
+.av-mini:nth-child(4) { background: linear-gradient(135deg, #5B7866, #3F5648); color: #fff; }
+.attendee-text {
+  font-size: 12px;
+  color: var(--muted);
+}
+.attendee-text strong { color: var(--text); font-weight: 600; }
+
+/* CTA */
+.cta-block {
+  padding: 0 16px 16px;
+}
+.btn-cta {
+  width: 100%;
+  background: var(--text);
+  color: #fff;
+  font-family: 'DM Sans';
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px;
+  border: none;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-cta::after {
+  content: "→";
+  font-size: 14px;
+}
+
+/* Footer reactions */
+.reactions {
+  padding: 12px 16px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid var(--border);
+}
+.reaction { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.reaction-icon { font-size: 14px; }
+.reaction-spacer { flex: 1; }
+.share-btn { font-size: 12px; color: var(--text); font-weight: 600; }
+
+/* Annotation */
+.annot {
+  position: fixed;
+  top: 24px; left: 24px;
+  background: var(--text);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  z-index: 100;
+}
+.annot strong { color: var(--gold); margin-right: 6px; }
+
+/* Spec note */
+.spec-note {
+  width: 280px;
+  padding: 24px;
+  background: var(--card);
+  border-radius: 16px;
+  margin-top: 24px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.spec-note h3 { font-family: 'Instrument Serif', serif; font-size: 18px; color: var(--text); margin-bottom: 12px; }
+.spec-note ul { padding-left: 16px; margin: 8px 0; }
+.spec-note code { background: rgba(27, 46, 74, 0.05); padding: 2px 5px; border-radius: 4px; font-size: 10px; color: var(--text); }
+</style>
+</head>
+<body>
+<div class="annot"><strong>PL-Memory</strong>Tip: Host Teaser</div>
+
+<div class="frame">
+  <div class="frame-title">Pulse Akışı <span class="pip">HOST TEASER</span></div>
+
+  <article class="memory-card">
+    <!-- Author -->
+    <div class="author-row">
+      <div class="avatar">
+        MR
+        <span class="avatar-ring"></span>
+        <span class="pivot-star">★</span>
+      </div>
+      <div class="author-info">
+        <div class="author-name">
+          Marco Rossi
+          <span class="host-tag">HOST</span>
+        </div>
+        <div class="author-meta">
+          <span>Pivot Host</span>
+          <span class="gold-dot">·</span>
+          <span>RS 8.2</span>
+        </div>
+      </div>
+      <div style="margin-left: auto;">
+        <span class="teaser-tag">📢 TEASER</span>
+      </div>
+    </div>
+
+    <!-- Hero with countdown -->
+    <div class="teaser-hero">
+      <span class="upcoming-badge">YAKINDA</span>
+      <span class="seats-pill">3 yer kaldı</span>
+
+      <div class="countdown-block">
+        <div class="countdown-label">Başlamasına</div>
+        <div class="countdown">
+          <div class="cd-unit"><span class="cd-num">02</span><span class="cd-label">Gün</span></div>
+          <span class="cd-colon">:</span>
+          <div class="cd-unit"><span class="cd-num">14</span><span class="cd-label">Saat</span></div>
+          <span class="cd-colon">:</span>
+          <div class="cd-unit"><span class="cd-num">23</span><span class="cd-label">Dk</span></div>
+        </div>
+        <h3 class="ritual-title">Brera Akşam Sohbeti</h3>
+        <div class="ritual-meta">
+          <span>Bar Magenta</span>
+          <span class="dot"></span>
+          <span>Cumartesi 19:30</span>
+          <span class="dot"></span>
+          <span>3h pencere</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Capacity bar -->
+    <div class="capacity-block">
+      <div class="cap-row">
+        <span class="cap-label">KAPASİTE</span>
+        <span class="cap-value"><span class="filled">9</span> / 12 dolu</span>
+      </div>
+      <div class="cap-bar">
+        <div class="cap-fill"></div>
+      </div>
+    </div>
+
+    <!-- Attendees -->
+    <div class="attendee-row">
+      <div class="avatar-stack">
+        <div class="av-mini">A</div>
+        <div class="av-mini">L</div>
+        <div class="av-mini">M</div>
+        <div class="av-mini">+6</div>
+      </div>
+      <span class="attendee-text"><strong>9 kişi</strong> onayladı · 2 arkadaşın gidiyor</span>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-block">
+      <button class="btn-cta">Yer Kap</button>
+    </div>
+
+    <!-- Reactions -->
+    <div class="reactions">
+      <div class="reaction"><span class="reaction-icon">🔔</span><span>İlgiliyim</span></div>
+      <div class="reaction"><span class="reaction-icon">↗</span><span>5</span></div>
+      <div class="reaction-spacer"></div>
+      <div class="share-btn">Paylaş</div>
+    </div>
+  </article>
+</div>
+
+<div class="spec-note">
+  <h3>Spec Notu</h3>
+  <p><strong>Tip:</strong> Host Teaser (📢)</p>
+  <p><strong>Ömür:</strong> Ritual dolana veya başlayana kadar (NOT 24h — istisna)</p>
+  <p style="margin-top: 12px;"><strong>Bileşenler:</strong></p>
+  <ul>
+    <li>Host avatarı + Pivot rozeti</li>
+    <li>"YAKINDA" badge + yer kaldı pill</li>
+    <li>Countdown (gün:saat:dk)</li>
+    <li>Ritual başlığı + mekan + zaman + window süresi</li>
+    <li>Kapasite barı (gold → amber)</li>
+    <li>Katılımcı stack + arkadaş bilgisi</li>
+    <li>"Yer Kap" CTA</li>
+  </ul>
+  <p style="margin-top: 12px;"><strong>Implementation tag:</strong></p>
+  <p><code>[TEASER]</code> → HostMemoryShareCard.js render path eklenmeli</p>
+  <p style="margin-top: 8px;"><strong>Özel davranış:</strong> Ritual başladığında veya dolduğunda otomatik kaybolur (memories.expires_at güncellenmeli)</p>
+</div>
+
+</body>
+</html>

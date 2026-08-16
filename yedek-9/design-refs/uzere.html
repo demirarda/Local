@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Pulse · Başlamak Üzere</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --purple:#7C3AED;--purple-pale:#EDE9FE;
+  --g50:#FAFAFA;--g100:#F5F5F5;--g150:#F0F0F0;
+  --g200:#E5E5E5;--g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:#fff;max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+/* STATUS BAR */
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;height:44px;background:#fff}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+/* TOP BAR */
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 10px;background:#fff}
+.tb-logo{font-family:'Instrument Serif',serif;font-size:26px;color:#000;letter-spacing:-.5px}
+.tb-logo span{display:inline-block;width:5px;height:5px;background:#000;border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:4px}
+.tb-right{display:flex;gap:8px;align-items:center}
+.notif-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:all .15s}
+.notif-btn:hover{border-color:var(--navy)}
+.notif-dot{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.profile-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4a3728,#C4956A);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:14px;color:#fff;cursor:pointer;border:2px solid var(--gold)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:6px;padding:0 16px 0;overflow-x:auto;scrollbar-width:none;margin-bottom:10px}
+.filter-row::-webkit-scrollbar{display:none}
+.fc{display:flex;align-items:center;gap:4px;padding:6px 13px;border-radius:100px;font-size:10px;font-weight:600;border:1.5px solid var(--g200);color:var(--g500);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.fc:hover{border-color:var(--g300);color:var(--g600)}
+.fc.on{background:#000;color:#fff;border-color:#000}
+.fc.on-amber{background:var(--amber);color:#fff;border-color:var(--amber)}
+.fc.live{background:var(--red-pale);border-color:rgba(220,38,38,.25);color:var(--red)}
+.fc.live.on-live{background:var(--red);color:#fff;border-color:var(--red)}
+.fc-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);flex-shrink:0;animation:blink 1.4s ease-in-out infinite}
+.fc.on-live .fc-live-dot{background:#fff}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.fc-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px}
+.fc.on .fc-badge,.fc.on-amber .fc-badge,.fc.on-live .fc-badge{background:rgba(255,255,255,.25);color:#fff}
+.fc:not(.on):not(.on-amber):not(.on-live) .fc-badge{background:var(--g200);color:var(--g500)}
+
+/* ── SOON CONTEXT BANNER ── */
+.soon-context{
+  margin:0 16px 14px;
+  background:linear-gradient(135deg,#FFF8ED 0%,#FFFBF5 100%);
+  border:1.5px solid rgba(217,119,6,.2);
+  border-radius:16px;
+  padding:13px 14px;
+  position:relative;overflow:hidden;
+}
+.sc-bg{
+  position:absolute;top:-20px;right:-20px;width:100px;height:100px;
+  border-radius:50%;background:rgba(200,169,106,.07);pointer-events:none;
+}
+.sc-body{display:flex;align-items:center;gap:10px;position:relative;z-index:2}
+.sc-icon-wrap{flex-shrink:0}
+/* Countdown ring */
+.ring-wrap{position:relative;width:52px;height:52px;flex-shrink:0}
+.ring-svg{width:52px;height:52px;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:rgba(217,119,6,.12);stroke-width:3}
+.ring-fill{fill:none;stroke:var(--amber);stroke-width:3;stroke-linecap:round;stroke-dasharray:135.1;stroke-dashoffset:33.8;transition:stroke-dashoffset .5s}
+.ring-center{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  text-align:center;line-height:1.1;
+}
+.ring-num{font-family:'Instrument Serif',serif;font-size:15px;color:var(--amber);font-weight:400}
+.ring-unit{font-size:7px;color:rgba(217,119,6,.6);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.sc-info{flex:1}
+.sc-label{font-size:12px;font-weight:600;color:#92400E;margin-bottom:3px}
+.sc-sub{font-size:10px;color:var(--amber);line-height:1.5}
+.sc-counts{
+  display:flex;gap:8px;margin-top:6px;
+}
+.sc-count-pill{
+  display:inline-flex;align-items:center;gap:3px;
+  background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.2);
+  padding:3px 9px;border-radius:100px;
+  font-size:9px;font-weight:700;color:var(--amber);
+}
+
+/* ── TIME SLOTS ── */
+.time-slot{
+  padding:6px 18px 4px;
+  display:flex;align-items:center;gap:10px;
+}
+.ts-time{
+  font-family:'Instrument Serif',serif;
+  font-size:22px;color:#000;letter-spacing:-.5px;
+  flex-shrink:0;width:52px;
+}
+.ts-line{flex:1;height:1px;background:var(--g200)}
+.ts-label{
+  font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.6px;flex-shrink:0;
+  padding:3px 9px;border-radius:100px;
+}
+.tsl-soon{background:var(--amber-pale);color:var(--amber)}
+.tsl-next{background:var(--navy-pale);color:var(--navy)}
+.tsl-later{background:var(--g100);color:var(--g400)}
+
+/* ── SOON CARD ── */
+.soon-card{
+  margin:0 16px 8px;
+  background:#fff;
+  border:1.5px solid rgba(217,119,6,.25);
+  border-radius:16px;
+  overflow:hidden;
+  cursor:pointer;
+  transition:all .2s;
+  position:relative;
+}
+.soon-card::before{
+  content:'';position:absolute;
+  top:0;left:0;right:0;height:2.5px;
+  background:linear-gradient(90deg,var(--amber),rgba(200,169,106,.6));
+}
+.soon-card:hover{box-shadow:0 3px 16px rgba(217,119,6,.15);transform:translateY(-1px)}
+
+/* High urgency — 15dk içinde */
+.soon-card.urgent{
+  border-color:rgba(220,38,38,.25);
+}
+.soon-card.urgent::before{background:linear-gradient(90deg,var(--red),rgba(220,38,38,.4))}
+.soon-card.urgent:hover{box-shadow:0 3px 16px rgba(220,38,38,.12)}
+
+/* ── COUNTDOWN CHIP on card ── */
+.countdown-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:700;
+  flex-shrink:0;
+}
+.cc-amber{background:var(--amber-pale);border:1px solid rgba(217,119,6,.25);color:var(--amber)}
+.cc-red{background:var(--red-pale);border:1px solid rgba(220,38,38,.2);color:var(--red)}
+.cc-navy{background:var(--navy-pale);border:1px solid rgba(27,46,74,.15);color:var(--navy-l)}
+.cc-green{background:var(--green-pale);border:1px solid rgba(22,163,74,.2);color:var(--green)}
+.cc-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.cc-amber .cc-dot{background:var(--amber);animation:tick 1s ease-in-out infinite}
+.cc-red .cc-dot{background:var(--red);animation:tick .8s ease-in-out infinite}
+@keyframes tick{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+
+/* ── CARD HERO ── */
+.sc-hero{width:100%;height:140px;position:relative;overflow:hidden}
+.sc-hero-img{width:100%;height:100%;display:block}
+.sc-hero-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to bottom,rgba(0,0,0,.05) 0%,rgba(0,0,0,.5) 65%,rgba(0,0,0,.82) 100%);
+}
+.sc-hero-top{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:flex-start;z-index:2}
+.sc-hero-bottom{position:absolute;bottom:0;left:0;right:0;padding:9px 12px;z-index:2}
+.sc-hero-name{font-family:'Instrument Serif',serif;font-size:17px;color:#fff;line-height:1.25;margin-bottom:2px}
+.sc-hero-venue{font-size:10px;color:rgba(255,255,255,.6)}
+.sc-seats-chip{
+  background:rgba(0,0,0,.5);backdrop-filter:blur(4px);
+  border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.8);font-size:8px;font-weight:600;
+  padding:3px 8px;border-radius:5px;
+}
+
+/* ── CARD BODY ── */
+.sc-body-card{padding:10px 13px 4px}
+.sc-row1{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.sc-left{flex:1;min-width:0}
+.sc-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-venue-text{font-size:10px;color:var(--g400);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.sc-tag{font-size:8px;font-weight:600;padding:2px 7px;border-radius:4px}
+.sct-navy{background:var(--navy-pale);color:var(--navy)}
+.sct-green{background:var(--green-pale);color:var(--green)}
+.sct-amber{background:var(--amber-pale);color:#92400E}
+.sct-dark{background:#000;color:#fff}
+.sct-gold{background:rgba(200,169,106,.15);color:#92400E}
+.sct-purple{background:var(--purple-pale);color:var(--purple)}
+.sct-grey{background:var(--g100);color:var(--g500)}
+.sct-blue{background:#DBEAFE;color:#1D4ED8}
+.sct-red{background:var(--red-pale);color:var(--red)}
+.sc-action-btn{
+  padding:9px 16px;border-radius:10px;
+  font-size:11px;font-weight:700;border:none;
+  cursor:pointer;font-family:'DM Sans',sans-serif;
+  transition:opacity .15s;white-space:nowrap;
+}
+.sc-action-btn:hover{opacity:.85}
+.btn-amber{background:var(--amber);color:#fff}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-black{background:#000;color:#fff}
+.btn-red{background:var(--red);color:#fff}
+.btn-gold{background:var(--gold);color:#000}
+.btn-outline{background:#fff;color:#000;border:1.5px solid var(--g200)}
+
+/* ── CARD FOOTER ── */
+.sc-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 13px 10px;
+  border-top:1px solid var(--g100);
+  margin-top:8px;
+}
+.sf-left{display:flex;align-items:center;gap:5px;flex:1;min-width:0}
+.sf-avs{display:flex}
+.sf-av{
+  width:20px;height:20px;border-radius:50%;
+  border:2px solid #fff;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:8px;
+}
+.sf-av:not(:first-child){margin-left:-7px}
+.sf-text{font-size:10px;color:var(--g500);margin-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sf-right{display:flex;gap:5px;align-items:center;flex-shrink:0}
+.sf-save{
+  width:28px;height:28px;border-radius:8px;
+  border:1.5px solid var(--g200);background:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;cursor:pointer;transition:all .15s;
+}
+.sf-save:hover{border-color:var(--navy)}
+.sf-save.saved{background:var(--navy-pale);border-color:var(--navy)}
+
+/* ── CHECKIN COUNTDOWN (son 30dk) ── */
+.checkin-countdown{
+  margin:0 16px 4px;
+  background:linear-gradient(135deg,var(--navy) 0%,var(--navy-l) 100%);
+  border-radius:12px;
+  padding:10px 14px;
+  display:flex;align-items:center;gap:10px;
+}
+.cic-icon{font-size:18px;flex-shrink:0}
+.cic-body{flex:1}
+.cic-label{font-size:11px;font-weight:600;color:#fff;margin-bottom:2px}
+.cic-sub{font-size:9px;color:rgba(255,255,255,.45)}
+.cic-btn{
+  padding:7px 14px;border-radius:9px;
+  background:var(--gold);color:#000;
+  font-size:10px;font-weight:700;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;flex-shrink:0;
+  transition:opacity .15s;
+}
+.cic-btn:hover{opacity:.88}
+
+/* ── CHECK-IN ELIGIBLE CARD (senin ritüelin) ── */
+.my-ritual-card{
+  margin:0 16px 8px;
+  background:linear-gradient(135deg,var(--navy) 0%,var(--navy-l) 100%);
+  border-radius:16px;overflow:hidden;cursor:pointer;
+  position:relative;transition:all .2s;
+}
+.my-ritual-card:hover{box-shadow:0 4px 20px rgba(27,46,74,.3);transform:translateY(-1px)}
+.mrc-bg{position:absolute;inset:0;opacity:.05;background-image:radial-gradient(circle at 20% 50%,#fff 1px,transparent 1px),radial-gradient(circle at 80% 20%,#fff 1px,transparent 1px);background-size:24px 24px}
+.mrc-body{padding:13px 14px;position:relative;z-index:2}
+.mrc-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.4);margin-bottom:7px}
+.mrc-row1{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.mrc-info{flex:1}
+.mrc-title{font-family:'Instrument Serif',serif;font-size:18px;color:#fff;line-height:1.25;margin-bottom:3px}
+.mrc-venue{font-size:10px;color:rgba(255,255,255,.5)}
+.mrc-timer{flex-shrink:0;text-align:right}
+.mrc-num{font-family:'Instrument Serif',serif;font-size:28px;color:var(--gold);line-height:1}
+.mrc-unit{font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px}
+.mrc-bar-wrap{height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin-bottom:10px}
+.mrc-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,rgba(200,169,106,.5),var(--gold));width:72%}
+.mrc-footer{display:flex;align-items:center;justify-content:space-between}
+.mrc-tags{display:flex;gap:5px;flex-wrap:wrap}
+.mrc-tag{font-size:8px;font-weight:700;padding:2px 7px;border-radius:4px}
+.mt-gold{background:rgba(200,169,106,.15);border:1px solid rgba(200,169,106,.25);color:var(--gold)}
+.mt-white{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6)}
+.mrc-checkin-btn{
+  padding:9px 18px;border-radius:10px;
+  background:var(--gold);color:#000;
+  font-size:12px;font-weight:700;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+  transition:opacity .15s;
+  white-space:nowrap;flex-shrink:0;
+}
+.mrc-checkin-btn:hover{opacity:.88}
+
+/* ── EMPTY SOON SLOT ── */
+.empty-slot{
+  margin:0 16px 6px;
+  border:1.5px dashed var(--g200);
+  border-radius:14px;
+  padding:18px 14px;
+  text-align:center;cursor:pointer;transition:all .15s;
+}
+.empty-slot:hover{border-color:var(--navy);background:var(--navy-mist)}
+.es-icon{font-size:24px;margin-bottom:6px}
+.es-title{font-size:12px;font-weight:600;color:var(--g500);margin-bottom:3px}
+.es-sub{font-size:10px;color:var(--g400)}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.82);color:#fff;padding:9px 18px;border-radius:100px;font-size:12px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:76px;border-top:1.5px solid var(--g200);background:rgba(255,255,255,.98);backdrop-filter:blur(10px);display:flex;align-items:flex-start;padding-top:10px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-iw{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-iw.on{background:#000}
+.nav-ic{font-size:16px}
+.nav-ic.inv{filter:invert(1)}
+.nav-l{font-size:8px;font-weight:700;color:#000}
+.nav-lo{font-size:8px;font-weight:500;color:var(--g400)}
+
+/* IMG */
+.i-jazz{background:radial-gradient(circle at 45% 35%,rgba(255,180,80,.45) 0%,transparent 45%),linear-gradient(145deg,#1A1A2E 0%,#2A2040 30%,#3A2850 55%,#1A1520 100%)}
+.i-coffee{background:radial-gradient(circle at 40% 50%,rgba(180,130,80,.5) 0%,transparent 40%),linear-gradient(145deg,#2C1810 0%,#5C3D2E 30%,#8B6B4A 55%,#3A2418 100%)}
+.i-run{background:radial-gradient(circle at 50% 25%,rgba(255,200,100,.5) 0%,transparent 45%),linear-gradient(180deg,#87CEEB 0%,#98D1A8 30%,#6B8E4E 60%,#3A5028 100%)}
+.i-phil{background:linear-gradient(135deg,#4a3728 0%,#8B6345 40%,#C4956A 70%,#5D3A2A 100%)}
+.i-chess{background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 40%,#444 70%,#111 100%)}
+.i-wine{background:linear-gradient(135deg,#4a0a20 0%,#9C1A3A 40%,#E91E63 70%,#2a0512 100%)}
+.i-yoga{background:linear-gradient(135deg,#2d6a2d 0%,#4CAF50 50%,#8BC34A 80%,#1B5E20 100%)}
+.i-art{background:linear-gradient(135deg,#2a1040 0%,#6B21A8 40%,#A855F7 70%,#1a0830 100%)}
+
+.scroll-content{padding-bottom:90px}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span class="sb-time">19:47</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="tb-logo">L<span></span></div>
+  <div class="tb-right">
+    <div class="notif-btn" onclick="t('Bildirimler')">🔔<div class="notif-dot"></div></div>
+    <div class="profile-av" onclick="t('Profil')">T</div>
+  </div>
+</div>
+
+<!-- FILTER ROW -->
+<div class="filter-row">
+  <div class="fc live on-live" onclick="t('Canlı filtre')">
+    <div class="fc-live-dot"></div>Canlı<span class="fc-badge">4</span>
+  </div>
+  <div class="fc on-amber" onclick="t('Başlamak üzere')">
+    ⏱ Başlamak Üzere<span class="fc-badge">7</span>
+  </div>
+  <div class="fc" onclick="t('Tümü')">Tümü</div>
+  <div class="fc" onclick="t('Arkadaşlar')">👥 Arkadaşlar<span class="fc-badge">3</span></div>
+  <div class="fc" onclick="t('Anılar')">🖼 Anılar</div>
+  <div class="fc" onclick="t('Super Event')">★ Super Event</div>
+  <div class="fc" onclick="t('RS Değişimi')">◈ RS</div>
+</div>
+
+<div class="scroll-content">
+
+  <!-- ── SOON CONTEXT BANNER ── -->
+  <div class="soon-context">
+    <div class="sc-bg"></div>
+    <div class="sc-body">
+      <!-- Countdown ring -->
+      <div class="ring-wrap">
+        <svg class="ring-svg" viewBox="0 0 44 44">
+          <circle class="ring-bg" cx="22" cy="22" r="19"/>
+          <circle class="ring-fill" cx="22" cy="22" r="19" id="ring-circle"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-num" id="ring-num">43</div>
+          <div class="ring-unit">dk</div>
+        </div>
+      </div>
+      <div class="sc-info">
+        <div class="sc-label">Bir sonraki ritüele 43 dakika kaldı</div>
+        <div class="sc-sub">Bu akşam 7 ritüel başlamak üzere · 3 arkadaşın katılıyor</div>
+        <div class="sc-counts">
+          <div class="sc-count-pill">⏱ 43 dk içinde 2 ritüel</div>
+          <div class="sc-count-pill">🌙 Bu akşam 5 ritüel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- SENİN RİTÜELİN — Check-in yakın -->
+  <!-- ══════════════════════════════════ -->
+  <div class="mrc-label" style="padding:0 18px 6px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--amber)">⏱ Senin Ritüelin</div>
+
+  <div class="my-ritual-card" onclick="t('Jazz Night → Bekleme Odası')">
+    <div class="mrc-bg"></div>
+    <div class="mrc-body">
+      <div class="mrc-label">KATILDIĞIN RİTÜEL · BEKLİYOR</div>
+      <div class="mrc-row1">
+        <div class="mrc-info">
+          <div class="mrc-title">Jazz Night at Blue Note</div>
+          <div class="mrc-venue">📍 Navigli · 20:30 başlangıç</div>
+        </div>
+        <div class="mrc-timer">
+          <div class="mrc-num" id="ritual-min">43</div>
+          <div class="mrc-unit">dakika</div>
+        </div>
+      </div>
+      <div class="mrc-bar-wrap">
+        <div class="mrc-bar-fill" id="mrc-bar"></div>
+      </div>
+      <div class="mrc-footer">
+        <div class="mrc-tags">
+          <span class="mrc-tag mt-gold">★ Pivot Host</span>
+          <span class="mrc-tag mt-white">8 / 12 kişi</span>
+          <span class="mrc-tag mt-white">Check-in 20:00'de</span>
+        </div>
+        <button class="mrc-checkin-btn" onclick="event.stopPropagation();t('Bekleme Odası → açılıyor')">Bekle →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 20:30 ZAMAN DİLİMİ -->
+  <!-- ══════════════════════════════════ -->
+  <div class="time-slot">
+    <div class="ts-time">20:30</div>
+    <div class="ts-line"></div>
+    <div class="ts-label tsl-soon">43 dk sonra · 4 ritüel</div>
+  </div>
+
+  <!-- CARD: 43 dk — arkadaşlar gidiyor, hero -->
+  <div class="soon-card" onclick="t('Philosophy Walk → Ritual Detail')">
+    <div class="sc-hero">
+      <div class="sc-hero-img i-phil"></div>
+      <div class="sc-hero-overlay"></div>
+      <div class="sc-hero-top">
+        <div class="countdown-chip cc-amber">
+          <div class="cc-dot"></div>43 dk
+        </div>
+        <div class="sc-seats-chip">6 / 8 kişi</div>
+      </div>
+      <div class="sc-hero-bottom">
+        <div class="sc-hero-name">Philosophy Walk · Darsena</div>
+        <div class="sc-hero-venue">📍 Navigli · Marco, Elena, Luca gidiyor</div>
+      </div>
+    </div>
+    <div class="sc-body-card">
+      <div class="sc-row1">
+        <div class="sc-left">
+          <div class="sc-tags">
+            <span class="sc-tag sct-amber">Min RS 65 · Senin: 7.4 ✓</span>
+            <span class="sc-tag sct-blue">👥 3 Arkadaş</span>
+            <span class="sc-tag sct-navy">✓ Verified Host</span>
+          </div>
+        </div>
+        <div class="sc-right" style="flex-shrink:0">
+          <button class="sc-action-btn btn-navy" onclick="event.stopPropagation();t('Katılıyorsun')">Katıl</button>
+        </div>
+      </div>
+    </div>
+    <div class="sc-footer">
+      <div class="sf-left">
+        <div class="sf-avs">
+          <div class="sf-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">M</div>
+          <div class="sf-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">E</div>
+          <div class="sf-av" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8)">L</div>
+        </div>
+        <div class="sf-text">Marco, Elena ve Luca gidiyor</div>
+      </div>
+      <div class="sf-right">
+        <div class="sf-save" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD: 43 dk — normal -->
+  <div class="soon-card" onclick="t('Sunset Yoga → Ritual Detail')">
+    <div class="sc-body-card" style="padding-top:14px">
+      <div class="sc-row1">
+        <div class="sc-left">
+          <div class="sc-title">Sunset Yoga · Sempione</div>
+          <div class="sc-venue-text">📍 Parco Sempione · Verified Host</div>
+          <div class="sc-tags">
+            <span class="sc-tag sct-navy">RS 0+ · Herkese Açık</span>
+            <span class="sc-tag sct-green">✓ Verified Venue</span>
+            <span class="sc-tag sct-grey">16 kişi</span>
+          </div>
+        </div>
+        <div style="flex-shrink:0">
+          <div class="countdown-chip cc-amber" style="margin-bottom:6px">
+            <div class="cc-dot"></div>43 dk
+          </div>
+          <button class="sc-action-btn btn-amber" onclick="event.stopPropagation();t('Yoga → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+    <div class="sc-footer">
+      <div class="sf-left"><div class="sf-text" style="color:var(--g300)">Bağlantın yok bu ritüelde</div></div>
+      <div class="sf-right"><div class="sf-save" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+    </div>
+  </div>
+
+  <!-- CARD: 43 dk — kilitli -->
+  <div class="soon-card" style="opacity:.55;cursor:default" onclick="t('Wine Tasting → Kilitli')">
+    <div class="sc-body-card" style="padding-top:14px">
+      <div class="sc-row1">
+        <div class="sc-left">
+          <div class="sc-title" style="color:var(--g400)">Wine Tasting Evening</div>
+          <div class="sc-venue-text">📍 Navigli Özel Mekan</div>
+          <div class="sc-tags">
+            <span class="sc-tag sct-red">Min RS 70 · Senin: 7.4</span>
+          </div>
+        </div>
+        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div class="countdown-chip cc-amber"><div class="cc-dot"></div>43 dk</div>
+          <button class="sc-action-btn btn-outline" style="cursor:not-allowed;font-size:10px;padding:8px 12px">🔒 Kilitli</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD: 43 dk — sub ritual -->
+  <div class="soon-card" onclick="t('Kanye Öncesi → Ritual Detail')">
+    <div class="sc-body-card" style="padding-top:14px">
+      <div class="sc-row1">
+        <div class="sc-left">
+          <div class="sc-title">Kanye Öncesi Aperitivo</div>
+          <div class="sc-venue-text">📍 Arkaoda · Kadıköy · Sub-Ritual</div>
+          <div class="sc-tags">
+            <span class="sc-tag sct-gold">★ Kanye WE</span>
+            <span class="sc-tag sct-navy">Sub-Ritual</span>
+            <span class="sc-tag sct-grey">18 / 24 kişi</span>
+          </div>
+        </div>
+        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div class="countdown-chip cc-amber"><div class="cc-dot"></div>43 dk</div>
+          <button class="sc-action-btn btn-navy" onclick="event.stopPropagation();t('Sub-Ritual → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+    <div class="sc-footer">
+      <div class="sf-left"><div class="sf-text" style="color:var(--amber)">Konser 2.5 saat sonra başlıyor</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 21:00 ZAMAN DİLİMİ -->
+  <!-- ══════════════════════════════════ -->
+  <div class="time-slot">
+    <div class="ts-time">21:00</div>
+    <div class="ts-line"></div>
+    <div class="ts-label tsl-next">1s 13dk sonra · 2 ritüel</div>
+  </div>
+
+  <!-- CARD: 1s 13dk — hero -->
+  <div class="soon-card" onclick="t('Jazz Night sonrası → Ritual Detail')">
+    <div class="sc-hero">
+      <div class="sc-hero-img i-chess"></div>
+      <div class="sc-hero-overlay"></div>
+      <div class="sc-hero-top">
+        <div class="countdown-chip cc-navy">
+          <div class="cc-dot" style="background:var(--navy-l);animation:none"></div>1s 13dk
+        </div>
+        <div class="sc-seats-chip">5 / 8 kişi</div>
+      </div>
+      <div class="sc-hero-bottom">
+        <div class="sc-hero-name">Chess Evening · Isola</div>
+        <div class="sc-hero-venue">📍 Isola Cafe · Davide host ediyor</div>
+      </div>
+    </div>
+    <div class="sc-body-card">
+      <div class="sc-row1">
+        <div class="sc-left">
+          <div class="sc-tags">
+            <span class="sc-tag sct-amber">Min RS 50 · Senin: 7.4 ✓</span>
+            <span class="sc-tag sct-purple">♟ Satranç</span>
+            <span class="sc-tag sct-green">✓ Verified Host</span>
+          </div>
+        </div>
+        <div style="flex-shrink:0">
+          <button class="sc-action-btn btn-black" onclick="event.stopPropagation();t('Satranç → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+    <div class="sc-footer">
+      <div class="sf-left">
+        <div class="sf-avs">
+          <div class="sf-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">D</div>
+        </div>
+        <div class="sf-text">Davide host · L3 Yakın Arkadaşın</div>
+      </div>
+      <div class="sf-right"><div class="sf-save" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+    </div>
+  </div>
+
+  <!-- CARD: 1s 13dk — basit -->
+  <div class="soon-card" onclick="t('Art Opening → Ritual Detail')">
+    <div class="sc-body-card" style="padding-top:14px">
+      <div class="sc-row1">
+        <div class="sc-left">
+          <div class="sc-title">Contemporary Art Opening</div>
+          <div class="sc-venue-text">📍 Brera Gallery · Verified Venue</div>
+          <div class="sc-tags">
+            <span class="sc-tag sct-navy">RS 0+ · Herkese Açık</span>
+            <span class="sc-tag sct-green">✓ Verified Venue</span>
+            <span class="sc-tag sct-grey">12 / 20 kişi</span>
+          </div>
+        </div>
+        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div class="countdown-chip cc-navy">
+            <div class="cc-dot" style="background:var(--navy-l);animation:none"></div>1s 13dk
+          </div>
+          <button class="sc-action-btn btn-black" onclick="event.stopPropagation();t('Sanat → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+    <div class="sc-footer">
+      <div class="sf-left"><div class="sf-text" style="color:var(--g300)">Bağlantın yok · Herkese açık</div></div>
+      <div class="sf-right"><div class="sf-save" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 22:00 ZAMAN DİLİMİ -->
+  <!-- ══════════════════════════════════ -->
+  <div class="time-slot">
+    <div class="ts-time">22:00</div>
+    <div class="ts-line"></div>
+    <div class="ts-label tsl-later">2s 13dk sonra · 1 ritüel</div>
+  </div>
+
+  <!-- CARD: geç — basit -->
+  <div class="soon-card" style="border-color:var(--g200)" onclick="t('Late Night Jazz → Ritual Detail')">
+    <div class="sc-body-card" style="padding-top:14px;padding-bottom:12px">
+      <div class="sc-row1">
+        <div class="sc-left">
+          <div class="sc-title">Late Night Jazz · Blue Note</div>
+          <div class="sc-venue-text">📍 Navigli · Uzatma seti</div>
+          <div class="sc-tags">
+            <span class="sc-tag sct-navy">RS 0+</span>
+            <span class="sc-tag sct-grey">Açık</span>
+          </div>
+        </div>
+        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div class="countdown-chip cc-navy" style="background:var(--g100);border-color:var(--g200);color:var(--g500)">
+            <div class="cc-dot" style="background:var(--g400);animation:none"></div>2s 13dk
+          </div>
+          <button class="sc-action-btn" style="background:var(--g100);color:var(--g500);border:1.5px solid var(--g200);font-size:11px;font-weight:700;padding:8px 14px;border-radius:10px;cursor:pointer" onclick="event.stopPropagation();t('Kaydet')">Kaydet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BOŞLUK DOLDURUCU ── -->
+  <div style="height:10px"></div>
+
+</div><!-- /scroll-content -->
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item">
+    <div class="nav-iw on"><span class="nav-ic inv">〰</span></div>
+    <span class="nav-l">Pulse</span>
+  </div>
+  <div class="nav-item">
+    <div class="nav-iw"><span class="nav-ic">📅</span></div>
+    <span class="nav-lo">City Rhythm</span>
+  </div>
+  <div class="nav-item">
+    <div class="nav-iw"><span class="nav-ic">◉</span></div>
+    <span class="nav-lo">Passport</span>
+  </div>
+</div>
+
+<script>
+/* ── COUNTDOWN ── */
+let totalSecs = 43 * 60 + 13;
+const maxSecs = 90 * 60;
+
+function updateCountdown() {
+  if (totalSecs <= 0) return;
+  totalSecs--;
+  const h   = Math.floor(totalSecs / 3600);
+  const m   = Math.floor((totalSecs % 3600) / 60);
+  const s   = totalSecs % 60;
+
+  // Ring
+  const el = document.getElementById('ring-num');
+  if (h > 0) {
+    el.textContent = h + 's' + m;
+    el.style.fontSize = '11px';
+  } else {
+    el.textContent = m;
+    el.style.fontSize = '15px';
+  }
+
+  // Ritual timer
+  const rm = document.getElementById('ritual-min');
+  if (h > 0) {
+    rm.textContent = h + 's' + String(m).padStart(2,'0');
+    rm.style.fontSize = '20px';
+  } else {
+    rm.textContent = m;
+    rm.style.fontSize = '28px';
+  }
+
+  // Ring stroke
+  const circ = 2 * Math.PI * 19; // r=19
+  const offset = circ * (1 - totalSecs / maxSecs);
+  const circle = document.getElementById('ring-circle');
+  if (circle) circle.style.strokeDashoffset = offset;
+
+  // Bar
+  const bar = document.getElementById('mrc-bar');
+  if (bar) bar.style.width = Math.min(100, (1 - totalSecs/maxSecs) * 100) + '%';
+
+  // Urgent kırmızı (15dk altı)
+  if (totalSecs < 15 * 60) {
+    document.querySelectorAll('.cc-amber').forEach(c => {
+      c.className = c.className.replace('cc-amber','cc-red');
+    });
+    const ringCircle = document.getElementById('ring-circle');
+    if (ringCircle) ringCircle.style.stroke = 'var(--red)';
+    document.getElementById('ring-num').style.color = 'var(--red)';
+  }
+}
+
+setInterval(updateCountdown, 1000);
+updateCountdown();
+
+/* ── SAVE ── */
+function toggleSave(btn) {
+  const saved = btn.dataset.saved;
+  if (saved) {
+    btn.textContent = '🔖';
+    btn.classList.remove('saved');
+    delete btn.dataset.saved;
+  } else {
+    btn.textContent = '❤️';
+    btn.classList.add('saved');
+    btn.dataset.saved = '1';
+    t('Kaydedildi');
+  }
+}
+
+/* ── TOAST ── */
+function t(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2100);
+}
+</script>
+
+</body>
+</html>

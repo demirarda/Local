@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Pulse · Bu Hafta</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --purple:#7C3AED;--purple-pale:#EDE9FE;
+  --teal:#0F766E;--teal-pale:#CCFBF1;
+  --g50:#FAFAFA;--g100:#F5F5F5;--g150:#F0F0F0;
+  --g200:#E5E5E5;--g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:var(--g150);max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+/* STATUS BAR */
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;height:44px;background:var(--g150)}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+/* TOP BAR */
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 10px;background:var(--g150)}
+.tb-logo{font-family:'Instrument Serif',serif;font-size:26px;color:#000;letter-spacing:-.5px}
+.tb-logo span{display:inline-block;width:5px;height:5px;background:#000;border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:4px}
+.tb-right{display:flex;gap:8px;align-items:center}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:all .15s}
+.icon-btn:hover{border-color:var(--navy)}
+.notif-dot{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.profile-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4a3728,#C4956A);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:14px;color:#fff;cursor:pointer;border:2px solid var(--gold)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:6px;padding:0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px}
+.filter-row::-webkit-scrollbar{display:none}
+.fc{display:flex;align-items:center;gap:4px;padding:6px 13px;border-radius:100px;font-size:10px;font-weight:600;border:1.5px solid var(--g200);color:var(--g500);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.fc:hover{border-color:var(--g300);color:var(--g600)}
+.fc.live{background:var(--red-pale);border-color:rgba(220,38,38,.25);color:var(--red)}
+.fc-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.fc.on-teal{background:var(--teal);color:#fff;border-color:var(--teal)}
+.fc.on-red{background:var(--red);color:#fff;border-color:var(--red)}
+.fc.on-amber{background:var(--amber);color:#fff;border-color:var(--amber)}
+.fc.on-green{background:var(--green);color:#fff;border-color:var(--green)}
+.fc.on-navy{background:var(--navy);color:#fff;border-color:var(--navy)}
+.fc.on-purple{background:var(--purple);color:#fff;border-color:var(--purple)}
+.fc-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px}
+.fc.on-teal .fc-badge{background:rgba(255,255,255,.25);color:#fff}
+.fc:not([class*="on-"]):not(.live) .fc-badge{background:var(--g200);color:var(--g500)}
+
+.scroll-content{padding-bottom:90px}
+
+/* ── WEEK CONTEXT BANNER ── */
+.week-banner{
+  margin:0 16px 16px;
+  background:#fff;border:1px solid var(--g200);
+  border-radius:20px;overflow:hidden;
+  position:relative;
+}
+.wb-top{
+  background:linear-gradient(135deg,var(--teal) 0%,#14B8A6 60%,#1B2E4A 100%);
+  padding:16px 16px 14px;position:relative;overflow:hidden;
+}
+.wb-top-pattern{
+  position:absolute;inset:0;opacity:.08;
+  background-image:radial-gradient(circle at 20% 50%,#fff 1px,transparent 1px),
+    radial-gradient(circle at 80% 20%,#fff 1px,transparent 1px),
+    radial-gradient(circle at 55% 85%,#fff 1px,transparent 1px);
+  background-size:24px 24px;
+}
+.wb-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.55);margin-bottom:6px;position:relative;z-index:2}
+.wb-title{font-family:'Instrument Serif',serif;font-size:24px;color:#fff;line-height:1.2;position:relative;z-index:2;margin-bottom:3px}
+.wb-sub{font-size:11px;color:rgba(255,255,255,.6);position:relative;z-index:2;margin-bottom:12px}
+.wb-stats{display:flex;gap:6px;flex-wrap:wrap;position:relative;z-index:2}
+.wb-stat{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:600;color:rgba(255,255,255,.85);
+}
+/* Progress strip */
+.wb-progress{padding:12px 16px 13px;display:flex;align-items:center;gap:10px}
+.wp-label{font-size:10px;color:var(--g500);flex-shrink:0}
+.wp-bar{flex:1;height:5px;background:var(--g100);border-radius:3px;overflow:hidden}
+.wp-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--teal),#14B8A6);width:55%}
+.wp-val{font-size:10px;font-weight:700;color:var(--teal);flex-shrink:0}
+
+/* ── WEEK CALENDAR STRIP ── */
+.cal-strip{
+  display:flex;gap:0;padding:0 16px 14px;
+}
+.cal-day{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  cursor:pointer;padding:6px 2px;border-radius:10px;transition:background .15s;
+  position:relative;
+}
+.cal-day:hover{background:var(--g100)}
+.cal-day.today{background:var(--navy);border-radius:12px}
+.cal-day.has-event::after{
+  content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:var(--teal);
+}
+.cal-day.today.has-event::after{background:#fff}
+.cal-day.past .cal-name,.cal-day.past .cal-num{opacity:.3}
+.cal-name{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g400)}
+.cal-day.today .cal-name{color:rgba(255,255,255,.6)}
+.cal-num{font-family:'Instrument Serif',serif;font-size:18px;color:#000;line-height:1}
+.cal-day.today .cal-num{color:#fff}
+.cal-count{font-size:8px;color:var(--g300);font-weight:600}
+.cal-day.today .cal-count{color:rgba(255,255,255,.4)}
+.cal-day.has-live .cal-count{color:var(--red)}
+
+/* ── SECTION LABEL ── */
+.sec-label{display:flex;align-items:center;gap:8px;padding:8px 18px 6px}
+.sl-line{flex:1;height:1px;background:var(--g200)}
+.sl-text{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+.sl-count{font-size:9px;color:var(--g300);background:var(--g100);padding:2px 7px;border-radius:100px;font-weight:600}
+
+/* ── GUNLUK HEADER ── */
+.day-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 18px 6px;
+}
+.dh-day{
+  font-family:'Instrument Serif',serif;
+  font-size:17px;color:#000;
+}
+.dh-date{font-size:11px;color:var(--g400);margin-top:1px}
+.dh-badge{font-size:9px;font-weight:700;padding:3px 10px;border-radius:100px}
+.dhb-today{background:var(--navy);color:#fff}
+.dhb-tomorrow{background:var(--teal-pale);color:var(--teal)}
+.dhb-day{background:var(--g100);color:var(--g500)}
+.dhb-weekend{background:var(--purple-pale);color:var(--purple)}
+.dhb-se{background:rgba(200,169,106,.2);color:#92400E}
+
+/* ── KART BASE ── */
+.week-card{
+  margin:0 16px 6px;background:#fff;
+  border:1px solid var(--g200);border-radius:14px;
+  overflow:hidden;cursor:pointer;transition:all .2s;position:relative;
+}
+.week-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.07);transform:translateY(-1px)}
+.week-card.is-live{border-color:rgba(220,38,38,.2)}
+.week-card.is-live::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red)}
+.week-card.is-friends{border-color:rgba(124,58,237,.18)}
+.week-card.is-friends::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--purple)}
+.week-card.is-se{border-color:rgba(200,169,106,.3)}
+.week-card.is-se::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold)}
+.week-card.is-recurring{border-color:rgba(15,118,110,.2)}
+.week-card.is-recurring::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--teal)}
+
+/* HERO */
+.wc-hero{width:100%;height:140px;position:relative;overflow:hidden}
+.wc-hero-img{width:100%;height:100%}
+.wc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.06) 0%,rgba(0,0,0,.5) 60%,rgba(0,0,0,.88) 100%)}
+.wc-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between;align-items:flex-start}
+.wc-bot{position:absolute;bottom:0;left:0;right:0;padding:9px 12px;z-index:2}
+.wc-name{font-family:'Instrument Serif',serif;font-size:17px;color:#fff;line-height:1.25;margin-bottom:2px}
+.wc-venue{font-size:10px;color:rgba(255,255,255,.55)}
+
+/* TIME CHIP */
+.time-chip{background:rgba(0,0,0,.5);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);font-size:9px;font-weight:600;padding:3px 9px;border-radius:100px}
+.time-chip.live{background:var(--red);border-color:var(--red);color:#fff;display:inline-flex;align-items:center;gap:4px}
+.live-dot-s{width:5px;height:5px;border-radius:50%;background:#fff;animation:blink 1.3s ease-in-out infinite}
+.time-chip.friends{background:rgba(124,58,237,.85);border-color:var(--purple);color:#fff}
+.time-chip.se{background:rgba(200,169,106,.9);border-color:var(--gold);color:#000}
+.time-chip.recurring{background:rgba(15,118,110,.85);border-color:var(--teal);color:#fff}
+
+/* BODY */
+.wc-body{padding:10px 13px 6px}
+.wc-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.wc-left{flex:1;min-width:0}
+.wc-title{font-family:'Instrument Serif',serif;font-size:14px;color:#000;line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wc-venue-body{font-size:10px;color:var(--g400);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.wt{font-size:8px;font-weight:600;padding:2px 7px;border-radius:4px}
+.wt-navy{background:var(--navy-pale);color:var(--navy)}
+.wt-green{background:var(--green-pale);color:var(--green)}
+.wt-amber{background:var(--amber-pale);color:#92400E}
+.wt-red{background:var(--red-pale);color:var(--red)}
+.wt-dark{background:#000;color:#fff}
+.wt-gold{background:rgba(200,169,106,.15);color:#92400E}
+.wt-purple{background:var(--purple-pale);color:var(--purple)}
+.wt-blue{background:#DBEAFE;color:#1D4ED8}
+.wt-grey{background:var(--g100);color:var(--g500)}
+.wt-teal{background:var(--teal-pale);color:var(--teal)}
+.wt-live{background:var(--red-pale);color:var(--red)}
+
+.wc-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.wc-btn{padding:8px 15px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;white-space:nowrap}
+.wc-btn:hover{opacity:.85}
+.wcb-r{background:var(--red);color:#fff}
+.wcb-a{background:var(--amber);color:#fff}
+.wcb-n{background:var(--navy);color:#fff}
+.wcb-g{background:var(--gold);color:#000}
+.wcb-p{background:var(--purple);color:#fff}
+.wcb-t{background:var(--teal);color:#fff}
+.wcb-o{background:#fff;color:var(--g400);border:1.5px solid var(--g200);cursor:not-allowed;opacity:.5}
+
+/* OCCUPANCY in card */
+.occ-row{display:flex;align-items:center;gap:7px;margin:5px 0 2px}
+.occ-bg{flex:1;height:4px;background:var(--g100);border-radius:2px;overflow:hidden}
+.occ-fill{height:100%;border-radius:2px}
+.occ-green{background:var(--green)}
+.occ-amber{background:var(--amber)}
+.occ-red{background:var(--red)}
+.occ-label{font-size:9px;font-weight:600;white-space:nowrap}
+
+/* FOOTER */
+.wc-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 13px 9px;border-top:1px solid var(--g100);margin-top:6px}
+.wf-avs{display:flex}
+.wf-av{width:20px;height:20px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:8px}
+.wf-av:not(:first-child){margin-left:-7px}
+.wf-text{font-size:10px;color:var(--g500);margin-left:6px}
+.wf-right{display:flex;gap:5px}
+.wf-btn{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .15s}
+.wf-btn:hover{border-color:var(--navy)}
+.wf-btn.saved{background:var(--navy-pale);border-color:var(--navy)}
+
+/* ── COMPACT ROW (basit, hero'suz) ── */
+.compact-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;
+  background:#fff;
+  border-radius:12px;
+  margin:0 16px 5px;
+  border:1px solid var(--g200);
+  cursor:pointer;transition:all .15s;
+  position:relative;overflow:hidden;
+}
+.compact-row:hover{box-shadow:0 2px 8px rgba(0,0,0,.06);transform:translateY(-1px)}
+.compact-row.cr-friends{border-color:rgba(124,58,237,.18)}
+.compact-row.cr-friends::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--purple)}
+.compact-row.cr-teal{border-color:rgba(15,118,110,.2)}
+.compact-row.cr-teal::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal)}
+.compact-row.cr-locked{opacity:.5;cursor:default}
+.compact-row.cr-locked:hover{box-shadow:none;transform:none}
+.cr-thumb{width:42px;height:42px;border-radius:9px;flex-shrink:0;position:relative;overflow:hidden}
+.cr-ov{position:absolute;inset:0;background:rgba(0,0,0,.12)}
+.cr-info{flex:1;min-width:0}
+.cr-time{font-size:9px;font-weight:700;color:var(--g400);margin-bottom:2px;display:flex;align-items:center;gap:5px}
+.cr-name{font-size:13px;font-weight:600;color:#000;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-tags{display:flex;gap:3px;flex-wrap:wrap}
+.cr-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.cr-occ{font-size:9px;color:var(--g400);font-weight:600;white-space:nowrap}
+.cr-btn{padding:6px 13px;border-radius:8px;font-size:10px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;white-space:nowrap}
+.cr-btn:hover{opacity:.85}
+.crb-n{background:var(--navy);color:#fff}
+.crb-t{background:var(--teal);color:#fff}
+.crb-p{background:var(--purple);color:#fff}
+.crb-g{background:var(--gold);color:#000}
+.crb-a{background:var(--amber);color:#fff}
+.crb-o{background:var(--g100);color:var(--g400);cursor:not-allowed}
+
+/* ── SUPER EVENT BANNER ── */
+.se-banner{
+  margin:0 16px 8px;
+  border-radius:16px;overflow:hidden;
+  cursor:pointer;position:relative;transition:all .2s;
+}
+.se-banner:hover{box-shadow:0 4px 18px rgba(200,169,106,.18);transform:translateY(-1px)}
+.se-img{width:100%;height:120px;position:relative;overflow:hidden}
+.se-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.1) 0%,rgba(0,0,0,.6) 65%,rgba(0,0,0,.94) 100%)}
+.se-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between}
+.se-bot{position:absolute;bottom:0;left:0;right:0;padding:9px 12px;z-index:2;display:flex;justify-content:space-between;align-items:flex-end}
+.se-name{font-family:'Instrument Serif',serif;font-size:19px;color:#fff;line-height:1.2}
+.se-meta{font-size:9px;color:rgba(255,255,255,.5);margin-top:2px}
+.se-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.se-sub-pill{display:flex;align-items:center;gap:3px;background:rgba(0,0,0,.45);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.12);border-radius:100px;padding:3px 9px}
+.se-sub-dot{width:4px;height:4px;border-radius:50%;background:var(--gold)}
+.se-sub-num{font-size:9px;font-weight:700;color:#fff}
+.se-sub-lbl{font-size:8px;color:rgba(255,255,255,.45)}
+.se-btn{padding:6px 13px;border-radius:8px;background:var(--gold);color:#000;font-size:10px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* ── WEEK OVERVIEW (mini grid) ── */
+.week-overview{
+  margin:0 16px 14px;
+  background:#fff;border:1px solid var(--g200);border-radius:16px;overflow:hidden;
+}
+.wo-header{padding:12px 14px 10px;border-bottom:1px solid var(--g100)}
+.wo-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;margin-bottom:2px}
+.wo-sub{font-size:10px;color:var(--g400)}
+.wo-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--g100)}
+.wo-cell{background:#fff;padding:10px 12px;cursor:pointer;transition:background .15s}
+.wo-cell:hover{background:var(--g50)}
+.wo-cell-day{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g400);margin-bottom:4px;display:flex;justify-content:space-between}
+.wo-cell-day .wo-count{font-size:9px;font-weight:700;color:var(--teal)}
+.wo-cell-events{display:flex;flex-direction:column;gap:3px}
+.wo-event{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--g600)}
+.wo-event-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.wo-event-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wo-cell.wo-today{background:var(--navy-mist)}
+.wo-cell.wo-today .wo-cell-day{color:var(--navy)}
+.wo-cell.wo-weekend{background:var(--purple-pale)}
+.wo-cell.wo-weekend .wo-cell-day{color:var(--purple)}
+.wo-cell.wo-se{background:rgba(200,169,106,.07)}
+.wo-cell.wo-se .wo-cell-day{color:#92400E}
+.wo-more{padding:8px 12px;text-align:center;font-size:10px;color:var(--teal);font-weight:600;cursor:pointer;border-top:1px solid var(--g100)}
+.wo-more:hover{background:var(--teal-pale)}
+
+/* ── RECURRING LABEL ── */
+.recurring-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:8px;font-weight:700;
+  padding:2px 7px;border-radius:4px;
+  background:var(--teal-pale);color:var(--teal);
+}
+
+/* TOAST */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.82);color:#fff;padding:9px 18px;border-radius:100px;font-size:12px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:76px;border-top:1.5px solid var(--g200);background:rgba(255,255,255,.98);backdrop-filter:blur(10px);display:flex;align-items:flex-start;padding-top:10px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-iw{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-iw.on{background:#000}
+.nav-ic{font-size:16px}
+.nav-ic.inv{filter:invert(1)}
+.nav-l{font-size:8px;font-weight:700;color:#000}
+.nav-lo{font-size:8px;font-weight:500;color:var(--g400)}
+
+/* IMG */
+.i-jazz{background:radial-gradient(circle at 45% 35%,rgba(255,180,80,.45) 0%,transparent 45%),linear-gradient(145deg,#1A1A2E 0%,#2A2040 30%,#3A2850 55%,#1A1520 100%)}
+.i-coffee{background:radial-gradient(circle at 40% 50%,rgba(180,130,80,.5) 0%,transparent 40%),linear-gradient(145deg,#2C1810 0%,#5C3D2E 30%,#8B6B4A 55%,#3A2418 100%)}
+.i-run{background:radial-gradient(circle at 50% 25%,rgba(255,200,100,.5) 0%,transparent 45%),linear-gradient(180deg,#87CEEB 0%,#98D1A8 30%,#6B8E4E 60%,#3A5028 100%)}
+.i-phil{background:linear-gradient(135deg,#4a3728 0%,#8B6345 40%,#C4956A 70%,#5D3A2A 100%)}
+.i-chess{background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 40%,#444 70%,#111 100%)}
+.i-wine{background:linear-gradient(135deg,#4a0a20 0%,#9C1A3A 40%,#E91E63 70%,#2a0512 100%)}
+.i-yoga{background:linear-gradient(135deg,#2d6a2d 0%,#4CAF50 50%,#8BC34A 80%,#1B5E20 100%)}
+.i-art{background:linear-gradient(135deg,#2a1040 0%,#6B21A8 40%,#A855F7 70%,#1a0830 100%)}
+.i-kanye{background:radial-gradient(circle at 55% 35%,rgba(255,220,50,.1) 0%,transparent 50%),linear-gradient(160deg,#050505 0%,#111 35%,#222 55%,#050505 100%)}
+.i-teal{background:linear-gradient(145deg,#0F766E,#14B8A6)}
+.i-sunset{background:radial-gradient(circle at 50% 30%,rgba(255,150,50,.5) 0%,rgba(255,100,50,.3) 30%,transparent 60%),linear-gradient(180deg,#FF8C42 0%,#C4453A 40%,#2A1B3D 100%)}
+.i-navy{background:linear-gradient(135deg,#1B2E4A 0%,#2A4470 50%,#1B2E4A 100%)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="status-bar">
+  <span class="sb-time">19:47</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<div class="top-bar">
+  <div class="tb-logo">L<span></span></div>
+  <div class="tb-right">
+    <div class="icon-btn" onclick="t('Bildirimler')">🔔<div class="notif-dot"></div></div>
+    <div class="profile-av" onclick="t('Profil')">T</div>
+  </div>
+</div>
+
+<!-- FILTER ROW -->
+<div class="filter-row">
+  <div class="fc live" onclick="t('Canlı')"><div class="fc-live-dot"></div>Canlı<span class="fc-badge">4</span></div>
+  <div class="fc on-amber" onclick="t('Başlamak Üzere')">⏱ Başlamak Üzere<span class="fc-badge">7</span></div>
+  <div class="fc on-green" onclick="t('Yer Var')">◎ Yer Var<span class="fc-badge">14</span></div>
+  <div class="fc on-navy" onclick="t('Yakınımda')">📍 Yakınımda<span class="fc-badge">9</span></div>
+  <div class="fc on-purple" onclick="t('Bu Gece')">🌙 Bu Gece<span class="fc-badge">11</span></div>
+  <div class="fc on-teal" onclick="t('Bu Hafta aktif')">📅 Bu Hafta<span class="fc-badge">34</span></div>
+  <div class="fc" onclick="t('Tümü')">Tümü</div>
+</div>
+
+<div class="scroll-content">
+
+  <!-- ── WEEK BANNER ── -->
+  <div class="week-banner">
+    <div class="wb-top">
+      <div class="wb-top-pattern"></div>
+      <div class="wb-label">📅 Bu Hafta · Milano</div>
+      <div class="wb-title">Nisan 14 – 20, 2026</div>
+      <div class="wb-sub">Pazartesi'den Pazar'a · 34 ritüel bulundu</div>
+      <div class="wb-stats">
+        <div class="wb-stat">📅 7 gün</div>
+        <div class="wb-stat">34 ritüel</div>
+        <div class="wb-stat">★ 1 Super Event</div>
+        <div class="wb-stat">👥 12 arkadaşın planı var</div>
+      </div>
+    </div>
+    <div class="wb-progress">
+      <span class="wp-label">Haftanın ilerlemesi</span>
+      <div class="wp-bar"><div class="wp-fill" id="week-bar"></div></div>
+      <span class="wp-val">Cuma</span>
+    </div>
+  </div>
+
+  <!-- ── TAKVİM STRIP ── */
+  <div class="cal-strip">
+    <div class="cal-day past">
+      <div class="cal-name">Pzt</div>
+      <div class="cal-num">14</div>
+      <div class="cal-count">3</div>
+    </div>
+    <div class="cal-day past has-event">
+      <div class="cal-name">Sal</div>
+      <div class="cal-num">15</div>
+      <div class="cal-count">5</div>
+    </div>
+    <div class="cal-day past has-event">
+      <div class="cal-name">Çar</div>
+      <div class="cal-num">16</div>
+      <div class="cal-count">4</div>
+    </div>
+    <div class="cal-day past has-event">
+      <div class="cal-name">Per</div>
+      <div class="cal-num">17</div>
+      <div class="cal-count">6</div>
+    </div>
+    <div class="cal-day today has-event has-live" onclick="t('Bugün filtrele')">
+      <div class="cal-name">Cum</div>
+      <div class="cal-num">18</div>
+      <div class="cal-count">11</div>
+    </div>
+    <div class="cal-day has-event" onclick="t('Cumartesi filtrele')">
+      <div class="cal-name">Cmt</div>
+      <div class="cal-num">19</div>
+      <div class="cal-count">7</div>
+    </div>
+    <div class="cal-day has-event" onclick="t('Pazar filtrele')">
+      <div class="cal-name">Paz</div>
+      <div class="cal-num">20</div>
+      <div class="cal-count">4</div>
+    </div>
+  </div>
+
+  <!-- ── HAFTA ÖZET GRID ── -->
+  <div class="week-overview">
+    <div class="wo-header">
+      <div class="wo-title">Haftanın Genel Görünümü</div>
+      <div class="wo-sub">Kayıtlı ve planlanan ritüeller</div>
+    </div>
+    <div class="wo-grid">
+      <div class="wo-cell wo-today" onclick="t('Bugün detayı')">
+        <div class="wo-cell-day">Bugün · Cum 18 <span class="wo-count">11</span></div>
+        <div class="wo-cell-events">
+          <div class="wo-event"><div class="wo-event-dot" style="background:var(--red)"></div><span class="wo-event-name">● Jazz Night · Canlı</span></div>
+          <div class="wo-event"><div class="wo-event-dot" style="background:var(--purple)"></div><span class="wo-event-name">Philosophy Walk 20:30</span></div>
+          <div class="wo-event"><div class="wo-event-dot" style="background:var(--g300)"></div><span class="wo-event-name" style="color:var(--g400)">+9 daha</span></div>
+        </div>
+      </div>
+      <div class="wo-cell wo-weekend wo-se" onclick="t('Cumartesi detayı')">
+        <div class="wo-cell-day">Cmt 19 <span class="wo-count" style="color:var(--purple)">7</span></div>
+        <div class="wo-cell-events">
+          <div class="wo-event"><div class="wo-event-dot" style="background:var(--gold)"></div><span class="wo-event-name">★ Kanye West 20:00</span></div>
+          <div class="wo-event"><div class="wo-event-dot" style="background:var(--teal)"></div><span class="wo-event-name">Morning Run 07:00</span></div>
+          <div class="wo-event"><div class="wo-event-dot" style="background:var(--g300)"></div><span class="wo-event-name" style="color:var(--g400)">+5 daha</span></div>
+        </div>
+      </div>
+      <div class="wo-cell" onclick="t('Pazar detayı')">
+        <div class="wo-cell-day">Paz 20 <span class="wo-count">4</span></div>
+        <div class="wo-cell-events">
+          <div class="wo-event"><div class="wo-event-dot" style="background:var(--coffee,#8B6B4A)"></div><span class="wo-event-name">Brunch Circle 11:00</span></div>
+          <div class="wo-event"><div class="wo-event-dot" style="background:var(--navy)"></div><span class="wo-event-name">Chess Evening 17:00</span></div>
+        </div>
+      </div>
+      <div class="wo-cell" onclick="t('Gelecek hafta')">
+        <div class="wo-cell-day" style="color:var(--g300)">Gelecek Hafta</div>
+        <div class="wo-cell-events">
+          <div class="wo-event" style="opacity:.45"><div class="wo-event-dot" style="background:var(--teal)"></div><span class="wo-event-name">Düzenli ritüeller</span></div>
+          <div class="wo-event" style="opacity:.45"><div class="wo-event-dot" style="background:var(--g200)"></div><span class="wo-event-name">Pzt–Per planları</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wo-more" onclick="t('Tam takvim görünümü')">Tam Takvimi Gör →</div>
+  </div>
+
+  <!-- ════════════════════════════ -->
+  <!-- BUGÜN — CUMArtesi 18 NİSAN -->
+  <!-- ════════════════════════════ -->
+  <div class="day-header">
+    <div>
+      <div class="dh-day">Bugün · Cuma</div>
+      <div class="dh-date">18 Nisan 2026 · 19:47</div>
+    </div>
+    <div class="dhb-today dh-badge">11 ritüel</div>
+  </div>
+
+  <!-- CANLI HERO -->
+  <div class="week-card is-live" onclick="t('Jazz Night → Live Ritual')">
+    <div class="wc-hero">
+      <div class="wc-hero-img i-jazz"></div>
+      <div class="wc-ov"></div>
+      <div class="wc-top">
+        <div class="time-chip live"><div class="live-dot-s"></div>CANLI · 1sa 17dk</div>
+        <div class="time-chip" style="background:rgba(0,0,0,.5)">8 / 12 kişi</div>
+      </div>
+      <div class="wc-bot">
+        <div class="wc-name">Jazz Night at Blue Note</div>
+        <div class="wc-venue">📍 Navigli · Şu an devam ediyor</div>
+      </div>
+    </div>
+    <div class="wc-body">
+      <div class="wc-row" style="align-items:center">
+        <div class="wc-left">
+          <div class="wc-tags">
+            <span class="wt wt-live">● Canlı</span>
+            <span class="wt wt-dark">★ Pivot Host</span>
+            <span class="wt wt-blue">👥 3 Arkadaş</span>
+          </div>
+        </div>
+        <button class="wc-btn wcb-r" onclick="event.stopPropagation();t('Jazz → Katıl')">Katıl →</button>
+      </div>
+    </div>
+    <div class="wc-footer">
+      <div style="display:flex;align-items:center">
+        <div class="wf-avs">
+          <div class="wf-av" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8)">A</div>
+          <div class="wf-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">E</div>
+          <div class="wf-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">L</div>
+        </div>
+        <span class="wf-text">Alessandro, Elena, Luca orada</span>
+      </div>
+      <div class="wf-right"><div class="wf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+    </div>
+  </div>
+
+  <!-- COMPACT ROWS: bu akşam -->
+  <div class="compact-row cr-friends" onclick="t('Philosophy Walk → Ritual Detail')">
+    <div class="cr-thumb i-phil"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time">
+        <span style="color:var(--purple);font-size:9px;font-weight:700">👥 3 Arkadaş</span>
+        <span>· 20:30 · 43 dk</span>
+      </div>
+      <div class="cr-name">Philosophy Walk · Darsena</div>
+      <div class="cr-tags">
+        <span class="wt wt-amber" style="font-size:7px">Min RS 65 ✓</span>
+        <span class="wt wt-grey" style="font-size:7px">6 / 8 kişi</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-occ" style="color:var(--amber)">2 yer kaldı</span>
+      <button class="cr-btn crb-p" onclick="event.stopPropagation();t('Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row" onclick="t('Sunset Yoga → Ritual Detail')">
+    <div class="cr-thumb i-yoga"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time">20:30 · 43 dk</div>
+      <div class="cr-name">Sunset Yoga · Sempione</div>
+      <div class="cr-tags">
+        <span class="wt wt-green" style="font-size:7px">RS 0+</span>
+        <span class="wt wt-teal" style="font-size:7px">🔄 Haftalık</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-occ">11/16</span>
+      <button class="cr-btn crb-t" onclick="event.stopPropagation();t('Yoga → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row" onclick="t('Chess Evening → Ritual Detail')">
+    <div class="cr-thumb i-chess"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time">21:00 · 1s 13dk</div>
+      <div class="cr-name">Chess Evening · Isola</div>
+      <div class="cr-tags">
+        <span class="wt wt-amber" style="font-size:7px">Min RS 50 ✓</span>
+        <span class="wt wt-red" style="font-size:7px">2 yer kaldı!</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-occ" style="color:var(--red)">6/8</span>
+      <button class="cr-btn crb-n" onclick="event.stopPropagation();t('Satranç → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-locked" onclick="t('Wine Tasting → Kilitli')">
+    <div class="cr-thumb i-wine"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time">22:00</div>
+      <div class="cr-name">Wine Tasting · Navigli</div>
+      <div class="cr-tags">
+        <span class="wt wt-red" style="font-size:7px">Min RS 70 · 🔒</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <button class="cr-btn crb-o" style="font-size:10px;padding:6px 10px">🔒</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ -->
+  <!-- CUMARTESİ 19 — SUPER EVENT GÜNÜ -->
+  <!-- ═══════════════════════════════ -->
+  <div class="day-header">
+    <div>
+      <div class="dh-day">Yarın · Cumartesi</div>
+      <div class="dh-date">19 Nisan 2026</div>
+    </div>
+    <div class="dhb-se dh-badge">★ Super Event</div>
+  </div>
+
+  <!-- Super Event Banner -->
+  <div class="se-banner" onclick="t('Kanye West → Super Event')">
+    <div class="se-img i-kanye">
+      <div class="se-ov"></div>
+      <div class="se-top">
+        <div class="time-chip se">★ SUPER EVENT</div>
+        <div class="time-chip" style="background:rgba(0,0,0,.5)">30.000 kişi</div>
+      </div>
+      <div class="se-bot">
+        <div>
+          <div class="se-name">Kanye West<br>Kadıköy Konseri</div>
+          <div class="se-meta">📍 Şükrü Saraçoğlu · 20:00</div>
+        </div>
+        <div class="se-right">
+          <div class="se-sub-pill"><div class="se-sub-dot"></div><span class="se-sub-num">247</span><span class="se-sub-lbl">sub-ritual</span></div>
+          <button class="se-btn" onclick="event.stopPropagation();t('Bilet Al')">🎟 Bilet Al</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cmt compact rows -->
+  <div class="compact-row cr-teal" onclick="t('Kanye Öncesi Brunch')">
+    <div class="cr-thumb i-coffee"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time">
+        <span style="color:var(--teal);font-size:9px;font-weight:700">🔄 Düzenli</span>
+        <span>· 11:00</span>
+      </div>
+      <div class="cr-name">Morning Brunch Circle</div>
+      <div class="cr-tags">
+        <span class="wt wt-navy" style="font-size:7px">Min RS 60 ✓</span>
+        <span class="wt wt-teal" style="font-size:7px">🔄 Haftalık</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-occ" style="color:var(--green)">3/10</span>
+      <button class="cr-btn crb-t" onclick="event.stopPropagation();t('Brunch → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row" onclick="t('Kanye Öncesi Aperitivo')">
+    <div class="cr-thumb i-jazz"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time">17:00 · Sub-Ritual</div>
+      <div class="cr-name">Kanye Öncesi Aperitivo</div>
+      <div class="cr-tags">
+        <span class="wt wt-gold" style="font-size:7px">★ Kanye WE</span>
+        <span class="wt wt-grey" style="font-size:7px">18/24</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-occ" style="color:var(--amber)">6 yer</span>
+      <button class="cr-btn crb-a" onclick="event.stopPropagation();t('Sub → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-friends" onclick="t('Kanye Sonrası After Party')">
+    <div class="cr-thumb i-art"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time">
+        <span style="color:var(--purple);font-size:9px;font-weight:700">👥 5 Arkadaş</span>
+        <span>· 23:00</span>
+      </div>
+      <div class="cr-name">Kanye Sonrası Karaoke</div>
+      <div class="cr-tags">
+        <span class="wt wt-gold" style="font-size:7px">★ Kanye WE</span>
+        <span class="wt wt-red" style="font-size:7px">DOLU</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-occ" style="color:var(--red)">20/20</span>
+      <button class="cr-btn crb-o">Bekleme →</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ -->
+  <!-- PAZAR 20                        -->
+  <!-- ═══════════════════════════════ -->
+  <div class="day-header">
+    <div>
+      <div class="dh-day">Pazar</div>
+      <div class="dh-date">20 Nisan 2026</div>
+    </div>
+    <div class="dhb-weekend dh-badge">4 ritüel</div>
+  </div>
+
+  <!-- Hero: Pazar brunch -->
+  <div class="week-card is-recurring" onclick="t('Sunday Brunch → Ritual Detail')">
+    <div class="wc-hero">
+      <div class="wc-hero-img i-coffee"></div>
+      <div class="wc-ov"></div>
+      <div class="wc-top">
+        <div class="time-chip recurring">🔄 Düzenli · Her Pazar</div>
+        <div class="time-chip" style="background:rgba(0,0,0,.5)">11:00</div>
+      </div>
+      <div class="wc-bot">
+        <div class="wc-name">Sunday Brunch Circle</div>
+        <div class="wc-venue">📍 Caffe Letterario · Brera</div>
+      </div>
+    </div>
+    <div class="wc-body">
+      <div class="occ-row">
+        <div class="occ-bg"><div class="occ-fill occ-green" style="width:37%"></div></div>
+        <span class="occ-label" style="color:var(--green)">3 / 8 · 5 yer var</span>
+      </div>
+      <div class="wc-row" style="align-items:center;margin-top:4px">
+        <div class="wc-left">
+          <div class="wc-tags">
+            <span class="wt wt-navy">Min RS 60 ✓</span>
+            <span class="wt wt-teal">★ LOCAL HQ</span>
+            <span class="wt wt-blue">👥 2 Arkadaş</span>
+          </div>
+        </div>
+        <button class="wc-btn wcb-t" onclick="event.stopPropagation();t('Brunch → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="wc-footer">
+      <div style="display:flex;align-items:center">
+        <div class="wf-avs">
+          <div class="wf-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">E</div>
+          <div class="wf-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">M</div>
+        </div>
+        <span class="wf-text">Elena ve Marco gidiyor</span>
+      </div>
+      <div class="wf-right"><div class="wf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+    </div>
+  </div>
+
+  <div class="compact-row" onclick="t('Art Gallery → Ritual Detail')">
+    <div class="cr-thumb i-art"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time">14:00</div>
+      <div class="cr-name">Galeri Turu · Brera</div>
+      <div class="cr-tags">
+        <span class="wt wt-green" style="font-size:7px">RS 0+</span>
+        <span class="wt wt-grey" style="font-size:7px">4/12</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-occ" style="color:var(--green)">8 yer var</span>
+      <button class="cr-btn crb-n" onclick="event.stopPropagation();t('Galeri → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ -->
+  <!-- DÜZENLİ RİTÜELLER (haftalık) -->
+  <!-- ═══════════════════════════════ -->
+  <div class="sec-label" style="margin-top:8px">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--teal)">🔄 Bu Hafta Düzenli Ritüeller</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">6</span>
+  </div>
+
+  <div class="compact-row cr-teal" onclick="t('Morning Run → Detay')">
+    <div class="cr-thumb i-run"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time"><span class="recurring-badge">🔄 Her Hafta</span></div>
+      <div class="cr-name">Morning Run Club</div>
+      <div class="cr-tags">
+        <span class="wt wt-teal" style="font-size:7px">Sal, Per, Cmt · 07:00</span>
+        <span class="wt wt-green" style="font-size:7px">RS 0+</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-occ">4/12</span>
+      <button class="cr-btn crb-t" onclick="event.stopPropagation();t('Koşu → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-teal" onclick="t('Coffee Circle → Detay')">
+    <div class="cr-thumb i-coffee"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time"><span class="recurring-badge">🔄 Her Hafta</span></div>
+      <div class="cr-name">Morning Coffee Circle</div>
+      <div class="cr-tags">
+        <span class="wt wt-teal" style="font-size:7px">Pzt, Çar, Cum · 09:00</span>
+        <span class="wt wt-amber" style="font-size:7px">Min RS 65</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-occ">3/8</span>
+      <button class="cr-btn crb-t" onclick="event.stopPropagation();t('Kahve → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-teal" onclick="t('Jazz Night → Detay')">
+    <div class="cr-thumb i-jazz"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time"><span class="recurring-badge">🔄 Her Hafta</span></div>
+      <div class="cr-name">Jazz Night at Blue Note</div>
+      <div class="cr-tags">
+        <span class="wt wt-teal" style="font-size:7px">Her Cuma · 20:30</span>
+        <span class="wt wt-live" style="font-size:7px">● Şu an canlı</span>
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-occ" style="color:var(--red)">8/12</span>
+      <button class="cr-btn crb-r" onclick="event.stopPropagation();t('Jazz → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:12px 16px 16px;cursor:pointer;font-size:11px;font-weight:600;color:var(--teal)" onclick="t('Tüm düzenli ritüeller')">
+    3 düzenli ritüel daha göster →
+  </div>
+
+  <div style="height:6px"></div>
+
+</div><!-- /scroll-content -->
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-iw on"><span class="nav-ic inv">〰</span></div><span class="nav-l">Pulse</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">📅</span></div><span class="nav-lo">City Rhythm</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">◉</span></div><span class="nav-lo">Passport</span></div>
+</div>
+
+<script>
+/* Week progress — Cuma = 5/7 = %71 */
+document.getElementById('week-bar').style.width = '71%';
+
+/* Save */
+function toggleSave(btn) {
+  const saved = btn.dataset.saved;
+  if (saved) { btn.textContent='🔖'; btn.classList.remove('saved'); delete btn.dataset.saved; }
+  else { btn.textContent='❤️'; btn.classList.add('saved'); btn.dataset.saved='1'; t('Kaydedildi'); }
+}
+
+/* Toast */
+function t(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 2100);
+}
+</script>
+</body>
+</html>

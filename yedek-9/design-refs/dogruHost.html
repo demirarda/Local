@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Pulse · Doğrulanmış Hostlar</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;--gold-pale:rgba(200,169,106,.1);--gold-border:rgba(200,169,106,.3);
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --purple:#7C3AED;--purple-pale:#EDE9FE;
+  --teal:#0F766E;--teal-pale:#CCFBF1;
+  --g50:#FAFAFA;--g100:#F5F5F5;--g150:#F0F0F0;
+  --g200:#E5E5E5;--g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:var(--g150);max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;height:44px;background:var(--g150)}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 10px;background:var(--g150)}
+.tb-logo{font-family:'Instrument Serif',serif;font-size:26px;color:#000;letter-spacing:-.5px}
+.tb-logo span{display:inline-block;width:5px;height:5px;background:#000;border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:4px}
+.tb-right{display:flex;gap:8px;align-items:center}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:all .15s}
+.icon-btn:hover{border-color:var(--navy)}
+.notif-dot{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.profile-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4a3728,#C4956A);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:14px;color:#fff;cursor:pointer;border:2px solid var(--gold-border)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:6px;padding:0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px}
+.filter-row::-webkit-scrollbar{display:none}
+.fc{display:flex;align-items:center;gap:4px;padding:6px 13px;border-radius:100px;font-size:10px;font-weight:600;border:1.5px solid var(--g200);color:var(--g500);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.fc:hover{border-color:var(--g300);color:var(--g600)}
+.fc.live{background:var(--red-pale);border-color:rgba(220,38,38,.25);color:var(--red)}
+.fc-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.fc.on-navy{background:var(--navy);color:#fff;border-color:var(--navy)}
+.fc-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px}
+.fc.on-navy .fc-badge{background:rgba(255,255,255,.2);color:#fff}
+.fc:not([class*="on-"]):not(.live) .fc-badge{background:var(--g200);color:var(--g500)}
+
+.scroll-content{padding-bottom:90px}
+
+/* ── HEADER BANNER ── */
+.verified-banner{
+  margin:0 16px 16px;background:var(--navy);
+  border-radius:20px;overflow:hidden;position:relative;
+}
+.vb-pattern{position:absolute;inset:0;opacity:.04;background-image:radial-gradient(circle at 20% 50%,#fff 1px,transparent 1px),radial-gradient(circle at 80% 20%,#fff 1px,transparent 1px);background-size:22px 22px}
+.vb-shimmer{position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent)}
+.vb-body{padding:16px 16px 14px;position:relative;z-index:2}
+.vb-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.vb-left{}
+.vb-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.4);margin-bottom:7px}
+.vb-title{font-family:'Instrument Serif',serif;font-size:22px;color:#fff;line-height:1.2;margin-bottom:3px}
+.vb-sub{font-size:11px;color:rgba(255,255,255,.4)}
+/* Shield icon graphic */
+.vb-shield{
+  flex-shrink:0;width:54px;height:54px;
+  position:relative;display:flex;align-items:center;justify-content:center;
+}
+.vb-shield-bg{
+  position:absolute;inset:0;
+  background:rgba(255,255,255,.07);
+  border:1.5px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;
+}
+/* Tier pills */
+.vb-tiers{display:flex;gap:6px;margin-bottom:12px}
+.vb-tier{
+  flex:1;padding:7px 10px;border-radius:10px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.05);
+  text-align:center;cursor:pointer;transition:all .15s;
+}
+.vb-tier:hover{background:rgba(255,255,255,.1)}
+.vb-tier.vt-pivot{border-color:rgba(200,169,106,.3);background:rgba(200,169,106,.1)}
+.vb-tier.vt-verified{border-color:rgba(255,255,255,.15)}
+.vb-tier-icon{font-size:14px;margin-bottom:3px}
+.vb-tier-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:1px}
+.vb-tier.vt-pivot .vb-tier-label{color:var(--gold)}
+.vb-tier.vt-verified .vb-tier-label{color:rgba(255,255,255,.7)}
+.vb-tier-count{font-family:'Instrument Serif',serif;font-size:16px;color:#fff;line-height:1}
+.vb-stats{display:flex;gap:6px;flex-wrap:wrap}
+.vb-stat{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:600;color:rgba(255,255,255,.6);
+}
+
+/* ── HOST TYPE FILTER ── */
+.host-type-filter{
+  display:flex;gap:0;margin:0 16px 12px;
+  background:#fff;border:1px solid var(--g200);border-radius:12px;overflow:hidden;
+}
+.htf-btn{
+  flex:1;padding:9px 4px;text-align:center;
+  font-size:10px;font-weight:600;color:var(--g500);
+  cursor:pointer;transition:all .15s;position:relative;
+}
+.htf-btn:not(:last-child)::after{content:'';position:absolute;right:0;top:8px;bottom:8px;width:1px;background:var(--g200)}
+.htf-btn:hover{background:var(--g50)}
+.htf-btn.on{background:var(--navy);color:#fff}
+.htf-btn.on::after{display:none}
+.htf-count{font-size:8px;font-weight:700;opacity:.6;display:block;margin-top:1px}
+.htf-btn.on .htf-count{opacity:.5}
+
+/* ── HOST CAROUSEL ── */
+.host-carousel{display:flex;gap:8px;padding:0 16px 14px;overflow-x:auto;scrollbar-width:none}
+.host-carousel::-webkit-scrollbar{display:none}
+
+.hc-item{
+  flex-shrink:0;width:120px;
+  background:#fff;border-radius:16px;
+  border:1px solid var(--g200);
+  overflow:hidden;cursor:pointer;transition:all .2s;
+  text-align:center;position:relative;
+}
+.hc-item:hover{border-color:var(--navy);box-shadow:0 3px 12px rgba(27,46,74,.12);transform:translateY(-1px)}
+.hc-item.hci-pivot{border-color:var(--gold-border)}
+.hc-item.hci-pivot::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold)}
+.hc-item.hci-verified{border-color:rgba(27,46,74,.2)}
+.hc-item.hci-verified::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--navy)}
+.hc-item.hci-new{border-color:rgba(22,163,74,.25)}
+.hc-item.hci-new::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--green)}
+.hc-av-wrap{padding:12px 12px 6px;position:relative}
+.hc-av{
+  width:56px;height:56px;border-radius:50%;margin:0 auto;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:22px;
+  position:relative;
+}
+.hc-verify-ring{
+  position:absolute;inset:-4px;border-radius:50%;
+  border:2.5px solid var(--gold);
+}
+.hc-verify-ring.hvr-verified{border-color:var(--navy)}
+.hc-verify-ring.hvr-new{border-color:var(--green)}
+.hc-verify-badge{
+  position:absolute;bottom:-2px;right:-2px;
+  width:18px;height:18px;border-radius:50%;
+  background:#fff;border:2px solid #fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;
+}
+.hc-status{position:absolute;top:10px;right:10px;width:10px;height:10px;border-radius:50%;border:2px solid #fff}
+.hcs-live{background:var(--red);animation:status-pulse .9s ease-in-out infinite}
+@keyframes status-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hcs-soon{background:var(--amber)}
+.hcs-idle{background:var(--g300)}
+.hc-name{font-size:11px;font-weight:600;color:#000;margin-bottom:2px;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hc-role{font-size:8px;font-weight:700;padding:2px 8px;border-radius:100px;display:inline-block;margin-bottom:5px}
+.hcr-pivot{background:var(--gold-pale);color:#92400E;border:1px solid var(--gold-border)}
+.hcr-verified{background:var(--navy-pale);color:var(--navy)}
+.hcr-new{background:var(--green-pale);color:var(--green)}
+.hc-rituals{font-size:8px;color:var(--g400);margin-bottom:8px}
+.hc-follow-btn{
+  display:block;margin:0 9px 10px;
+  padding:6px;border-radius:8px;
+  font-size:10px;font-weight:700;border:1.5px solid var(--g200);
+  color:var(--navy);background:#fff;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all .15s;
+}
+.hc-follow-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.hc-follow-btn.following{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* ── SECTION LABEL ── */
+.sec-label{display:flex;align-items:center;gap:8px;padding:8px 18px 6px}
+.sl-line{flex:1;height:1px;background:var(--g200)}
+.sl-text{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+.sl-count{font-size:9px;color:var(--g300);background:var(--g100);padding:2px 7px;border-radius:100px;font-weight:600}
+
+/* ── VERIFIED CARD ── */
+.verified-card{
+  margin:0 16px 9px;background:#fff;
+  border:1px solid var(--g200);border-radius:16px;
+  overflow:hidden;cursor:pointer;transition:all .2s;position:relative;
+}
+.verified-card:hover{box-shadow:0 3px 14px rgba(0,0,0,.08);transform:translateY(-1px)}
+.verified-card.vc-pivot{border-color:var(--gold-border)}
+.verified-card.vc-pivot::before{content:'';position:absolute;top:0;left:0;right:0;height:2.5px;background:linear-gradient(90deg,var(--gold),rgba(200,169,106,.4))}
+.verified-card.vc-verified{border-color:rgba(27,46,74,.2)}
+.verified-card.vc-verified::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--navy)}
+.verified-card.vc-live{border-color:rgba(220,38,38,.2)}
+.verified-card.vc-live::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red)}
+.verified-card.vc-new{border-color:rgba(22,163,74,.2)}
+.verified-card.vc-new::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--green)}
+
+/* HERO */
+.vc-hero{width:100%;height:148px;position:relative;overflow:hidden}
+.vc-hero-img{width:100%;height:100%}
+.vc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.06) 0%,rgba(0,0,0,.5) 60%,rgba(0,0,0,.9) 100%)}
+.vc-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between;align-items:flex-start}
+.vc-bot{position:absolute;bottom:0;left:0;right:0;padding:9px 13px;z-index:2}
+
+/* Host strip on image */
+.vc-host-strip{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.2);
+  padding:5px 10px;border-radius:100px;
+}
+.vc-host-av{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:9px;
+  border:1.5px solid rgba(255,255,255,.35);
+}
+.vc-host-info{min-width:0}
+.vc-host-name{font-size:10px;font-weight:600;color:#fff;white-space:nowrap}
+.vc-host-badge{font-size:8px;color:rgba(255,255,255,.55)}
+.vc-host-badge.hb-pivot{color:var(--gold)}
+.vc-chip{background:rgba(0,0,0,.5);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);font-size:9px;font-weight:600;padding:3px 9px;border-radius:100px}
+
+/* Live badge */
+.b-live{display:inline-flex;align-items:center;gap:4px;background:var(--red);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#fff}
+.b-ld{width:5px;height:5px;border-radius:50%;background:#fff;animation:blink 1.3s ease-in-out infinite}
+
+.vc-name{font-family:'Instrument Serif',serif;font-size:17px;color:#fff;line-height:1.25;margin-bottom:2px}
+.vc-venue{font-size:10px;color:rgba(255,255,255,.55)}
+
+/* CARD BODY */
+.vc-body{padding:10px 13px 6px}
+.vc-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.vc-left{flex:1;min-width:0}
+.vc-title{font-family:'Instrument Serif',serif;font-size:14px;color:#000;line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vc-venue-body{font-size:10px;color:var(--g400);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.vt{font-size:8px;font-weight:600;padding:2px 7px;border-radius:4px}
+.vt-navy{background:var(--navy-pale);color:var(--navy)}
+.vt-green{background:var(--green-pale);color:var(--green)}
+.vt-amber{background:var(--amber-pale);color:#92400E}
+.vt-red{background:var(--red-pale);color:var(--red)}
+.vt-dark{background:#000;color:#fff}
+.vt-gold{background:var(--gold-pale);color:#92400E;border:1px solid var(--gold-border)}
+.vt-purple{background:var(--purple-pale);color:var(--purple)}
+.vt-grey{background:var(--g100);color:var(--g500)}
+.vt-blue{background:#DBEAFE;color:#1D4ED8}
+.vt-live{background:var(--red-pale);color:var(--red)}
+.vt-new{background:var(--green-pale);color:var(--green)}
+
+/* Occ */
+.occ-row{display:flex;align-items:center;gap:8px;margin:4px 0 6px}
+.occ-bg{flex:1;height:4px;background:var(--g100);border-radius:2px;overflow:hidden}
+.occ-fill{height:100%;border-radius:2px}
+.of-green{background:var(--green)}
+.of-amber{background:var(--amber)}
+.of-red{background:var(--red)}
+.occ-lbl{font-size:9px;font-weight:600;white-space:nowrap}
+
+.vc-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.vc-btn{padding:9px 15px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;white-space:nowrap}
+.vc-btn:hover{opacity:.85}
+.vcb-r{background:var(--red);color:#fff}
+.vcb-n{background:var(--navy);color:#fff}
+.vcb-g{background:var(--gold);color:#000}
+.vcb-green{background:var(--green);color:#fff}
+.vcb-o{background:var(--g100);color:var(--g400);border:1.5px solid var(--g200);cursor:not-allowed;opacity:.5}
+
+/* FOOTER */
+.vc-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 13px 10px;border-top:1px solid var(--g100);margin-top:6px}
+.vf-left{display:flex;align-items:center;gap:5px;flex:1;min-width:0}
+.vf-avs{display:flex}
+.vf-av{width:20px;height:20px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:8px}
+.vf-av:not(:first-child){margin-left:-7px}
+.vf-text{font-size:10px;color:var(--g500);margin-left:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vf-right{display:flex;gap:5px;flex-shrink:0}
+.vf-btn{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .15s}
+.vf-btn:hover{border-color:var(--navy)}
+.vf-btn.saved{background:var(--navy-pale);border-color:var(--navy)}
+.vf-react{display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:7px;background:var(--g100);border:1px solid var(--g200);font-size:11px;cursor:pointer;transition:all .15s}
+.vf-react:hover{background:var(--g200)}
+.vf-react.on{background:var(--navy-pale);border-color:var(--navy-pale)}
+.vf-react-count{font-size:10px;color:var(--g400);font-weight:600}
+.vf-react.on .vf-react-count{color:var(--navy)}
+
+/* ── COMPACT HOST ROW ── */
+.host-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;background:#fff;border-radius:12px;
+  margin:0 16px 5px;border:1px solid var(--g200);
+  cursor:pointer;transition:all .15s;position:relative;overflow:hidden;
+}
+.host-row:hover{box-shadow:0 2px 8px rgba(0,0,0,.06);transform:translateY(-1px)}
+.host-row.hr-pivot{border-color:var(--gold-border)}
+.host-row.hr-pivot::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gold)}
+.host-row.hr-verified{border-color:rgba(27,46,74,.15)}
+.host-row.hr-verified::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--navy)}
+.host-row.hr-new{border-color:rgba(22,163,74,.2)}
+.host-row.hr-new::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green)}
+.hr-av{
+  width:42px;height:42px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:16px;
+  position:relative;border:2px solid var(--g200);
+}
+.hr-av.av-pivot{border-color:var(--gold-border)}
+.hr-av.av-verified{border-color:rgba(27,46,74,.2)}
+.hr-av.av-new{border-color:rgba(22,163,74,.3)}
+.hr-badge{
+  position:absolute;bottom:-2px;right:-2px;
+  width:16px;height:16px;border-radius:50%;background:#fff;
+  border:1.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:8px;
+}
+.hr-info{flex:1;min-width:0}
+.hr-name-row{display:flex;align-items:center;gap:5px;margin-bottom:2px}
+.hr-name{font-size:13px;font-weight:600;color:#000}
+.hr-role{font-size:8px;font-weight:700;padding:2px 7px;border-radius:100px}
+.hrr-pivot{background:var(--gold-pale);color:#92400E;border:1px solid var(--gold-border)}
+.hrr-verified{background:var(--navy-pale);color:var(--navy)}
+.hrr-new{background:var(--green-pale);color:var(--green)}
+.hr-meta{font-size:10px;color:var(--g400);display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.hr-meta-dot{width:3px;height:3px;border-radius:50%;background:var(--g300)}
+.hr-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.hr-next{font-size:9px;color:var(--g400);text-align:right;font-weight:600}
+.hr-next.upcoming{color:var(--amber)}
+.hr-next.live-now{color:var(--red)}
+.hr-action{padding:6px 12px;border-radius:8px;font-size:10px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.hra-follow{background:var(--navy-pale);color:var(--navy);border:1.5px solid rgba(27,46,74,.15)}
+.hra-follow:hover{background:var(--navy);color:#fff}
+.hra-following{background:var(--navy);color:#fff}
+.hra-view{background:var(--g100);color:var(--g500);border:1.5px solid var(--g200)}
+.hra-view:hover{background:var(--g200)}
+
+/* ── HORIZONTAL SCROLL ── */
+.h-scroll{display:flex;gap:10px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;margin-bottom:8px}
+.h-scroll::-webkit-scrollbar{display:none}
+.h-card{flex-shrink:0;width:162px;background:#fff;border-radius:14px;border:1px solid var(--g200);overflow:hidden;cursor:pointer;transition:all .2s;position:relative}
+.h-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);transform:translateY(-1px)}
+.h-card.hc-pivot{border-color:var(--gold-border)}
+.h-card.hc-pivot::before{content:'';display:block;height:2px;background:var(--gold)}
+.h-card.hc-verified::before{content:'';display:block;height:2px;background:var(--navy)}
+.hc-img{width:100%;height:88px;position:relative;overflow:hidden}
+.hc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 0%,rgba(0,0,0,.5) 100%)}
+.hc-top{position:absolute;top:6px;left:7px;z-index:2}
+.hc-bot{position:absolute;bottom:6px;left:7px;right:7px;z-index:2}
+.hc-name{font-family:'Instrument Serif',serif;font-size:12px;color:#fff;line-height:1.2}
+.hc-venue{font-size:8px;color:rgba(255,255,255,.55)}
+.hc-body{padding:8px 9px 9px}
+.hc-host{font-size:9px;color:var(--g400);margin-bottom:5px;display:flex;align-items:center;gap:3px}
+.hc-host b{color:var(--g600);font-weight:600}
+.hcf-row{display:flex;align-items:center;justify-content:space-between}
+.hcf-seats{font-size:9px;font-weight:600}
+.hcf-btn{padding:5px 10px;border-radius:7px;font-size:9px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.hcfb-n{background:var(--navy);color:#fff}
+.hcfb-r{background:var(--red);color:#fff}
+.hcfb-g{background:var(--gold);color:#000}
+
+/* ── VERIFICATION INFO CARD ── */
+.verify-info{
+  margin:0 16px 14px;
+  background:linear-gradient(135deg,var(--navy-mist) 0%,#fff 100%);
+  border:1px solid var(--navy-pale);border-radius:14px;padding:12px 14px;
+}
+.vi-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.vi-icon{font-size:20px;flex-shrink:0}
+.vi-title{font-family:'Instrument Serif',serif;font-size:14px;color:#000}
+.vi-sub{font-size:10px;color:var(--g500)}
+.vi-tiers{display:flex;flex-direction:column;gap:6px}
+.vi-tier{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px}
+.vi-tier-pivot{background:rgba(200,169,106,.08);border:1px solid var(--gold-border)}
+.vi-tier-verified{background:var(--navy-mist);border:1px solid var(--navy-pale)}
+.vi-tier-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:100px;flex-shrink:0}
+.vitb-pivot{background:var(--gold-pale);color:#92400E;border:1px solid var(--gold-border)}
+.vitb-verified{background:var(--navy-pale);color:var(--navy)}
+.vi-tier-info{flex:1;min-width:0}
+.vi-tier-name{font-size:11px;font-weight:600;color:#000;margin-bottom:1px}
+.vi-tier-desc{font-size:9px;color:var(--g500);line-height:1.4}
+.vi-tier-count{font-family:'Instrument Serif',serif;font-size:18px;flex-shrink:0}
+.vitc-pivot{color:var(--gold)}
+.vitc-verified{color:var(--navy)}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.82);color:#fff;padding:9px 18px;border-radius:100px;font-size:12px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:76px;border-top:1.5px solid var(--g200);background:rgba(255,255,255,.98);backdrop-filter:blur(10px);display:flex;align-items:flex-start;padding-top:10px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-iw{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-iw.on{background:#000}
+.nav-ic{font-size:16px}
+.nav-ic.inv{filter:invert(1)}
+.nav-l{font-size:8px;font-weight:700;color:#000}
+.nav-lo{font-size:8px;font-weight:500;color:var(--g400)}
+
+/* IMG */
+.i-jazz{background:radial-gradient(circle at 45% 35%,rgba(255,180,80,.45) 0%,transparent 45%),linear-gradient(145deg,#1A1A2E 0%,#2A2040 30%,#3A2850 55%,#1A1520 100%)}
+.i-coffee{background:radial-gradient(circle at 40% 50%,rgba(180,130,80,.5) 0%,transparent 40%),linear-gradient(145deg,#2C1810 0%,#5C3D2E 30%,#8B6B4A 55%,#3A2418 100%)}
+.i-run{background:radial-gradient(circle at 50% 25%,rgba(255,200,100,.5) 0%,transparent 45%),linear-gradient(180deg,#87CEEB 0%,#98D1A8 30%,#6B8E4E 60%,#3A5028 100%)}
+.i-phil{background:linear-gradient(135deg,#4a3728 0%,#8B6345 40%,#C4956A 70%,#5D3A2A 100%)}
+.i-chess{background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 40%,#444 70%,#111 100%)}
+.i-wine{background:linear-gradient(135deg,#4a0a20 0%,#9C1A3A 40%,#E91E63 70%,#2a0512 100%)}
+.i-yoga{background:linear-gradient(135deg,#2d6a2d 0%,#4CAF50 50%,#8BC34A 80%,#1B5E20 100%)}
+.i-art{background:linear-gradient(135deg,#2a1040 0%,#6B21A8 40%,#A855F7 70%,#1a0830 100%)}
+.i-teal{background:linear-gradient(145deg,#0F766E,#14B8A6)}
+.i-sunset{background:radial-gradient(circle at 50% 30%,rgba(255,150,50,.5) 0%,rgba(255,100,50,.3) 30%,transparent 60%),linear-gradient(180deg,#FF8C42 0%,#C4453A 40%,#2A1B3D 100%)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="status-bar">
+  <span class="sb-time">19:47</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<div class="top-bar">
+  <div class="tb-logo">L<span></span></div>
+  <div class="tb-right">
+    <div class="icon-btn" onclick="t('Bildirimler')">🔔<div class="notif-dot"></div></div>
+    <div class="profile-av" onclick="t('Profil')">T</div>
+  </div>
+</div>
+
+<!-- FILTER ROW -->
+<div class="filter-row">
+  <div class="fc live" onclick="t('Canlı')"><div class="fc-live-dot"></div>Canlı<span class="fc-badge">4</span></div>
+  <div class="fc" onclick="t('Yakınımda')">📍 Yakınımda<span class="fc-badge">9</span></div>
+  <div class="fc" onclick="t('Bu Gece')">🌙 Bu Gece<span class="fc-badge">11</span></div>
+  <div class="fc" onclick="t('Arkadaşlar')">👥 Arkadaşlar<span class="fc-badge">18</span></div>
+  <div class="fc" onclick="t('Takip Edilenler')">★ Takip<span class="fc-badge">12</span></div>
+  <div class="fc on-navy" onclick="t('Doğrulanmış Hostlar aktif')">✓ Doğrulanmış Hostlar<span class="fc-badge">21</span></div>
+</div>
+
+<div class="scroll-content">
+
+  <!-- ── VERIFIED BANNER ── -->
+  <div class="verified-banner">
+    <div class="vb-pattern"></div>
+    <div class="vb-shimmer"></div>
+    <div class="vb-body">
+      <div class="vb-row">
+        <div class="vb-left">
+          <div class="vb-label">✓ Doğrulanmış Hostlar</div>
+          <div class="vb-title">Güvenilir ritüeller,<br>seçilmiş hostlar</div>
+          <div class="vb-sub">Milano · 14 aktif host · 21 ritüel</div>
+        </div>
+        <div class="vb-shield">
+          <div class="vb-shield-bg">✓</div>
+        </div>
+      </div>
+      <!-- Tier summary -->
+      <div class="vb-tiers">
+        <div class="vb-tier vt-pivot" onclick="setType('pivot')">
+          <div class="vb-tier-icon">★</div>
+          <div class="vb-tier-label">Pivot Host</div>
+          <div class="vb-tier-count">4</div>
+        </div>
+        <div class="vb-tier vt-verified" onclick="setType('verified')">
+          <div class="vb-tier-icon">✓</div>
+          <div class="vb-tier-label">Verified Host</div>
+          <div class="vb-tier-count">10</div>
+        </div>
+      </div>
+      <div class="vb-stats">
+        <div class="vb-stat">● 2 canlı ritüel</div>
+        <div class="vb-stat">⏱ 5 başlamak üzere</div>
+        <div class="vb-stat">🆕 2 yeni host</div>
+        <div class="vb-stat">★ 3'ü takip ediyorsun</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── VERIFICATION INFO ── -->
+  <div class="verify-info">
+    <div class="vi-header">
+      <div class="vi-icon">🛡️</div>
+      <div>
+        <div class="vi-title">Doğrulama Seviyeleri</div>
+        <div class="vi-sub">LOCAL ekibi her host'u değerlendiriyor</div>
+      </div>
+    </div>
+    <div class="vi-tiers">
+      <div class="vi-tier vi-tier-pivot">
+        <div class="vi-tier-badge vitb-pivot">★ Pivot Host</div>
+        <div class="vi-tier-info">
+          <div class="vi-tier-name">El ile seçilen topluluk öncüleri</div>
+          <div class="vi-tier-desc">RS 8.0+ · En az 20 ritüel · Katılımcı memnuniyeti doğrulanmış</div>
+        </div>
+        <div class="vi-tier-count vitc-pivot">4</div>
+      </div>
+      <div class="vi-tier vi-tier-verified">
+        <div class="vi-tier-badge vitb-verified">✓ Verified Host</div>
+        <div class="vi-tier-info">
+          <div class="vi-tier-name">Güvenilirliği doğrulanmış hostlar</div>
+          <div class="vi-tier-desc">RS 7.0+ · En az 8 ritüel · Kimlik doğrulaması tamamlandı</div>
+        </div>
+        <div class="vi-tier-count vitc-verified">10</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HOST TYPE FILTER ── -->
+  <div class="host-type-filter">
+    <div class="htf-btn on" id="hf-all" onclick="setType('all')">Tümü<span class="htf-count">21</span></div>
+    <div class="htf-btn" id="hf-pivot" onclick="setType('pivot')">★ Pivot<span class="htf-count">8</span></div>
+    <div class="htf-btn" id="hf-verified" onclick="setType('verified')">✓ Verified<span class="htf-count">13</span></div>
+    <div class="htf-btn" id="hf-new" onclick="setType('new')">🆕 Yeni<span class="htf-count">2</span></div>
+  </div>
+
+  <!-- ── HOST CAROUSEL ── -->
+  <div style="padding:0 18px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--g400)">Tüm Hostlar</div>
+  <div class="host-carousel">
+
+    <div class="hc-item hci-pivot" onclick="t('Alessandro → Profil')">
+      <div class="hc-av-wrap">
+        <div class="hc-status hcs-live"></div>
+        <div class="hc-av" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8)">
+          A
+          <div class="hc-verify-ring"></div>
+          <div class="hc-verify-badge">★</div>
+        </div>
+      </div>
+      <div class="hc-name">Alessandro R.</div>
+      <div class="hc-role hcr-pivot">★ Pivot Host</div>
+      <div class="hc-rituals">RS 8.7 · 62 ritüel</div>
+      <button class="hc-follow-btn following" onclick="event.stopPropagation();toggleFollow(this)">✓ Takipte</button>
+    </div>
+
+    <div class="hc-item hci-pivot" onclick="t('Sofia → Profil')">
+      <div class="hc-av-wrap">
+        <div class="hc-status hcs-live"></div>
+        <div class="hc-av" style="background:linear-gradient(145deg,#0F766E,#14B8A6);color:#fff">
+          S
+          <div class="hc-verify-ring"></div>
+          <div class="hc-verify-badge">★</div>
+        </div>
+      </div>
+      <div class="hc-name">Sofia M.</div>
+      <div class="hc-role hcr-pivot">★ Pivot Host</div>
+      <div class="hc-rituals">RS 8.4 · 44 ritüel</div>
+      <button class="hc-follow-btn following" onclick="event.stopPropagation();toggleFollow(this)">✓ Takipte</button>
+    </div>
+
+    <div class="hc-item hci-verified" onclick="t('Davide → Profil')">
+      <div class="hc-av-wrap">
+        <div class="hc-status hcs-soon"></div>
+        <div class="hc-av" style="background:linear-gradient(145deg,#4a3728,#8B6B4A);color:#fff">
+          D
+          <div class="hc-verify-ring hvr-verified"></div>
+          <div class="hc-verify-badge">✓</div>
+        </div>
+      </div>
+      <div class="hc-name">Davide C.</div>
+      <div class="hc-role hcr-verified">✓ Verified</div>
+      <div class="hc-rituals">RS 7.8 · 18 ritüel</div>
+      <button class="hc-follow-btn" onclick="event.stopPropagation();toggleFollow(this)">+ Takip Et</button>
+    </div>
+
+    <div class="hc-item hci-pivot" onclick="t('Chiara → Profil')">
+      <div class="hc-av-wrap">
+        <div class="hc-status hcs-idle"></div>
+        <div class="hc-av" style="background:linear-gradient(145deg,#9C1A3A,#E91E63);color:#fff">
+          C
+          <div class="hc-verify-ring"></div>
+          <div class="hc-verify-badge">★</div>
+        </div>
+      </div>
+      <div class="hc-name">Chiara B.</div>
+      <div class="hc-role hcr-pivot">★ Pivot Host</div>
+      <div class="hc-rituals">RS 8.1 · 31 ritüel</div>
+      <button class="hc-follow-btn following" onclick="event.stopPropagation();toggleFollow(this)">✓ Takipte</button>
+    </div>
+
+    <div class="hc-item hci-new" onclick="t('Ravi → Profil')">
+      <div class="hc-av-wrap">
+        <div class="hc-status hcs-idle"></div>
+        <div class="hc-av" style="background:linear-gradient(145deg,#2a1040,#6B21A8);color:#fff">
+          R
+          <div class="hc-verify-ring hvr-new"></div>
+          <div class="hc-verify-badge" style="font-size:7px">🆕</div>
+        </div>
+      </div>
+      <div class="hc-name">Ravi P.</div>
+      <div class="hc-role hcr-new">🆕 Yeni Verified</div>
+      <div class="hc-rituals">RS 7.2 · 8 ritüel</div>
+      <button class="hc-follow-btn" onclick="event.stopPropagation();toggleFollow(this)">+ Takip Et</button>
+    </div>
+
+    <div class="hc-item hci-verified" onclick="t('Lena → Profil')">
+      <div class="hc-av-wrap">
+        <div class="hc-status hcs-idle"></div>
+        <div class="hc-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">
+          L
+          <div class="hc-verify-ring hvr-verified"></div>
+          <div class="hc-verify-badge">✓</div>
+        </div>
+      </div>
+      <div class="hc-name">Lena K.</div>
+      <div class="hc-role hcr-verified">✓ Verified</div>
+      <div class="hc-rituals">RS 7.5 · 14 ritüel</div>
+      <button class="hc-follow-btn" onclick="event.stopPropagation();toggleFollow(this)">+ Takip Et</button>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════ -->
+  <!-- CANLI — DOĞRULANMIŞ    -->
+  <!-- ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--red)">● Şu An Canlı</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">2</span>
+  </div>
+
+  <!-- HERO: Pivot — Jazz Night -->
+  <div class="verified-card vc-live vc-pivot" onclick="t('Jazz Night → Live Ritual')">
+    <div class="vc-hero">
+      <div class="vc-hero-img i-jazz"></div>
+      <div class="vc-ov"></div>
+      <div class="vc-top">
+        <div class="vc-host-strip">
+          <div class="vc-host-av" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8)">A</div>
+          <div class="vc-host-info">
+            <div class="vc-host-name">Alessandro R.</div>
+            <div class="vc-host-badge hb-pivot">★ Pivot Host</div>
+          </div>
+        </div>
+        <div class="b-live"><div class="b-ld"></div>CANLI</div>
+      </div>
+      <div class="vc-bot">
+        <div class="vc-name">Jazz Night at Blue Note</div>
+        <div class="vc-venue">📍 Navigli · 1sa 17dk sürüyor · Pencere: 10s 43dk</div>
+      </div>
+    </div>
+    <div class="vc-body">
+      <div class="occ-row">
+        <div class="occ-bg"><div class="occ-fill of-amber" style="width:67%"></div></div>
+        <span class="occ-lbl" style="color:var(--amber)">8 / 12 · 4 yer kaldı</span>
+      </div>
+      <div class="vc-row" style="align-items:center">
+        <div class="vc-left">
+          <div class="vc-tags">
+            <span class="vt vt-live">● Canlı</span>
+            <span class="vt vt-gold">★ Pivot Host</span>
+            <span class="vt vt-navy">RS 0+</span>
+            <span class="vt vt-blue">👥 3 Arkadaş</span>
+          </div>
+        </div>
+        <button class="vc-btn vcb-r" onclick="event.stopPropagation();t('Jazz → Katıl')">Katıl →</button>
+      </div>
+    </div>
+    <div class="vc-footer">
+      <div class="vf-left">
+        <div class="vf-avs">
+          <div class="vf-av" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8)">A</div>
+          <div class="vf-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">E</div>
+          <div class="vf-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">L</div>
+        </div>
+        <span class="vf-text">Alessandro, Elena, Luca orada</span>
+      </div>
+      <div class="vf-right">
+        <div class="vf-react" onclick="event.stopPropagation();toggleReact(this)">🔥<span class="vf-react-count">14</span></div>
+        <div class="vf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HERO: Verified — Run Club -->
+  <div class="verified-card vc-live vc-verified" onclick="t('Morning Run → Live Ritual')">
+    <div class="vc-hero">
+      <div class="vc-hero-img i-run"></div>
+      <div class="vc-ov"></div>
+      <div class="vc-top">
+        <div class="vc-host-strip">
+          <div class="vc-host-av" style="background:linear-gradient(145deg,#0F766E,#14B8A6);color:#fff">S</div>
+          <div class="vc-host-info">
+            <div class="vc-host-name">Sofia M.</div>
+            <div class="vc-host-badge hb-pivot">★ Pivot Host</div>
+          </div>
+        </div>
+        <div class="b-live"><div class="b-ld"></div>CANLI · 52dk</div>
+      </div>
+      <div class="vc-bot">
+        <div class="vc-name">Morning Run Club</div>
+        <div class="vc-venue">📍 Parco Sempione · 8 km rotası devam ediyor</div>
+      </div>
+    </div>
+    <div class="vc-body">
+      <div class="vc-row" style="align-items:center">
+        <div class="vc-left">
+          <div class="vc-tags">
+            <span class="vt vt-live">● Canlı</span>
+            <span class="vt vt-gold">★ Pivot Host</span>
+            <span class="vt vt-green">RS 0+</span>
+            <span class="vt vt-grey">12 kişi</span>
+          </div>
+        </div>
+        <button class="vc-btn vcb-r" onclick="event.stopPropagation();t('Koşu → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="vc-footer">
+      <span class="vf-text" style="color:var(--g300)">Bağlantın yok · Herkese açık</span>
+      <div class="vf-right"><div class="vf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════ -->
+  <!-- BAŞLAMAK ÜZERE          -->
+  <!-- ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--amber)">⏱ Başlamak Üzere</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">5</span>
+  </div>
+
+  <!-- HERO: Pivot -->
+  <div class="verified-card vc-pivot" onclick="t('Philosophy Walk → Ritual Detail')">
+    <div class="vc-hero">
+      <div class="vc-hero-img i-phil"></div>
+      <div class="vc-ov"></div>
+      <div class="vc-top">
+        <div class="vc-host-strip">
+          <div class="vc-host-av" style="background:linear-gradient(145deg,#9C1A3A,#E91E63);color:#fff">C</div>
+          <div class="vc-host-info">
+            <div class="vc-host-name">Chiara B.</div>
+            <div class="vc-host-badge hb-pivot">★ Pivot Host</div>
+          </div>
+        </div>
+        <div class="vc-chip">⏱ 43 dk</div>
+      </div>
+      <div class="vc-bot">
+        <div class="vc-name">Philosophy Walk · Darsena</div>
+        <div class="vc-venue">📍 Porta Genova · 20:30</div>
+      </div>
+    </div>
+    <div class="vc-body">
+      <div class="occ-row">
+        <div class="occ-bg"><div class="occ-fill of-amber" style="width:75%"></div></div>
+        <span class="occ-lbl" style="color:var(--amber)">6 / 8 · 2 yer kaldı</span>
+      </div>
+      <div class="vc-row" style="align-items:center">
+        <div class="vc-left">
+          <div class="vc-tags">
+            <span class="vt vt-gold">★ Pivot Host</span>
+            <span class="vt vt-amber">Min RS 65 ✓</span>
+            <span class="vt vt-blue">👥 3 Arkadaş</span>
+          </div>
+        </div>
+        <button class="vc-btn vcb-n" onclick="event.stopPropagation();t('Felsefe → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="vc-footer">
+      <div class="vf-left">
+        <div class="vf-avs">
+          <div class="vf-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">M</div>
+          <div class="vf-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">E</div>
+        </div>
+        <span class="vf-text">Marco ve Elena gidiyor</span>
+      </div>
+      <div class="vf-right">
+        <div class="vf-react" onclick="event.stopPropagation();toggleReact(this)">💡<span class="vf-react-count">6</span></div>
+        <div class="vf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Yatay: diğer yakında -->
+  <div class="h-scroll">
+
+    <div class="h-card hc-pivot" onclick="t('Sunset Yoga → Ritual Detail')">
+      <div class="hc-img i-yoga">
+        <div class="hc-ov"></div>
+        <div class="hc-top">
+          <div style="background:rgba(200,169,106,.9);padding:2px 7px;border-radius:100px;font-size:7px;font-weight:700;color:#000">★ Pivot</div>
+        </div>
+        <div class="hc-bot"><div class="hc-name">Sunset Yoga</div><div class="hc-venue">Sempione · 20:30</div></div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-host"><b>Lena K.</b> · ✓ Verified</div>
+        <div class="hcf-row">
+          <span class="hcf-seats" style="color:var(--green)">5 yer var</span>
+          <button class="hcf-btn hcfb-n" onclick="event.stopPropagation();t('Yoga → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="h-card hc-verified" onclick="t('Chess Evening → Ritual Detail')">
+      <div class="hc-img i-chess">
+        <div class="hc-ov"></div>
+        <div class="hc-top">
+          <div style="background:rgba(27,46,74,.85);padding:2px 7px;border-radius:100px;font-size:7px;font-weight:700;color:#fff">✓ Verified</div>
+        </div>
+        <div class="hc-bot"><div class="hc-name">Chess Evening</div><div class="hc-venue">Isola · 21:00</div></div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-host"><b>Davide C.</b> · ✓ Verified</div>
+        <div class="hcf-row">
+          <span class="hcf-seats" style="color:var(--red)">Son 3 yer</span>
+          <button class="hcf-btn hcfb-r" onclick="event.stopPropagation();t('Satranç → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="h-card hc-pivot" onclick="t('Art Opening → Ritual Detail')">
+      <div class="hc-img i-art">
+        <div class="hc-ov"></div>
+        <div class="hc-top">
+          <div style="background:rgba(200,169,106,.9);padding:2px 7px;border-radius:100px;font-size:7px;font-weight:700;color:#000">★ Pivot</div>
+        </div>
+        <div class="hc-bot"><div class="hc-name">Art Opening</div><div class="hc-venue">Brera · 21:00</div></div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-host"><b>Chiara B.</b> · ★ Pivot</div>
+        <div class="hcf-row">
+          <span class="hcf-seats" style="color:var(--green)">8 yer var</span>
+          <button class="hcf-btn hcfb-n" onclick="event.stopPropagation();t('Sanat → Katıl')">Katıl</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════ -->
+  <!-- TÜM DOĞRULANMIŞ HOSTLAR -->
+  <!-- ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text">Tüm Doğrulanmış Hostlar</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">14</span>
+  </div>
+
+  <div class="host-row hr-pivot" onclick="t('Alessandro → Profil')">
+    <div class="hr-av av-pivot" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8)">
+      A<div class="hr-badge">★</div>
+    </div>
+    <div class="hr-info">
+      <div class="hr-name-row">
+        <span class="hr-name">Alessandro R.</span>
+        <span class="hr-role hrr-pivot">★ Pivot Host</span>
+      </div>
+      <div class="hr-meta">
+        RS 8.7 <div class="hr-meta-dot"></div>
+        62 ritüel <div class="hr-meta-dot"></div>
+        Jazz · Navigli
+      </div>
+    </div>
+    <div class="hr-right">
+      <span class="hr-next live-now">● Şu an canlı</span>
+      <button class="hr-action hra-following" onclick="event.stopPropagation();toggleFollow(this)">✓ Takipte</button>
+    </div>
+  </div>
+
+  <div class="host-row hr-pivot" onclick="t('Sofia → Profil')">
+    <div class="hr-av av-pivot" style="background:linear-gradient(145deg,#0F766E,#14B8A6);color:#fff">
+      S<div class="hr-badge">★</div>
+    </div>
+    <div class="hr-info">
+      <div class="hr-name-row">
+        <span class="hr-name">Sofia M.</span>
+        <span class="hr-role hrr-pivot">★ Pivot Host</span>
+      </div>
+      <div class="hr-meta">
+        RS 8.4 <div class="hr-meta-dot"></div>
+        44 ritüel <div class="hr-meta-dot"></div>
+        Koşu · Yoga
+      </div>
+    </div>
+    <div class="hr-right">
+      <span class="hr-next live-now">● Şu an canlı</span>
+      <button class="hr-action hra-following" onclick="event.stopPropagation();toggleFollow(this)">✓ Takipte</button>
+    </div>
+  </div>
+
+  <div class="host-row hr-pivot" onclick="t('Chiara → Profil')">
+    <div class="hr-av av-pivot" style="background:linear-gradient(145deg,#9C1A3A,#E91E63);color:#fff">
+      C<div class="hr-badge">★</div>
+    </div>
+    <div class="hr-info">
+      <div class="hr-name-row">
+        <span class="hr-name">Chiara B.</span>
+        <span class="hr-role hrr-pivot">★ Pivot Host</span>
+      </div>
+      <div class="hr-meta">
+        RS 8.1 <div class="hr-meta-dot"></div>
+        31 ritüel <div class="hr-meta-dot"></div>
+        Felsefe · Sanat
+      </div>
+    </div>
+    <div class="hr-right">
+      <span class="hr-next upcoming">⏱ 20:30</span>
+      <button class="hr-action hra-following" onclick="event.stopPropagation();toggleFollow(this)">✓ Takipte</button>
+    </div>
+  </div>
+
+  <div class="host-row hr-verified" onclick="t('Davide → Profil')">
+    <div class="hr-av av-verified" style="background:linear-gradient(145deg,#4a3728,#8B6B4A);color:#fff">
+      D<div class="hr-badge">✓</div>
+    </div>
+    <div class="hr-info">
+      <div class="hr-name-row">
+        <span class="hr-name">Davide C.</span>
+        <span class="hr-role hrr-verified">✓ Verified</span>
+      </div>
+      <div class="hr-meta">
+        RS 7.8 <div class="hr-meta-dot"></div>
+        18 ritüel <div class="hr-meta-dot"></div>
+        Satranç · Isola
+      </div>
+    </div>
+    <div class="hr-right">
+      <span class="hr-next upcoming">⏱ 21:00</span>
+      <button class="hr-action hra-follow" onclick="event.stopPropagation();toggleFollow(this)">+ Takip</button>
+    </div>
+  </div>
+
+  <div class="host-row hr-verified" onclick="t('Lena → Profil')">
+    <div class="hr-av av-verified" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">
+      L<div class="hr-badge">✓</div>
+    </div>
+    <div class="hr-info">
+      <div class="hr-name-row">
+        <span class="hr-name">Lena K.</span>
+        <span class="hr-role hrr-verified">✓ Verified</span>
+      </div>
+      <div class="hr-meta">
+        RS 7.5 <div class="hr-meta-dot"></div>
+        14 ritüel <div class="hr-meta-dot"></div>
+        Yoga · Sempione
+      </div>
+    </div>
+    <div class="hr-right">
+      <span class="hr-next upcoming">⏱ 20:30</span>
+      <button class="hr-action hra-follow" onclick="event.stopPropagation();toggleFollow(this)">+ Takip</button>
+    </div>
+  </div>
+
+  <div class="host-row hr-new" onclick="t('Ravi → Profil')">
+    <div class="hr-av av-new" style="background:linear-gradient(145deg,#2a1040,#6B21A8);color:#fff">
+      R<div class="hr-badge" style="font-size:7px">🆕</div>
+    </div>
+    <div class="hr-info">
+      <div class="hr-name-row">
+        <span class="hr-name">Ravi P.</span>
+        <span class="hr-role hrr-new">🆕 Yeni Verified</span>
+      </div>
+      <div class="hr-meta">
+        RS 7.2 <div class="hr-meta-dot"></div>
+        8 ritüel <div class="hr-meta-dot"></div>
+        Felsefe · Brera
+      </div>
+    </div>
+    <div class="hr-right">
+      <span class="hr-next" style="color:var(--g300)">Bu hafta sonu</span>
+      <button class="hr-action hra-follow" onclick="event.stopPropagation();toggleFollow(this)">+ Takip</button>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:12px 16px 14px;font-size:11px;font-weight:600;color:var(--navy);cursor:pointer" onclick="t('Tüm 14 host')">
+    8 host daha göster →
+  </div>
+
+  <div style="height:6px"></div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-iw on"><span class="nav-ic inv">〰</span></div><span class="nav-l">Pulse</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">📅</span></div><span class="nav-lo">City Rhythm</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">◉</span></div><span class="nav-lo">Passport</span></div>
+</div>
+
+<script>
+/* Host type filter */
+function setType(key) {
+  ['all','pivot','verified','new'].forEach(k => {
+    const el = document.getElementById('hf-' + k);
+    if(el) el.classList.toggle('on', k === key);
+  });
+  const labels = {
+    all:'Tüm doğrulanmış hostlar · 21 ritüel',
+    pivot:'★ Pivot Host ritüelleri · 8 ritüel',
+    verified:'✓ Verified Host ritüelleri · 13 ritüel',
+    new:'🆕 Yeni hostlar · 2 ritüel'
+  };
+  t(labels[key] || 'Filtrelendi');
+}
+
+/* Follow toggle */
+function toggleFollow(btn) {
+  const isFollowing = btn.classList.contains('hra-following') || btn.classList.contains('following');
+  if (isFollowing) {
+    btn.textContent = '+ Takip Et';
+    btn.className = btn.className.replace(/hra-following|following/g,'').trim();
+    btn.classList.add(btn.classList.contains('hr-action') ? 'hra-follow' : '');
+    t('Takipten çıkıldı');
+  } else {
+    if (btn.classList.contains('hr-action')) {
+      btn.textContent = '✓ Takipte';
+      btn.classList.remove('hra-follow','hra-view');
+      btn.classList.add('hra-following');
+    } else {
+      btn.textContent = '✓ Takipte';
+      btn.classList.add('following');
+    }
+    t('Takip edildi · Bildirimler açık');
+  }
+}
+
+/* React */
+function toggleReact(el) {
+  const on = el.classList.contains('on');
+  const c = el.querySelector('.vf-react-count');
+  const n = parseInt(c.textContent);
+  el.classList.toggle('on', !on);
+  c.textContent = on ? n - 1 : n + 1;
+}
+
+/* Save */
+function toggleSave(btn) {
+  const saved = btn.dataset.saved;
+  if (saved) { btn.textContent='🔖'; btn.classList.remove('saved'); delete btn.dataset.saved; }
+  else { btn.textContent='❤️'; btn.classList.add('saved'); btn.dataset.saved='1'; t('Kaydedildi'); }
+}
+
+/* Toast */
+function t(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 2300);
+}
+
+/* Banner tier click */
+document.querySelectorAll('.vb-tier').forEach(el => {
+  el.addEventListener('click', () => {
+    const isPivot = el.classList.contains('vt-pivot');
+    setType(isPivot ? 'pivot' : 'verified');
+  });
+});
+</script>
+</body>
+</html>

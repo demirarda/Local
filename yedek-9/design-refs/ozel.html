@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Pulse · Özel Etkinlikler (Açık)</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;--gold-l:#B8965A;
+  --gold-pale:rgba(200,169,106,.1);
+  --gold-border:rgba(200,169,106,.35);
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --purple:#7C3AED;--purple-pale:#EDE9FE;
+  --g50:#FAFAFA;--g100:#F5F5F5;--g150:#F0F0F0;
+  --g200:#E5E5E5;--g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:var(--g150);max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;height:44px;background:var(--g150)}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 10px;background:var(--g150)}
+.tb-logo{font-family:'Instrument Serif',serif;font-size:26px;color:#000;letter-spacing:-.5px}
+.tb-logo span{display:inline-block;width:5px;height:5px;background:var(--gold-l);border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:4px}
+.tb-right{display:flex;gap:8px;align-items:center}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:all .15s}
+.icon-btn:hover{border-color:var(--navy)}
+.notif-dot{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.profile-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4a3728,#C4956A);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:14px;color:#fff;cursor:pointer;border:2px solid var(--gold-border)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:6px;padding:0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px}
+.filter-row::-webkit-scrollbar{display:none}
+.fc{display:flex;align-items:center;gap:4px;padding:6px 13px;border-radius:100px;font-size:10px;font-weight:600;border:1.5px solid var(--g200);color:var(--g500);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.fc:hover{border-color:var(--g300);color:var(--g600)}
+.fc.live{background:var(--red-pale);border-color:rgba(220,38,38,.25);color:var(--red)}
+.fc-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.fc.on-gold{background:var(--navy);color:var(--gold);border-color:var(--navy)}
+.fc-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px}
+.fc.on-gold .fc-badge{background:rgba(200,169,106,.2);color:var(--gold)}
+.fc:not([class*="on-"]):not(.live) .fc-badge{background:var(--g200);color:var(--g500)}
+
+.scroll-content{padding-bottom:90px}
+
+/* ── EDITORIAL BANNER (açık — krem/lacivert) ── */
+.editorial-banner{
+  margin:0 16px 18px;
+  border-radius:20px;overflow:hidden;position:relative;min-height:140px;
+}
+.eb-bg{
+  position:absolute;inset:0;
+  background:linear-gradient(135deg,
+    #0D1B30 0%,
+    #1B2E4A 25%,
+    #243B5A 50%,
+    #1B2E4A 75%,
+    #0D1B30 100%
+  );
+}
+.eb-gold-ray{
+  position:absolute;top:-40%;left:-10%;
+  width:200%;height:200%;
+  background:conic-gradient(from 200deg at 30% 55%,
+    transparent 0deg,
+    rgba(200,169,106,.05) 15deg,
+    rgba(200,169,106,.1) 22deg,
+    rgba(200,169,106,.05) 29deg,
+    transparent 44deg
+  );
+  pointer-events:none;
+}
+.eb-grid{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(200,169,106,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(200,169,106,.04) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+.eb-body{position:relative;z-index:2;padding:18px 18px 16px}
+.eb-eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(200,169,106,.15);border:1px solid rgba(200,169,106,.35);
+  padding:4px 12px;border-radius:100px;
+  font-size:9px;font-weight:700;color:var(--gold);
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;
+}
+.eb-title{font-family:'Instrument Serif',serif;font-size:28px;color:#fff;line-height:1.15;letter-spacing:-.5px;margin-bottom:4px}
+.eb-title em{color:var(--gold);font-style:normal}
+.eb-sub{font-size:11px;color:rgba(255,255,255,.45);margin-bottom:14px}
+.eb-stats{display:flex;gap:6px;flex-wrap:wrap}
+.eb-stat{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:600;color:rgba(255,255,255,.7);
+}
+
+/* ── CATEGORY TABS ── */
+.cat-tabs{display:flex;gap:6px;padding:0 16px 14px;overflow-x:auto;scrollbar-width:none}
+.cat-tabs::-webkit-scrollbar{display:none}
+.cat-tab{
+  display:flex;align-items:center;gap:4px;
+  padding:7px 14px;border-radius:100px;font-size:10px;font-weight:600;
+  border:1.5px solid var(--g200);color:var(--g500);
+  white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;
+}
+.cat-tab:hover{border-color:var(--navy);color:var(--navy)}
+.cat-tab.on{background:var(--navy);color:var(--gold);border-color:var(--navy)}
+.cat-count{font-size:8px;font-weight:700;opacity:.6}
+.cat-tab.on .cat-count{opacity:.55}
+
+/* ── SECTION LABEL ── */
+.sec-label{display:flex;align-items:center;gap:8px;padding:8px 18px 8px}
+.sl-line{flex:1;height:1px;background:var(--g200)}
+.sl-text{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+.sl-count{font-size:9px;color:var(--g300);background:var(--g100);padding:2px 7px;border-radius:100px;font-weight:600}
+
+/* ── SUPER EVENT CARD ── */
+.se-card{margin:0 16px 12px;border-radius:20px;overflow:hidden;cursor:pointer;position:relative;transition:all .25s}
+.se-card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(200,169,106,.18)}
+.se-img{width:100%;height:200px;position:relative;overflow:hidden}
+.se-img-bg{width:100%;height:100%}
+.se-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.1) 0%,rgba(0,0,0,.45) 40%,rgba(0,0,0,.88) 80%,rgba(0,0,0,.97) 100%)}
+.se-top{position:absolute;top:12px;left:12px;right:12px;z-index:2;display:flex;justify-content:space-between;align-items:flex-start}
+.se-bot{position:absolute;bottom:0;left:0;right:0;padding:14px;z-index:2}
+.se-ribbon{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#92400E,var(--gold),#92400E);padding:4px 12px;border-radius:100px;font-size:9px;font-weight:700;color:#fff;letter-spacing:.3px;box-shadow:0 2px 12px rgba(200,169,106,.3)}
+.se-chip{background:rgba(0,0,0,.5);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);font-size:9px;font-weight:600;padding:4px 10px;border-radius:100px}
+.se-title{font-family:'Instrument Serif',serif;font-size:22px;color:#fff;line-height:1.2;margin-bottom:3px}
+.se-venue{font-size:10px;color:rgba(255,255,255,.5);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.se-row{display:flex;align-items:center;justify-content:space-between}
+.se-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.se-meta-item{display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,.55);font-weight:600}
+.se-meta-dot{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.2)}
+.se-btn{padding:10px 20px;border-radius:12px;background:var(--gold);color:#000;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;transition:all .15s;box-shadow:0 2px 12px rgba(200,169,106,.3)}
+.se-btn:hover{opacity:.9;transform:scale(1.02)}
+
+/* Sub-rituals */
+.se-subs{display:flex;gap:0;padding:0 14px 12px;overflow-x:auto;scrollbar-width:none;border-top:1px solid var(--g100);background:rgba(200,169,106,.03)}
+.se-subs::-webkit-scrollbar{display:none}
+.sub-pill{display:flex;align-items:center;gap:6px;padding:9px 12px;white-space:nowrap;cursor:pointer;transition:all .15s;flex-shrink:0}
+.sub-pill:hover{opacity:.75}
+.sub-pill:not(:last-child){border-right:1px solid var(--g100)}
+.sp-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.sp-live{background:var(--red);animation:blink .9s ease-in-out infinite}
+.sp-soon{background:var(--amber)}
+.sp-open{background:var(--gold)}
+.sp-info{flex:1;min-width:0}
+.sp-name{font-size:10px;font-weight:600;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-seats{font-size:8px;color:var(--g400)}
+.sp-btn{padding:3px 10px;border-radius:100px;background:var(--gold-pale);border:1px solid var(--gold-border);font-size:9px;font-weight:700;color:var(--gold-l);cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0}
+
+/* ── TICKET CARD ── */
+.ticket-card{
+  margin:0 16px 10px;background:#fff;
+  border:1px solid var(--g200);border-radius:16px;
+  overflow:hidden;cursor:pointer;transition:all .2s;position:relative;
+}
+.ticket-card:hover{box-shadow:0 3px 16px rgba(0,0,0,.08);transform:translateY(-1px)}
+.ticket-card.tc-live{border-color:rgba(220,38,38,.2)}
+.ticket-card.tc-live::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red)}
+.ticket-card.tc-gold{border-color:var(--gold-border)}
+.ticket-card.tc-gold::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),rgba(200,169,106,.4))}
+.ticket-card.tc-rs{border-color:rgba(124,58,237,.2)}
+.ticket-card.tc-rs::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--purple)}
+.ticket-card.tc-invite{border-color:var(--g200)}
+
+/* Hero */
+.tc-hero{width:100%;height:150px;position:relative;overflow:hidden}
+.tc-hero-img{width:100%;height:100%}
+.tc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.06) 0%,rgba(0,0,0,.5) 60%,rgba(0,0,0,.9) 100%)}
+.tc-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between;align-items:flex-start}
+.tc-bot{position:absolute;bottom:0;left:0;right:0;padding:9px 13px;z-index:2}
+.tc-name{font-family:'Instrument Serif',serif;font-size:18px;color:#fff;line-height:1.25;margin-bottom:2px}
+.tc-venue{font-size:10px;color:rgba(255,255,255,.5)}
+
+/* Badges */
+.b-gold{background:rgba(200,169,106,.9);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#000;display:inline-flex;align-items:center;gap:3px}
+.b-live{display:inline-flex;align-items:center;gap:4px;background:var(--red);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#fff}
+.b-live-dot{width:5px;height:5px;border-radius:50%;background:#fff;animation:blink 1.3s ease-in-out infinite}
+.b-rs{background:rgba(124,58,237,.85);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#fff;display:inline-block}
+.b-invite{background:rgba(0,0,0,.45);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.2);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:600;color:rgba(255,255,255,.8);display:inline-block}
+.b-chip{background:rgba(0,0,0,.5);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);font-size:9px;font-weight:600;padding:3px 9px;border-radius:100px}
+
+/* Body */
+.tc-body{padding:11px 13px 6px}
+.tc-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.tc-left{flex:1;min-width:0}
+.tc-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-venue-body{font-size:10px;color:var(--g400);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Occ */
+.occ-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.occ-bg{flex:1;height:4px;background:var(--g100);border-radius:2px;overflow:hidden}
+.occ-fill{height:100%;border-radius:2px}
+.of-gold{background:var(--gold)}
+.of-green{background:var(--green)}
+.of-amber{background:var(--amber)}
+.of-red{background:var(--red)}
+.occ-lbl{font-size:9px;font-weight:600;white-space:nowrap}
+
+.tc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.tt{font-size:8px;font-weight:600;padding:2px 7px;border-radius:4px}
+.tt-gold{background:var(--gold-pale);border:1px solid var(--gold-border);color:#92400E}
+.tt-navy{background:var(--navy-pale);color:var(--navy)}
+.tt-green{background:var(--green-pale);color:var(--green)}
+.tt-amber{background:var(--amber-pale);color:#92400E}
+.tt-red{background:var(--red-pale);color:var(--red)}
+.tt-dark{background:#000;color:#fff}
+.tt-purple{background:var(--purple-pale);color:var(--purple)}
+.tt-locked{background:var(--g100);color:var(--g400)}
+
+.tc-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.tc-btn{padding:9px 16px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.tc-btn:hover{opacity:.88}
+.tcb-gold{background:var(--gold);color:#000;box-shadow:0 2px 8px rgba(200,169,106,.2)}
+.tcb-r{background:var(--red);color:#fff}
+.tcb-n{background:var(--navy);color:#fff}
+.tcb-p{background:var(--purple);color:#fff}
+.tcb-o{background:var(--g100);color:var(--g400);border:1.5px solid var(--g200);cursor:not-allowed;opacity:.55}
+
+/* Footer */
+.tc-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 13px 10px;border-top:1px solid var(--g100);margin-top:7px}
+.tf-text{font-size:10px;color:var(--g400)}
+.tf-right{display:flex;gap:5px}
+.tf-btn{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .15s}
+.tf-btn:hover{border-color:var(--navy)}
+.tf-btn.saved{background:var(--navy-pale);border-color:var(--navy)}
+.tf-react{display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:7px;background:var(--g100);border:1px solid var(--g200);font-size:11px;cursor:pointer;transition:all .15s}
+.tf-react:hover{background:var(--g200)}
+.tf-react.on{background:var(--gold-pale);border-color:var(--gold-border)}
+.tf-react-count{font-size:10px;color:var(--g400);font-weight:600}
+.tf-react.on .tf-react-count{color:var(--gold-l)}
+
+/* ── RS GATE CARD ── */
+.rs-gate-card{margin:0 16px 10px;border-radius:16px;overflow:hidden;cursor:pointer;transition:all .2s}
+.rs-gate-card:hover{box-shadow:0 4px 18px rgba(124,58,237,.12);transform:translateY(-1px)}
+.rgc-top{background:linear-gradient(135deg,#F5F3FF 0%,#EDE9FE 60%,#F5F3FF 100%);padding:12px 14px;position:relative;overflow:hidden;border:1px solid rgba(124,58,237,.15);border-bottom:none;border-radius:16px 16px 0 0}
+.rgc-bg-pattern{position:absolute;inset:0;opacity:.04;background-image:radial-gradient(circle at 20% 50%,var(--purple) 1px,transparent 1px),radial-gradient(circle at 80% 20%,var(--purple) 1px,transparent 1px);background-size:20px 20px}
+.rgc-header{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
+.rgc-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);padding:4px 10px;border-radius:100px;font-size:9px;font-weight:700;color:var(--purple)}
+.rgc-rs-req{text-align:right}
+.rgc-rs-num{font-family:'Instrument Serif',serif;font-size:26px;color:var(--purple);line-height:1}
+.rgc-rs-label{font-size:8px;color:rgba(124,58,237,.5);font-weight:600}
+.rgc-title{font-family:'Instrument Serif',serif;font-size:17px;color:#000;margin:8px 0 3px;position:relative;z-index:2}
+.rgc-meta{font-size:10px;color:var(--g500);position:relative;z-index:2}
+.rgc-body{background:#fff;border:1px solid rgba(124,58,237,.12);border-top:none;padding:10px 14px;border-radius:0 0 16px 16px}
+.rgc-progress{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.rgc-prog-bar{flex:1;height:5px;background:var(--g100);border-radius:3px;overflow:hidden}
+.rgc-prog-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--purple),#a78bfa)}
+.rgc-prog-label{font-size:10px;font-weight:600;color:var(--purple);white-space:nowrap;opacity:.7}
+.rgc-row{display:flex;align-items:center;justify-content:space-between}
+.rgc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.rgc-btn{padding:8px 14px;border-radius:9px;background:var(--purple-pale);border:1px solid rgba(124,58,237,.2);color:var(--purple);font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.rgc-btn:hover{background:rgba(124,58,237,.15)}
+
+/* ── HORIZONTAL SCROLL ── */
+.h-scroll{display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;margin-bottom:8px}
+.h-scroll::-webkit-scrollbar{display:none}
+.mini-ticket{flex-shrink:0;width:160px;background:#fff;border-radius:14px;border:1px solid var(--g200);overflow:hidden;cursor:pointer;transition:all .2s}
+.mini-ticket:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);transform:translateY(-1px)}
+.mt-img{width:100%;height:88px;position:relative;overflow:hidden}
+.mt-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 0%,rgba(0,0,0,.5) 100%)}
+.mt-top{position:absolute;top:6px;left:7px;z-index:2}
+.mt-bot{position:absolute;bottom:6px;left:7px;right:7px;z-index:2}
+.mt-name{font-family:'Instrument Serif',serif;font-size:12px;color:#fff;line-height:1.2}
+.mt-venue{font-size:8px;color:rgba(255,255,255,.55)}
+.mt-body{padding:8px 9px 9px}
+.mt-tags{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px}
+.mt-tag{font-size:7px;font-weight:600;padding:2px 6px;border-radius:3px}
+.mtf-row{display:flex;align-items:center;justify-content:space-between}
+.mtf-seats{font-size:9px;font-weight:600}
+.mtf-btn{padding:4px 10px;border-radius:6px;font-size:9px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.mtfb-gold{background:var(--gold);color:#000}
+.mtfb-r{background:var(--red);color:#fff}
+.mtfb-n{background:var(--navy);color:#fff}
+
+/* ── UPCOMING CARD ── */
+.upcoming-card{margin:0 16px 10px;background:#fff;border:1px solid var(--g200);border-radius:14px;padding:0;overflow:hidden;cursor:pointer;transition:all .2s}
+.upcoming-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.07);transform:translateY(-1px)}
+.uc-bar{height:3px;background:linear-gradient(90deg,var(--gold),rgba(200,169,106,.3))}
+.uc-body{padding:11px 14px}
+.uc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.uc-info{flex:1}
+.uc-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold-l);opacity:.8;margin-bottom:4px}
+.uc-title{font-family:'Instrument Serif',serif;font-size:16px;color:#000;line-height:1.3;margin-bottom:2px}
+.uc-meta{font-size:10px;color:var(--g400)}
+.uc-countdown{text-align:right;flex-shrink:0}
+.uc-days{font-family:'Instrument Serif',serif;font-size:24px;color:var(--gold-l);line-height:1}
+.uc-days-label{font-size:8px;color:rgba(200,169,106,.55);font-weight:600;text-align:right}
+.uc-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.uc-footer{display:flex;align-items:center;justify-content:space-between}
+.uc-interest{font-size:10px;color:var(--g300)}
+.uc-notify-btn{padding:7px 14px;border-radius:9px;background:var(--gold-pale);border:1px solid var(--gold-border);color:var(--gold-l);font-size:10px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.uc-notify-btn:hover{background:rgba(200,169,106,.2)}
+.uc-notify-btn.notified{background:var(--green);color:#fff;border-color:var(--green)}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.82);color:#fff;padding:9px 18px;border-radius:100px;font-size:12px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:76px;border-top:1.5px solid var(--g200);background:rgba(255,255,255,.98);backdrop-filter:blur(10px);display:flex;align-items:flex-start;padding-top:10px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-iw{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-iw.on{background:#000}
+.nav-ic{font-size:16px}
+.nav-ic.inv{filter:invert(1)}
+.nav-l{font-size:8px;font-weight:700;color:#000}
+.nav-lo{font-size:8px;font-weight:500;color:var(--g400)}
+
+/* IMG */
+.i-jazz{background:radial-gradient(circle at 45% 35%,rgba(255,180,80,.45) 0%,transparent 45%),linear-gradient(145deg,#1A1A2E 0%,#2A2040 30%,#3A2850 55%,#1A1520 100%)}
+.i-coffee{background:radial-gradient(circle at 40% 50%,rgba(180,130,80,.5) 0%,transparent 40%),linear-gradient(145deg,#2C1810 0%,#5C3D2E 30%,#8B6B4A 55%,#3A2418 100%)}
+.i-phil{background:linear-gradient(135deg,#4a3728 0%,#8B6345 40%,#C4956A 70%,#5D3A2A 100%)}
+.i-chess{background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 40%,#444 70%,#111 100%)}
+.i-wine{background:linear-gradient(135deg,#4a0a20 0%,#9C1A3A 40%,#E91E63 70%,#2a0512 100%)}
+.i-art{background:linear-gradient(135deg,#2a1040 0%,#6B21A8 40%,#A855F7 70%,#1a0830 100%)}
+.i-kanye{background:radial-gradient(circle at 55% 35%,rgba(255,220,50,.1) 0%,transparent 50%),linear-gradient(160deg,#050505 0%,#111 35%,#222 55%,#050505 100%)}
+.i-gala{background:radial-gradient(circle at 30% 40%,rgba(200,169,106,.35) 0%,transparent 50%),linear-gradient(145deg,#0a0608 0%,#1a0d14 40%,#2a1422 70%,#0a0608 100%)}
+.i-opera{background:radial-gradient(circle at 50% 30%,rgba(200,169,106,.3) 0%,transparent 50%),linear-gradient(145deg,#0D0A00 0%,#2a1f00 40%,#4a3600 70%,#0D0A00 100%)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="status-bar">
+  <span class="sb-time">19:47</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<div class="top-bar">
+  <div class="tb-logo">L<span></span></div>
+  <div class="tb-right">
+    <div class="icon-btn" onclick="t('Bildirimler')">🔔<div class="notif-dot"></div></div>
+    <div class="profile-av" onclick="t('Profil')">T</div>
+  </div>
+</div>
+
+<!-- FILTER ROW -->
+<div class="filter-row">
+  <div class="fc live" onclick="t('Canlı')"><div class="fc-live-dot"></div>Canlı<span class="fc-badge">4</span></div>
+  <div class="fc" onclick="t('Başlamak Üzere')">⏱ Başlamak Üzere<span class="fc-badge">7</span></div>
+  <div class="fc" onclick="t('Yer Var')">◆ Yer Var<span class="fc-badge">14</span></div>
+  <div class="fc" onclick="t('Arkadaşlar')">👥 Arkadaşlar<span class="fc-badge">18</span></div>
+  <div class="fc" onclick="t('Takip Edilenler')">★ Takip<span class="fc-badge">12</span></div>
+  <div class="fc on-gold" onclick="t('Özel Etkinlikler aktif')">◆ Özel Etkinlikler<span class="fc-badge">9</span></div>
+</div>
+
+<div class="scroll-content">
+
+  <!-- ── EDITORIAL BANNER ── -->
+  <div class="editorial-banner">
+    <div class="eb-bg"></div>
+    <div class="eb-gold-ray"></div>
+    <div class="eb-grid"></div>
+    <div class="eb-body">
+      <div class="eb-eyebrow">◆ Özel Etkinlikler</div>
+      <div class="eb-title">Sıradan değil,<br><em>seçilmiş.</em></div>
+      <div class="eb-sub">Super Event'ler · RS Kapılı Ritüeller · Özel Davetler</div>
+      <div class="eb-stats">
+        <div class="eb-stat">★ 1 Super Event</div>
+        <div class="eb-stat">◆ 3 RS Kapılı</div>
+        <div class="eb-stat">🎟 2 Davetli</div>
+        <div class="eb-stat">📅 3 Yakında Açılıyor</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CATEGORY TABS ── -->
+  <div class="cat-tabs">
+    <div class="cat-tab on" id="cat-all" onclick="setCat(this,'all')">Tümü <span class="cat-count">9</span></div>
+    <div class="cat-tab" id="cat-se" onclick="setCat(this,'se')">★ Super Event <span class="cat-count">1</span></div>
+    <div class="cat-tab" id="cat-rs" onclick="setCat(this,'rs')">◆ RS Kapılı <span class="cat-count">3</span></div>
+    <div class="cat-tab" id="cat-invite" onclick="setCat(this,'invite')">🎟 Davetli <span class="cat-count">2</span></div>
+    <div class="cat-tab" id="cat-upcoming" onclick="setCat(this,'upcoming')">📅 Yakında <span class="cat-count">3</span></div>
+  </div>
+
+  <!-- ════════ SUPER EVENT ════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:#92400E">★ Super Event</span>
+    <div class="sl-line"></div>
+  </div>
+
+  <div class="se-card" onclick="t('Kanye West → Super Event')">
+    <div class="se-img i-kanye">
+      <div class="se-ov"></div>
+      <div class="se-top">
+        <div class="se-ribbon">★ SUPER EVENT · Bu Hafta Sonu</div>
+        <div class="se-chip">30.000 kişi</div>
+      </div>
+      <div class="se-bot">
+        <div class="se-title">Kanye West<br>Kadıköy Konseri</div>
+        <div class="se-venue">📍 Şükrü Saraçoğlu Stadyumu <span class="se-meta-dot"></span> Cumartesi 20:00</div>
+        <div class="se-row">
+          <div class="se-meta">
+            <div class="se-meta-item">🎟 Bilet gerekli</div>
+            <div class="se-meta-dot"></div>
+            <div class="se-meta-item">247 sub-ritual</div>
+            <div class="se-meta-dot"></div>
+            <div class="se-meta-item">Yarın</div>
+          </div>
+          <button class="se-btn" onclick="event.stopPropagation();t('Bilet Al')">🎟 Bilet Al</button>
+        </div>
+      </div>
+    </div>
+    <div class="se-subs">
+      <div class="sub-pill" onclick="event.stopPropagation();t('Aperitivo Canlı')">
+        <div class="sp-dot sp-live"></div>
+        <div class="sp-info"><div class="sp-name">Kanye Öncesi Aperitivo</div><div class="sp-seats">18/24 · Arkaoda</div></div>
+        <button class="sp-btn">Katıl</button>
+      </div>
+      <div class="sub-pill" onclick="event.stopPropagation();t('Konser Yürüyüşü')">
+        <div class="sp-dot sp-soon"></div>
+        <div class="sp-info"><div class="sp-name">Konser Yürüyüşü</div><div class="sp-seats">12/20 · Kadıköy</div></div>
+        <button class="sp-btn">Katıl</button>
+      </div>
+      <div class="sub-pill" onclick="event.stopPropagation();t('Sonrası Karaoke')">
+        <div class="sp-dot sp-open"></div>
+        <div class="sp-info"><div class="sp-name">Sonrası Karaoke</div><div class="sp-seats">8/20 · Sonra</div></div>
+        <button class="sp-btn">Katıl</button>
+      </div>
+      <div class="sub-pill" onclick="event.stopPropagation();t('Tüm sub-ritualler')">
+        <div class="sp-dot" style="background:var(--g300)"></div>
+        <div class="sp-info"><div class="sp-name" style="color:var(--g400)">+244 sub-ritual daha</div><div class="sp-seats">Tümünü gör →</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ RS KAPILI ════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--purple)">◆ RS Kapılı Ritüeller</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">3</span>
+  </div>
+
+  <!-- RS 8.0 kilitli -->
+  <div class="rs-gate-card" onclick="t('Exceptional Circle → detay')">
+    <div class="rgc-top">
+      <div class="rgc-bg-pattern"></div>
+      <div class="rgc-header">
+        <div class="rgc-badge">◆ Exceptional Kapısı</div>
+        <div class="rgc-rs-req">
+          <div class="rgc-rs-num">8.0</div>
+          <div class="rgc-rs-label">Min RS</div>
+        </div>
+      </div>
+      <div class="rgc-title">Exceptional Circle · Özel Akşam</div>
+      <div class="rgc-meta">📍 Özel lokasyon açıklanacak · Bu Cuma · 6 kişi</div>
+    </div>
+    <div class="rgc-body">
+      <div class="rgc-progress">
+        <div class="rgc-prog-bar"><div class="rgc-prog-fill" style="width:92%"></div></div>
+        <span class="rgc-prog-label">Senin RS: 7.4 / 8.0</span>
+      </div>
+      <div class="rgc-row">
+        <div class="rgc-tags">
+          <span class="tt tt-purple">◆ RS 8.0 gerekli</span>
+          <span class="tt tt-locked">🔒 0.6 RS uzaktasın</span>
+        </div>
+        <button class="rgc-btn" onclick="event.stopPropagation();t('RS nasıl artırırım?')">RS Artır →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RS 7.0 erişilebilir -->
+  <div class="ticket-card tc-gold" onclick="t('Philosophers Club → detay')">
+    <div class="tc-hero">
+      <div class="tc-hero-img i-phil"></div>
+      <div class="tc-ov"></div>
+      <div class="tc-top">
+        <div class="b-gold">◆ RS 7.0 · Senin: 7.4 ✓</div>
+        <div class="b-chip">6 / 8 kişi</div>
+      </div>
+      <div class="tc-bot">
+        <div class="tc-name">Philosophers Club</div>
+        <div class="tc-venue">📍 Özel Mekan · Brera · Her Ay 1. Cuma</div>
+      </div>
+    </div>
+    <div class="tc-body">
+      <div class="occ-row">
+        <div class="occ-bg"><div class="occ-fill of-amber" style="width:75%"></div></div>
+        <span class="occ-lbl" style="color:var(--amber)">2 yer kaldı</span>
+      </div>
+      <div class="tc-row" style="align-items:center">
+        <div class="tc-left">
+          <div class="tc-tags">
+            <span class="tt tt-gold">◆ RS 7.0 ✓</span>
+            <span class="tt tt-dark">★ Pivot Host</span>
+            <span class="tt tt-amber">2 yer kaldı!</span>
+          </div>
+        </div>
+        <button class="tc-btn tcb-gold" onclick="event.stopPropagation();t('Philosophers Club → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="tc-footer">
+      <span class="tf-text" style="color:rgba(200,169,106,.6)">Aylık · Özel davetli topluluğu</span>
+      <div class="tf-right">
+        <div class="tf-react" onclick="event.stopPropagation();toggleReact(this)">✨<span class="tf-react-count">9</span></div>
+        <div class="tf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RS 7.5 yakın ama kilitli -->
+  <div class="ticket-card tc-rs" onclick="t('Gala Akşam Yemeği → detay')">
+    <div class="tc-hero">
+      <div class="tc-hero-img i-gala"></div>
+      <div class="tc-ov"></div>
+      <div class="tc-top">
+        <div class="b-rs">◆ RS 7.5 · Senin: 7.4</div>
+        <div class="b-chip">8 / 10 kişi</div>
+      </div>
+      <div class="tc-bot">
+        <div class="tc-name">Gala Akşam Yemeği</div>
+        <div class="tc-venue">📍 Özel Villa · Porta Romana · Bu Cuma</div>
+      </div>
+    </div>
+    <div class="tc-body">
+      <div class="tc-row" style="align-items:center">
+        <div class="tc-left">
+          <div class="tc-tags">
+            <span class="tt tt-purple">◆ RS 7.5 gerekli</span>
+            <span class="tt tt-red">0.1 RS uzaktasın</span>
+          </div>
+        </div>
+        <button class="tc-btn tcb-o">🔒 Yakın</button>
+      </div>
+    </div>
+    <div class="tc-footer">
+      <span class="tf-text">0.1 RS daha → erişim açılır</span>
+      <div class="tf-right"><div class="tf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+    </div>
+  </div>
+
+  <!-- ════════ DAVETLİ ════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:#92400E">🎟 Özel Davetli</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">2</span>
+  </div>
+
+  <div class="h-scroll">
+    <div class="mini-ticket" onclick="t('Rooftop Jazz → Davetli')">
+      <div class="mt-img i-jazz"><div class="mt-ov"></div><div class="mt-top"><div class="b-gold" style="font-size:7px;padding:2px 8px">🎟 Davetli</div></div><div class="mt-bot"><div class="mt-name">Rooftop Jazz</div><div class="mt-venue">Özel Çatı · Cuma</div></div></div>
+      <div class="mt-body">
+        <div class="mt-tags"><span class="mt-tag" style="background:var(--gold-pale);border:1px solid var(--gold-border);color:#92400E">★ Pivot Davet</span></div>
+        <div class="mtf-row"><span class="mtf-seats" style="color:var(--amber)">3 / 12</span><button class="mtfb-gold mtf-btn" onclick="event.stopPropagation();t('Kabul Et')">Kabul Et</button></div>
+      </div>
+    </div>
+    <div class="mini-ticket" onclick="t('Wine Cave → Davetli')">
+      <div class="mt-img i-wine"><div class="mt-ov"></div><div class="mt-top"><div class="b-gold" style="font-size:7px;padding:2px 8px">🎟 Davetli</div></div><div class="mt-bot"><div class="mt-name">Wine Cave Tasting</div><div class="mt-venue">Özel Mahzen · Cmt</div></div></div>
+      <div class="mt-body">
+        <div class="mt-tags"><span class="mt-tag" style="background:var(--red-pale);color:var(--red)">Son 2 yer!</span></div>
+        <div class="mtf-row"><span class="mtf-seats" style="color:var(--red)">8 / 10</span><button class="mtfb-r mtf-btn" onclick="event.stopPropagation();t('Kabul Et')">Kabul Et</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ YAKINDA ════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--g400)">📅 Yakında Açılıyor</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">3</span>
+  </div>
+
+  <div class="upcoming-card" onclick="t('La Scala Opera → Detay')">
+    <div class="uc-bar"></div>
+    <div class="uc-body">
+      <div class="uc-top">
+        <div class="uc-info">
+          <div class="uc-label">◆ Super Event · Mayıs 2026</div>
+          <div class="uc-title">La Scala Opera Gecesi</div>
+          <div class="uc-meta">📍 Teatro alla Scala · Milano · Mayıs 15</div>
+        </div>
+        <div class="uc-countdown">
+          <div class="uc-days">27</div>
+          <div class="uc-days-label">gün kaldı</div>
+        </div>
+      </div>
+      <div class="uc-tags">
+        <span class="tt tt-gold">★ Super Event</span>
+        <span class="tt tt-purple">◆ RS 7.5 gerekecek</span>
+        <span class="tt tt-dark">Bilet · Sınırlı</span>
+      </div>
+      <div class="uc-footer">
+        <span class="uc-interest">142 kişi ilgileniyor</span>
+        <button class="uc-notify-btn" onclick="event.stopPropagation();notifyMe(this,'Opera')">🔔 Bildir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="upcoming-card" onclick="t('Brera Gecesi → Detay')">
+    <div class="uc-bar" style="background:linear-gradient(90deg,var(--purple),rgba(124,58,237,.3))"></div>
+    <div class="uc-body">
+      <div class="uc-top">
+        <div class="uc-info">
+          <div class="uc-label" style="color:var(--purple)">◆ RS Kapılı · Mayıs</div>
+          <div class="uc-title">Brera Gecesi · Sadece 8 Kişi</div>
+          <div class="uc-meta">📍 Özel Galeri · Brera · Her ay ilk Salı</div>
+        </div>
+        <div class="uc-countdown">
+          <div class="uc-days" style="color:var(--purple)">12</div>
+          <div class="uc-days-label">gün kaldı</div>
+        </div>
+      </div>
+      <div class="uc-tags">
+        <span class="tt tt-purple">◆ RS 8.0 gerekecek</span>
+        <span class="tt tt-dark">Sadece 8 kişi</span>
+        <span class="tt tt-locked">Şu an kilitli</span>
+      </div>
+      <div class="uc-footer">
+        <span class="uc-interest">38 kişi ilgileniyor</span>
+        <button class="uc-notify-btn" style="border-color:rgba(124,58,237,.25);color:var(--purple);background:var(--purple-pale)" onclick="event.stopPropagation();notifyMe(this,'Brera')">🔔 Bildir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ticket-card tc-invite" onclick="t('Art Gala Açılış → Detay')">
+    <div class="tc-hero">
+      <div class="tc-hero-img i-art"></div>
+      <div class="tc-ov"></div>
+      <div class="tc-top">
+        <div class="b-invite">📅 2 Hafta Sonra</div>
+        <div class="b-chip">Kayıt Açık</div>
+      </div>
+      <div class="tc-bot">
+        <div class="tc-name">Art Gala Açılış</div>
+        <div class="tc-venue">📍 Pinacoteca di Brera · Özel Gece</div>
+      </div>
+    </div>
+    <div class="tc-body">
+      <div class="tc-row" style="align-items:center">
+        <div class="tc-left">
+          <div class="tc-tags">
+            <span class="tt tt-gold">◆ RS 6.0 ✓</span>
+            <span class="tt tt-dark">★ Pivot Davet</span>
+            <span class="tt tt-green">14 / 30 kayıt</span>
+          </div>
+        </div>
+        <button class="tc-btn tcb-n" onclick="event.stopPropagation();t('Art Gala → Kayıt Yap')">Kayıt Yap</button>
+      </div>
+    </div>
+    <div class="tc-footer">
+      <span class="tf-text">Mayıs 2 · Pazartesi 19:00</span>
+      <div class="tf-right">
+        <div class="tf-react" onclick="event.stopPropagation();toggleReact(this)">🎨<span class="tf-react-count">22</span></div>
+        <div class="tf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:8px"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-iw on"><span class="nav-ic inv">〰</span></div><span class="nav-l">Pulse</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">📅</span></div><span class="nav-lo">City Rhythm</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">◉</span></div><span class="nav-lo">Passport</span></div>
+</div>
+
+<script>
+function setCat(el, key) {
+  document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  const labels = {all:'Tümü · 9 özel etkinlik',se:'Super Event\'ler',rs:'RS Kapılı',invite:'Davetli',upcoming:'Yakında'};
+  t(labels[key]);
+}
+function toggleReact(el) {
+  const on = el.classList.contains('on');
+  const c = el.querySelector('.tf-react-count');
+  const n = parseInt(c.textContent);
+  el.classList.toggle('on', !on);
+  c.textContent = on ? n - 1 : n + 1;
+}
+function toggleSave(btn) {
+  const saved = btn.dataset.saved;
+  if (saved) { btn.textContent='🔖'; btn.classList.remove('saved'); delete btn.dataset.saved; }
+  else { btn.textContent='❤️'; btn.classList.add('saved'); btn.dataset.saved='1'; t('Kaydedildi'); }
+}
+function notifyMe(btn, name) {
+  if (btn.classList.contains('notified')) {
+    btn.textContent = '🔔 Bildir'; btn.classList.remove('notified');
+    t('Bildirim iptal edildi');
+  } else {
+    btn.textContent = '✓ Bildirim Açık'; btn.classList.add('notified');
+    t(name + ' için bildirim kuruldu');
+  }
+}
+function t(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>

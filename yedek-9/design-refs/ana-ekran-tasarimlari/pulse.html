@@ -1,0 +1,2061 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulse · Editorial</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1B2E4A;
+  --navy-deep: #0E1B2E;
+  --navy-soft: #2A4470;
+  --gold: #C8A96A;
+  --gold-light: #E8D49A;
+  --gold-deep: #8B6F36;
+  --bg: #F5F2EB;
+  --bg-paper: #EFEAE0;
+  --card: #FFFFFF;
+  --ink: #1B2E4A;
+  --ink-soft: #4A6688;
+  --muted: #8A8275;
+  --line: rgba(27, 46, 74, 0.08);
+  --green: #4A6B3A;
+  --green-pale: #DDE5D0;
+  --amber: #B8721F;
+  --amber-pale: #F2E4C9;
+  --rose: #B45249;
+  --rose-pale: #F2D9D6;
+  --plum: #5B3A52;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #2D2A23;
+  background-image:
+    radial-gradient(ellipse at top, #3D3A30 0%, #2D2A23 55%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px;
+  min-height: 100vh;
+}
+
+.scaffold {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+}
+
+/* ─────────────────────────────────────────────────
+   PHONE FRAME
+───────────────────────────────────────────────── */
+.frame {
+  width: 390px;
+  background: var(--bg);
+  border-radius: 44px;
+  height: 844px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 11px #0A0A0C,
+    0 0 0 12px #1C1C1F,
+    0 32px 90px rgba(0,0,0,0.45);
+}
+.frame::before {
+  content: "";
+  position: absolute;
+  top: 11px; left: 50%;
+  transform: translateX(-50%);
+  width: 120px; height: 32px;
+  background: #0A0A0C;
+  border-radius: 100px;
+  z-index: 100;
+}
+.frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.1, 0 0 0 0 0.1, 0 0 0 0 0.1, 0 0 0 0.018 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  z-index: 50;
+  border-radius: 44px;
+}
+
+/* ─────────────────────────────────────────────────
+   STATUS BAR + DYNAMIC ISLAND-SAFE TOP
+───────────────────────────────────────────────── */
+.status-bar {
+  height: 52px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.status-icons {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px;
+}
+.signal-bars { display: inline-flex; gap: 2px; align-items: flex-end; }
+.signal-bars span { width: 3px; background: var(--ink); border-radius: 1px; }
+.signal-bars span:nth-child(1) { height: 4px; }
+.signal-bars span:nth-child(2) { height: 6px; }
+.signal-bars span:nth-child(3) { height: 8px; }
+.signal-bars span:nth-child(4) { height: 10px; }
+.battery {
+  width: 26px; height: 12px;
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  position: relative;
+  padding: 1.5px;
+}
+.battery::after {
+  content: "";
+  position: absolute;
+  right: -3px; top: 3px;
+  width: 2px; height: 4px;
+  background: var(--ink);
+  border-radius: 0 1px 1px 0;
+}
+.battery-fill {
+  height: 100%;
+  width: 70%;
+  background: var(--ink);
+  border-radius: 1px;
+}
+
+/* ─────────────────────────────────────────────────
+   MASTHEAD (Editorial header)
+───────────────────────────────────────────────── */
+.masthead {
+  padding: 4px 22px 6px;
+}
+.mh-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.mh-meta .left { display: flex; gap: 12px; align-items: center; }
+.mh-meta .dot { color: var(--gold); }
+.mh-meta .weather { color: var(--gold-deep); }
+.mh-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(27,46,74,0.18), transparent);
+  margin: 4px 0 8px;
+}
+.mh-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.mh-brand {
+  font-family: 'Instrument Serif', serif;
+  font-size: 38px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
+}
+.mh-brand .gold { color: var(--gold); font-style: italic; }
+.mh-icons { display: flex; gap: 6px; }
+.icon-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: rgba(27, 46, 74, 0.05);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  color: var(--ink);
+}
+.icon-btn svg { width: 17px; height: 17px; }
+.icon-btn .badge-num {
+  position: absolute;
+  top: -2px; right: -2px;
+  min-width: 16px; height: 16px;
+  background: var(--rose);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--bg);
+  font-family: 'DM Sans';
+}
+.mh-tagline {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+/* ─────────────────────────────────────────────────
+   FILTER STRIP — Refined
+───────────────────────────────────────────────── */
+.filter-strip {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 12px 22px 12px;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+}
+.filter-strip::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0;
+  padding: 7px 13px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  scroll-snap-align: start;
+  letter-spacing: -0.01em;
+  transition: all 0.18s;
+}
+.chip.active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+  box-shadow: 0 4px 12px rgba(27,46,74,0.18);
+}
+.chip.live {
+  border-color: rgba(180, 82, 73, 0.3);
+  color: var(--rose);
+}
+.chip.live::before {
+  content: "";
+  width: 6px; height: 6px;
+  background: var(--rose);
+  border-radius: 50%;
+  animation: pulse 1.6s infinite;
+}
+.chip.gold {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  border-color: var(--gold);
+  color: var(--gold-deep);
+  font-weight: 600;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ─────────────────────────────────────────────────
+   FEED — scrollable
+───────────────────────────────────────────────── */
+.feed {
+  height: calc(100% - 232px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 0 0 96px;
+}
+.feed::-webkit-scrollbar { display: none; }
+
+/* Roman numeral section divider */
+.section-rule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 22px 12px;
+  margin-top: 8px;
+}
+.section-rule .roman {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--gold);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+.section-rule .label {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.section-rule .line {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* ─────────────────────────────────────────────────
+   COVER STORY HERO
+───────────────────────────────────────────────── */
+.cover {
+  margin: 0 22px 18px;
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  height: 460px;
+  background:
+    linear-gradient(180deg, transparent 0%, transparent 35%, rgba(0,0,0,0.55) 75%, rgba(0,0,0,0.95) 100%),
+    url('https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&q=80') center 30% / cover;
+  box-shadow: 0 20px 50px rgba(27,46,74,0.18);
+}
+.cover-grain {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(200,169,106,0.18) 0%, transparent 50%);
+  mix-blend-mode: overlay;
+}
+.cover-issue {
+  position: absolute;
+  top: 14px; left: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 2;
+}
+.cover-issue .num {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: rgba(255,255,255,0.85);
+}
+.cover-issue .live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--rose);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 4px 9px;
+  border-radius: 100px;
+}
+.cover-issue .live-tag::before {
+  content: "";
+  width: 6px; height: 6px;
+  background: #fff;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+.cover-pivot {
+  position: absolute;
+  top: 14px; right: 18px;
+  z-index: 2;
+}
+.pivot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 4px 9px;
+  border-radius: 100px;
+}
+.pivot-pill::before { content: "★"; font-size: 11px; }
+
+.cover-content {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 24px 22px 22px;
+  color: #fff;
+  z-index: 3;
+}
+.cover-kicker {
+  font-family: 'Caveat', cursive;
+  font-size: 18px;
+  color: var(--gold-light);
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+.cover-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 36px;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+}
+.cover-title em {
+  font-style: italic;
+  color: var(--gold-light);
+}
+.cover-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 14px;
+}
+.cover-meta .vert { width: 1px; height: 10px; background: rgba(255,255,255,0.35); }
+.cover-meta strong { font-weight: 600; color: #fff; }
+
+.cover-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.18);
+}
+.cover-attendance {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.attendee-stack { display: flex; }
+.av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  margin-left: -8px;
+  border: 2px solid #1A1F2E;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-family: 'DM Sans';
+}
+.av:first-child { margin-left: 0; }
+.av.a1 { background: linear-gradient(135deg, #C8A96A, #8B6F36); }
+.av.a2 { background: linear-gradient(135deg, #6B8AAD, #3D5878); }
+.av.a3 { background: linear-gradient(135deg, #B45249, #8B2F26); }
+.av.a4 { background: linear-gradient(135deg, #4A6B3A, #2D4521); }
+.av.count {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(8px);
+  border-color: rgba(255,255,255,0.2);
+}
+.attendance-text {
+  font-size: 11px;
+  color: rgba(255,255,255,0.85);
+  line-height: 1.3;
+}
+.attendance-text strong { color: #fff; font-weight: 600; }
+
+.cover-cta {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 11px 18px;
+  border-radius: 100px;
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  font-family: 'DM Sans';
+  box-shadow: 0 4px 16px rgba(200,169,106,0.4);
+}
+.cover-cta::after {
+  content: "→";
+  font-size: 14px;
+}
+
+/* ─────────────────────────────────────────────────
+   LIVE NOW · Carousel
+───────────────────────────────────────────────── */
+.live-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0 22px 16px;
+}
+.live-row::-webkit-scrollbar { display: none; }
+.live-card {
+  flex-shrink: 0;
+  width: 220px;
+  height: 280px;
+  border-radius: 18px;
+  position: relative;
+  overflow: hidden;
+  scroll-snap-align: start;
+}
+.live-card.lc1 {
+  background:
+    linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.85) 100%),
+    url('https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80') center / cover;
+}
+.live-card.lc2 {
+  background:
+    linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.85) 100%),
+    url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=600&q=80') center / cover;
+}
+.live-card.lc3 {
+  background:
+    linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.85) 100%),
+    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&q=80') center / cover;
+}
+.live-card-tag {
+  position: absolute;
+  top: 12px; left: 12px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.live-card-tag .live-tag {
+  background: var(--rose);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.1em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.live-card-tag .live-tag::before {
+  content: ""; width: 5px; height: 5px; background: #fff; border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+.live-card-clock {
+  position: absolute;
+  top: 12px; right: 12px;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 100px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.live-card-content {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 14px;
+  color: #fff;
+}
+.lcc-cat {
+  font-family: 'Caveat', cursive;
+  font-size: 14px;
+  color: var(--gold-light);
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+.lcc-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 19px;
+  line-height: 1.1;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+.lcc-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.78);
+  margin-bottom: 8px;
+}
+.lcc-meta .dot { width: 2.5px; height: 2.5px; border-radius: 50%; background: rgba(255,255,255,0.5); }
+.lcc-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.lcc-bar {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 100px;
+  margin-right: 8px;
+  overflow: hidden;
+}
+.lcc-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 100px;
+}
+.lcc-fill.f1 { width: 65%; }
+.lcc-fill.f2 { width: 88%; }
+.lcc-fill.f3 { width: 50%; }
+.lcc-cnt {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────────
+   FRIEND ACTIVITY · Editorial card
+───────────────────────────────────────────────── */
+.friend-activity {
+  margin: 0 22px 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fa-avatars {
+  display: flex;
+  flex-shrink: 0;
+}
+.fa-avatars .av {
+  width: 36px; height: 36px;
+  border: 2.5px solid var(--card);
+  font-size: 12px;
+  margin-left: -10px;
+}
+.fa-avatars .av:first-child { margin-left: 0; }
+.fa-text {
+  flex: 1;
+  min-width: 0;
+}
+.fa-headline {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.35;
+  margin-bottom: 3px;
+}
+.fa-headline strong { font-weight: 600; }
+.fa-headline em { font-style: italic; color: var(--ink-soft); }
+.fa-meta {
+  font-size: 10.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.fa-meta .dot { width: 2.5px; height: 2.5px; border-radius: 50%; background: var(--muted); }
+.fa-cta {
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 100px;
+  white-space: nowrap;
+  border: none;
+  font-family: 'DM Sans';
+  letter-spacing: -0.01em;
+}
+
+/* ─────────────────────────────────────────────────
+   MEMORY · PHOTO with rich detail
+───────────────────────────────────────────────── */
+.mem-card {
+  margin: 0 22px 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(27,46,74,0.04);
+}
+.mem-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 16px 12px;
+}
+.mem-av-block {
+  position: relative;
+}
+.mem-av {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-family: 'DM Sans';
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+}
+.mem-av.green { background: linear-gradient(135deg, #4A6B3A 0%, #2D4521 100%); }
+.mem-av.amber { background: linear-gradient(135deg, #C8A96A 0%, #8B6F36 100%); }
+.mem-av.navy { background: linear-gradient(135deg, #6B8AAD 0%, #3D5878 100%); }
+.mem-av.rose { background: linear-gradient(135deg, #B45249 0%, #8B2F26 100%); }
+.fl-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  pointer-events: none;
+}
+.fl-ring.l1 { border-color: var(--green); }
+.fl-ring.l2 { border-color: var(--amber); }
+.fl-ring.core { border-color: var(--ink); }
+
+.mem-info { flex: 1; min-width: 0; }
+.mem-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: -0.01em;
+  margin-bottom: 1px;
+}
+.fl-pill {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+.fl-pill.l1 { background: var(--green-pale); color: var(--green); }
+.fl-pill.l2 { background: var(--amber-pale); color: var(--amber); }
+.fl-pill.core { background: var(--ink); color: #fff; }
+.mem-byline {
+  font-size: 10.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.mem-byline .dot { width: 2.5px; height: 2.5px; border-radius: 50%; background: var(--muted); }
+.mem-byline em { font-style: italic; }
+
+.mem-timer {
+  background: rgba(27,46,74,0.05);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mem-photo {
+  height: 360px;
+  position: relative;
+  overflow: hidden;
+}
+.mem-photo.p1 {
+  background: url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&q=80') center / cover;
+}
+.mem-photo.p2 {
+  background: url('https://images.unsplash.com/photo-1574894709920-11b28e7367e9?w=800&q=80') center / cover;
+}
+.mem-tag-overlay {
+  position: absolute;
+  top: 14px; left: 14px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  padding: 6px 11px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: -0.01em;
+}
+.mem-coords {
+  position: absolute;
+  bottom: 14px; left: 14px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+.mem-tagged {
+  position: absolute;
+  top: 50%; left: 25%;
+  transform: translate(-50%, -50%);
+  width: 66px; height: 66px;
+  border: 1.5px dashed rgba(255,255,255,0.7);
+  border-radius: 12px;
+  z-index: 2;
+}
+.mem-tagged-label {
+  position: absolute;
+  top: -22px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.95);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.mem-caption {
+  padding: 14px 16px 10px;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+.mem-caption strong { font-weight: 600; }
+
+.mem-context {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  background: rgba(27,46,74,0.04);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mem-ctx-icon {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Instrument Serif', serif;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.mem-ctx-text { flex: 1; min-width: 0; }
+.mem-ctx-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.mem-ctx-meta {
+  font-size: 10px;
+  color: var(--muted);
+}
+.mem-ctx-arrow { color: var(--muted); font-size: 14px; }
+
+.mem-actions {
+  padding: 10px 16px 14px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+}
+.mem-action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.mem-action svg { width: 17px; height: 17px; }
+.mem-spacer { flex: 1; }
+.mem-share {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ─────────────────────────────────────────────────
+   QUOTE memory — pull-out editorial
+───────────────────────────────────────────────── */
+.quote-card {
+  margin: 0 22px 18px;
+  background: var(--bg-paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px 22px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.quote-card::before {
+  content: "❝";
+  position: absolute;
+  top: 4px; left: 18px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 88px;
+  line-height: 1;
+  color: var(--gold);
+  opacity: 0.25;
+}
+.quote-mini-author {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 2;
+}
+.quote-mini-author .mem-av {
+  width: 28px; height: 28px;
+  font-size: 11px;
+}
+.quote-author-line {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: -0.01em;
+}
+.quote-author-line strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.quote-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 22px;
+  line-height: 1.35;
+  color: var(--ink);
+  margin-bottom: 14px;
+  letter-spacing: 0.005em;
+  position: relative;
+  z-index: 2;
+}
+.quote-text-it {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  margin-bottom: 14px;
+  display: block;
+}
+.quote-source {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.quote-source-text {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--gold-deep);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.quote-source-time {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ─────────────────────────────────────────────────
+   RS MILESTONE · Premium delta card
+───────────────────────────────────────────────── */
+.rs-card {
+  margin: 0 22px 18px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 70% 20%, rgba(200,169,106,0.4) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 80%, rgba(74,107,134,0.35) 0%, transparent 55%),
+    linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  color: #fff;
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 14px 32px rgba(27,46,74,0.25);
+}
+.rs-card::before {
+  content: "";
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,169,106,0.18);
+}
+.rs-card::after {
+  content: "";
+  position: absolute;
+  top: -100px; right: -100px;
+  width: 320px; height: 320px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,169,106,0.1);
+}
+
+.rs-mini-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 2;
+}
+.rs-issue {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: rgba(255,255,255,0.55);
+}
+.rs-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(200,169,106,0.18);
+  color: var(--gold-light);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  padding: 3px 9px;
+  border-radius: 100px;
+  margin-left: auto;
+}
+.rs-tag::before { content: "◈"; }
+
+.rs-headline {
+  font-family: 'Instrument Serif', serif;
+  font-size: 17px;
+  line-height: 1.2;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 18px;
+  letter-spacing: -0.01em;
+  font-style: italic;
+  position: relative;
+  z-index: 2;
+}
+.rs-headline em {
+  color: var(--gold-light);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.rs-bignumber {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
+}
+.rs-arrow-wrap {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(74, 107, 58, 0.25);
+  border: 1.5px solid rgba(74, 107, 58, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8DB67A;
+}
+.rs-arrow-wrap svg { width: 20px; height: 20px; }
+.rs-delta-value {
+  font-family: 'Instrument Serif', serif;
+  font-size: 56px;
+  line-height: 1;
+  color: #fff;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+.rs-delta-value .sign {
+  color: #8DB67A;
+  font-style: italic;
+}
+.rs-delta-side {
+  margin-left: auto;
+  text-align: right;
+}
+.rs-delta-side .label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.rs-delta-side .value {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  color: var(--gold-light);
+  letter-spacing: -0.01em;
+}
+
+.rs-bar-block {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 16px;
+}
+.rs-from-to {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 8px;
+}
+.rs-from-to .from-rs {
+  font-family: 'Instrument Serif', serif;
+  font-size: 14px;
+  color: rgba(255,255,255,0.65);
+}
+.rs-from-to .arrow { color: var(--gold); margin: 0 8px; }
+.rs-from-to .to-rs {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px;
+  color: var(--gold-light);
+  font-weight: 500;
+}
+.rs-from-to .level-pill {
+  background: rgba(200,169,106,0.15);
+  color: var(--gold-light);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+.rs-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 100px;
+  position: relative;
+  margin-bottom: 4px;
+}
+.rs-bar-fill {
+  height: 100%;
+  width: 71.3%;
+  background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 100%);
+  border-radius: 100px;
+  position: relative;
+}
+.rs-bar-fill::after {
+  content: "";
+  position: absolute;
+  right: 0; top: 50%;
+  transform: translate(50%, -50%);
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--gold-light);
+  box-shadow: 0 0 0 4px rgba(232,212,154,0.2);
+}
+.rs-marks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: rgba(255,255,255,0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-components {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+  padding: 12px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 12px;
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 2;
+}
+.rs-comp {
+  text-align: center;
+}
+.rs-comp-label {
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.rs-comp-bar {
+  height: 24px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.rs-comp-fill {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--gold);
+  border-radius: 0 0 4px 4px;
+  transition: height 0.3s;
+}
+.rs-comp-fill.f1 { height: 80%; background: linear-gradient(180deg, var(--gold-light), var(--gold)); }
+.rs-comp-fill.f2 { height: 95%; background: linear-gradient(180deg, var(--gold-light), var(--gold)); }
+.rs-comp-fill.f3 { height: 65%; background: linear-gradient(180deg, var(--gold-light), var(--gold)); }
+.rs-comp-fill.f4 { height: 50%; background: linear-gradient(180deg, var(--gold-light), var(--gold)); }
+.rs-comp-fill.f5 { height: 100%; background: linear-gradient(180deg, var(--gold-light), var(--gold)); }
+.rs-comp-val {
+  font-size: 9.5px;
+  color: rgba(255,255,255,0.7);
+  font-weight: 600;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-detail-cta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--gold-light);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  position: relative;
+  z-index: 2;
+}
+.rs-detail-cta::after {
+  content: "→";
+  font-size: 13px;
+}
+
+/* ─────────────────────────────────────────────────
+   PLAYLIST · Spotify-like
+───────────────────────────────────────────────── */
+.playlist-card {
+  margin: 0 22px 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.pl-spotify {
+  padding: 14px;
+  background: linear-gradient(135deg, #1DB954 0%, #0E8C3F 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.pl-spotify::before {
+  content: "";
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+.pl-cover {
+  width: 60px; height: 60px;
+  border-radius: 6px;
+  background: url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&q=80') center / cover;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.pl-info { flex: 1; min-width: 0; position: relative; z-index: 2; }
+.pl-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+.pl-spotify-logo {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: rgba(255,255,255,0.85);
+}
+.pl-name {
+  font-family: 'DM Sans';
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.pl-meta {
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.85);
+}
+.pl-play {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+.pl-play svg { width: 16px; height: 16px; margin-left: 2px; }
+
+.pl-tracks {
+  padding: 8px 16px 12px;
+}
+.pl-track {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 11.5px;
+  color: var(--ink);
+  border-bottom: 1px dashed var(--line);
+}
+.pl-track:last-child { border-bottom: 0; }
+.pl-track-num {
+  width: 18px;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pl-track-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.pl-track-artist { color: var(--muted); font-size: 10px; }
+.pl-track-time {
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────────
+   BADGE UNLOCKED card
+───────────────────────────────────────────────── */
+.badge-card {
+  margin: 0 22px 18px;
+  background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 100%);
+  border-radius: 18px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+  color: var(--ink);
+}
+.badge-card::before {
+  content: "";
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  border: 1px solid rgba(27,46,74,0.18);
+}
+.badge-card::after {
+  content: "";
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  border: 1px solid rgba(27,46,74,0.1);
+}
+.badge-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  z-index: 2;
+}
+.badge-emoji {
+  width: 56px; height: 56px;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.badge-info { flex: 1; }
+.badge-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  margin-bottom: 3px;
+}
+.badge-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  line-height: 1.05;
+  color: var(--ink);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.badge-cond {
+  font-size: 11px;
+  color: var(--ink);
+  opacity: 0.75;
+}
+.badge-rarity {
+  position: relative;
+  z-index: 2;
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(27,46,74,0.18);
+}
+.badge-rarity-label {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.6;
+  font-weight: 600;
+}
+.rarity-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(27,46,74,0.18);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.rarity-fill {
+  width: 88%;
+  height: 100%;
+  background: var(--ink);
+  border-radius: 100px;
+}
+.rarity-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────────
+   TAB BAR — refined
+───────────────────────────────────────────────── */
+.tab-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 92px;
+  background: rgba(245, 242, 235, 0.85);
+  backdrop-filter: blur(24px) saturate(140%);
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-around;
+  padding: 14px 16px 32px;
+  z-index: 60;
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  position: relative;
+  letter-spacing: -0.01em;
+}
+.tab svg { width: 22px; height: 22px; }
+.tab.active { color: var(--ink); }
+.tab.active::before {
+  content: "";
+  position: absolute;
+  top: -14px;
+  width: 32px;
+  height: 3px;
+  background: var(--gold);
+  border-radius: 100px;
+}
+
+/* ─────────────────────────────────────────────────
+   ANNOTATION
+───────────────────────────────────────────────── */
+.annot-wrap {
+  position: fixed;
+  top: 32px;
+  left: 32px;
+  z-index: 200;
+  font-family: 'DM Sans';
+}
+.annot-pill {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  color: var(--ink);
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 11px;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.annot-pill .lbl {
+  font-family: 'Instrument Serif', serif;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--gold-deep);
+  margin-right: 4px;
+}
+.annot-pill .id {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.annot-handwriting {
+  font-family: 'Caveat', cursive;
+  font-size: 16px;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 0.01em;
+  max-width: 260px;
+  margin-left: 14px;
+  line-height: 1.3;
+}
+
+/* Side legend */
+.legend-strip {
+  position: fixed;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'DM Sans';
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 18px 16px;
+  width: 220px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.85);
+  z-index: 100;
+}
+.legend-strip h4 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--gold-light);
+  margin-bottom: 12px;
+  font-weight: 400;
+}
+.legend-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px dashed rgba(255,255,255,0.1);
+  line-height: 1.4;
+}
+.legend-row:first-of-type { border-top: 0; }
+.legend-id {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-size: 12px;
+  flex-shrink: 0;
+  width: 30px;
+}
+.legend-text { flex: 1; font-size: 10.5px; color: rgba(255,255,255,0.7); }
+.legend-text strong { color: rgba(255,255,255,0.95); display: block; font-size: 11px; margin-bottom: 1px; }
+</style>
+</head>
+<body>
+
+<div class="annot-wrap">
+  <div class="annot-pill">
+    <span class="lbl">Pulse</span>
+    <span class="id">Tab 1 · Editorial v2</span>
+  </div>
+  <div class="annot-handwriting">Bir dergi gibi tasarlandı —<br>her ekran bir sayı, her ritual bir hikaye.</div>
+</div>
+
+<div class="legend-strip">
+  <h4>Ekran haritası</h4>
+  <div class="legend-row"><span class="legend-id">I.</span><span class="legend-text"><strong>Cover Story</strong>Tonight's lead ritual — full-bleed photo, Caveat kicker, gold cta</span></div>
+  <div class="legend-row"><span class="legend-id">II.</span><span class="legend-text"><strong>Live Now</strong>3-card horizontal scroll · live timer + capacity bar</span></div>
+  <div class="legend-row"><span class="legend-id">III.</span><span class="legend-text"><strong>Friend Activity</strong>L1+ activity on a confirmed ritual</span></div>
+  <div class="legend-row"><span class="legend-id">IV.</span><span class="legend-text"><strong>Memory · Photo</strong>Author + FL ring + tagged person dashed box</span></div>
+  <div class="legend-row"><span class="legend-id">V.</span><span class="legend-text"><strong>Memory · Quote</strong>Cormorant pull-out · italic + source</span></div>
+  <div class="legend-row"><span class="legend-id">VI.</span><span class="legend-text"><strong>RS Milestone</strong>Delta + 5-component breakdown · gold leaf</span></div>
+  <div class="legend-row"><span class="legend-id">VII.</span><span class="legend-text"><strong>Memory · Playlist</strong>Spotify embed + 4 tracks preview</span></div>
+  <div class="legend-row"><span class="legend-id">VIII.</span><span class="legend-text"><strong>Badge Unlocked</strong>Gold leaf · rarity bar (88% rarer)</span></div>
+</div>
+
+<div class="scaffold">
+<div class="frame">
+
+  <div class="status-bar">
+    <span>9:41</span>
+    <div class="status-icons">
+      <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+      <span style="font-size: 11px; font-weight: 600;">5G</span>
+      <div class="battery"><div class="battery-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- ── MASTHEAD ─────────────────────────── -->
+  <div class="masthead">
+    <div class="mh-meta">
+      <div class="left">
+        <span>Sabato · 1 Maggio 2026</span>
+        <span class="dot">·</span>
+        <span>Milano</span>
+      </div>
+      <span class="weather">☀ 19°</span>
+    </div>
+    <div class="mh-divider"></div>
+    <div class="mh-row">
+      <h1 class="mh-brand">L<span class="gold">.</span></h1>
+      <div class="mh-icons">
+        <button class="icon-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 8a6 6 0 0112 0v5l1.5 3h-15L6 13V8zM10 19a2 2 0 004 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="badge-num">3</span>
+        </button>
+      </div>
+    </div>
+    <div class="mh-tagline">Tonight's pulse · 14 ritual açık · 3 canlı</div>
+  </div>
+
+  <!-- Filter strip -->
+  <div class="filter-strip">
+    <div class="chip active">Tümü</div>
+    <div class="chip live">Şimdi Canlı</div>
+    <div class="chip">Yer Var</div>
+    <div class="chip">Yakınımda</div>
+    <div class="chip">Bu Gece</div>
+    <div class="chip gold">★ Pivot</div>
+    <div class="chip">Arkadaşlar</div>
+    <div class="chip">Doğrulanmış</div>
+    <div class="chip">Ücretsiz</div>
+  </div>
+
+  <!-- ── FEED ─────────────────────────────── -->
+  <div class="feed">
+
+    <!-- I. COVER STORY -->
+    <div class="section-rule">
+      <span class="roman">I.</span>
+      <span class="label">Tonight's Cover Story</span>
+      <span class="line"></span>
+    </div>
+
+    <div class="cover">
+      <div class="cover-grain"></div>
+      <div class="cover-issue">
+        <span class="num">№ 087</span>
+        <span class="live-tag">CANLI</span>
+      </div>
+      <div class="cover-pivot">
+        <span class="pivot-pill">PİVOT</span>
+      </div>
+      <div class="cover-content">
+        <div class="cover-kicker">~ tonight at Bar Magenta</div>
+        <h2 class="cover-title">Felsefe çevresi: <em>düşünmenin mekânı</em></h2>
+        <div class="cover-meta">
+          <span><strong>Marco Rossi</strong></span>
+          <span class="vert"></span>
+          <span>Brera</span>
+          <span class="vert"></span>
+          <span>13:30 — 16:30</span>
+          <span class="vert"></span>
+          <span>3h pencere</span>
+        </div>
+        <div class="cover-bottom">
+          <div class="cover-attendance">
+            <div class="attendee-stack">
+              <div class="av a1">M</div>
+              <div class="av a2">L</div>
+              <div class="av a3">S</div>
+              <div class="av a4">G</div>
+              <div class="av count">+3</div>
+            </div>
+            <div class="attendance-text"><strong>7 / 12</strong> dolu<br>2 arkadaşın gidiyor</div>
+          </div>
+          <button class="cover-cta">Yer Kap</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- II. LIVE NOW -->
+    <div class="section-rule">
+      <span class="roman">II.</span>
+      <span class="label">Şimdi Canlı · Now in the city</span>
+      <span class="line"></span>
+    </div>
+
+    <div class="live-row">
+      <div class="live-card lc1">
+        <div class="live-card-tag">
+          <span class="live-tag">CANLI</span>
+        </div>
+        <div class="live-card-clock">17:00 · 5km</div>
+        <div class="live-card-content">
+          <div class="lcc-cat">~ outdoor · vibrant</div>
+          <div class="lcc-title">Sunset Run</div>
+          <div class="lcc-meta">
+            <span>Parco Sempione</span>
+            <span class="dot"></span>
+            <span>14/20</span>
+          </div>
+          <div class="lcc-stats">
+            <div class="lcc-bar"><div class="lcc-fill f1"></div></div>
+            <span class="lcc-cnt">65%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="live-card lc2">
+        <div class="live-card-tag">
+          <span class="live-tag">CANLI</span>
+        </div>
+        <div class="live-card-clock">21:00</div>
+        <div class="live-card-content">
+          <div class="lcc-cat">~ niche · slow</div>
+          <div class="lcc-title">Calvino Okuma Gecesi</div>
+          <div class="lcc-meta">
+            <span>Libreria Verso</span>
+            <span class="dot"></span>
+            <span>14/16</span>
+          </div>
+          <div class="lcc-stats">
+            <div class="lcc-bar"><div class="lcc-fill f2"></div></div>
+            <span class="lcc-cnt">88%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="live-card lc3">
+        <div class="live-card-tag">
+          <span class="live-tag">CANLI</span>
+        </div>
+        <div class="live-card-clock">10:00</div>
+        <div class="live-card-content">
+          <div class="lcc-cat">~ cozy · open</div>
+          <div class="lcc-title">Pazar Sabah Kahve</div>
+          <div class="lcc-meta">
+            <span>Caffè Vergnano</span>
+            <span class="dot"></span>
+            <span>3/6</span>
+          </div>
+          <div class="lcc-stats">
+            <div class="lcc-bar"><div class="lcc-fill f3"></div></div>
+            <span class="lcc-cnt">50%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- III. FRIEND ACTIVITY -->
+    <div class="section-rule">
+      <span class="roman">III.</span>
+      <span class="label">Arkadaşlarından</span>
+      <span class="line"></span>
+    </div>
+
+    <div class="friend-activity">
+      <div class="fa-avatars">
+        <div class="av a2">L</div>
+        <div class="av a1">M</div>
+        <div class="av count" style="background: rgba(27,46,74,0.08); color: var(--ink); font-size: 10px;">+1</div>
+      </div>
+      <div class="fa-text">
+        <div class="fa-headline"><strong>Lara, Marco</strong> + 1 arkadaşın <em>Felsefe Çevresi'ne</em> katılıyor</div>
+        <div class="fa-meta">
+          <span>Bar Magenta</span>
+          <span class="dot"></span>
+          <span>13:30</span>
+          <span class="dot"></span>
+          <span>22 dk önce onayladı</span>
+        </div>
+      </div>
+      <button class="fa-cta">Katıl</button>
+    </div>
+
+    <!-- IV. MEMORY · PHOTO -->
+    <div class="section-rule">
+      <span class="roman">IV.</span>
+      <span class="label">Anılar · Memories from yesterday</span>
+      <span class="line"></span>
+    </div>
+
+    <div class="mem-card">
+      <div class="mem-header">
+        <div class="mem-av-block">
+          <div class="mem-av amber">AD</div>
+          <div class="fl-ring l1"></div>
+        </div>
+        <div class="mem-info">
+          <div class="mem-name">Arda Demir <span class="fl-pill l1">L1</span></div>
+          <div class="mem-byline">
+            <span>Bocconi</span>
+            <span class="dot"></span>
+            <em>22 dk önce</em>
+          </div>
+        </div>
+        <div class="mem-timer">⏱ 22:38:14</div>
+      </div>
+
+      <div class="mem-photo p1">
+        <span class="mem-tag-overlay">📸 Foto · Brera</span>
+        <div class="mem-tagged">
+          <span class="mem-tagged-label">Lara · L1</span>
+        </div>
+        <span class="mem-coords">45°28'N · 9°11'E</span>
+      </div>
+
+      <div class="mem-caption">"Ritual'in en güzel anı — <strong>Lara'nın</strong> Heidegger açılımıyla başlayan o sessizlik. Felsefe bazen söz değil, an oluyor." 📚</div>
+
+      <div class="mem-context">
+        <div class="mem-ctx-icon">B</div>
+        <div class="mem-ctx-text">
+          <div class="mem-ctx-title">Bocconi Felsefe Çevresi</div>
+          <div class="mem-ctx-meta">Pivot · Haftalık · 7. ritual · Bar Magenta</div>
+        </div>
+        <span class="mem-ctx-arrow">›</span>
+      </div>
+
+      <div class="mem-actions">
+        <div class="mem-action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 6c-1.7 0-3.2 1-4 2.4C11.2 7 9.7 6 8 6 5.2 6 3 8.2 3 11c0 5 9 11 9 11s9-6 9-11c0-2.8-2.2-5-5-5z"/></svg>
+          <span>12</span>
+        </div>
+        <div class="mem-action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>
+          <span>5</span>
+        </div>
+        <div class="mem-action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11.5a8.4 8.4 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.4 8.4 0 01-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.4 8.4 0 013.8-.9h.5a8.5 8.5 0 018 8v.5z"/></svg>
+          <span>3</span>
+        </div>
+        <div class="mem-spacer"></div>
+        <div class="mem-share">↗ Paylaş</div>
+      </div>
+    </div>
+
+    <!-- V. QUOTE PULL-OUT -->
+    <div class="section-rule">
+      <span class="roman">V.</span>
+      <span class="label">Quote · sözler</span>
+      <span class="line"></span>
+    </div>
+
+    <div class="quote-card">
+      <div class="quote-mini-author">
+        <div class="mem-av navy" style="position: relative;">
+          L
+          <div class="fl-ring l1"></div>
+        </div>
+        <div class="quote-author-line"><strong>Lara Conti</strong> · Bocconi · L1</div>
+      </div>
+      <p class="quote-text">"Düşünmek bir mekâna dahil olmaktır. Bu odadaki sessizlik bana hatırlatıyor — felsefe sözden değil, bulundurmaktan doğar."</p>
+      <span class="quote-text-it">"Pensare è entrare in un luogo. Il silenzio di questa stanza mi ricorda — la filosofia nasce non dal dire, ma dall'esserci."</span>
+      <div class="quote-source">
+        <span class="quote-source-text">Bocconi Felsefe Çevresi</span>
+        <span class="quote-source-time">dün · 22:30</span>
+      </div>
+    </div>
+
+    <!-- VI. RS MILESTONE -->
+    <div class="section-rule">
+      <span class="roman">VI.</span>
+      <span class="label">RS Milestone · trust update</span>
+      <span class="line"></span>
+    </div>
+
+    <div class="rs-card">
+      <div class="rs-mini-header">
+        <span class="rs-issue">N° 28 · post-ritual update</span>
+        <span class="rs-tag">RS DELTA</span>
+      </div>
+      <p class="rs-headline">Düşüncelerin için <em>+0.09</em> · sekizinci ritual'in sonunda</p>
+      <div class="rs-bignumber">
+        <div class="rs-arrow-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7v9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="rs-delta-value"><span class="sign">+</span>0.09</span>
+        <div class="rs-delta-side">
+          <div class="label">YENİ RS</div>
+          <div class="value">7.13</div>
+        </div>
+      </div>
+      <div class="rs-bar-block">
+        <div class="rs-from-to">
+          <span class="from-rs">7.04</span>
+          <span class="arrow">→</span>
+          <span class="to-rs">7.13</span>
+          <span class="level-pill">RELIABLE</span>
+        </div>
+        <div class="rs-bar"><div class="rs-bar-fill"></div></div>
+        <div class="rs-marks">
+          <span>1.0</span><span>5.0</span><span>7.13</span><span>10.0</span>
+        </div>
+      </div>
+
+      <div class="rs-components">
+        <div class="rs-comp">
+          <div class="rs-comp-label">A_r</div>
+          <div class="rs-comp-bar"><div class="rs-comp-fill f1"></div></div>
+          <div class="rs-comp-val">.80</div>
+        </div>
+        <div class="rs-comp">
+          <div class="rs-comp-label">IQ_r</div>
+          <div class="rs-comp-bar"><div class="rs-comp-fill f2"></div></div>
+          <div class="rs-comp-val">.95</div>
+        </div>
+        <div class="rs-comp">
+          <div class="rs-comp-label">CF_r</div>
+          <div class="rs-comp-bar"><div class="rs-comp-fill f3"></div></div>
+          <div class="rs-comp-val">.65</div>
+        </div>
+        <div class="rs-comp">
+          <div class="rs-comp-label">M_r</div>
+          <div class="rs-comp-bar"><div class="rs-comp-fill f4"></div></div>
+          <div class="rs-comp-val">.50</div>
+        </div>
+        <div class="rs-comp">
+          <div class="rs-comp-label">IF_r</div>
+          <div class="rs-comp-bar"><div class="rs-comp-fill f5"></div></div>
+          <div class="rs-comp-val">.00</div>
+        </div>
+      </div>
+
+      <div class="rs-detail-cta">RS detaylarını gör · 4 değerlendirici</div>
+    </div>
+
+    <!-- VII. PLAYLIST -->
+    <div class="section-rule">
+      <span class="roman">VII.</span>
+      <span class="label">Memory · Playlist</span>
+      <span class="line"></span>
+    </div>
+
+    <div class="playlist-card">
+      <div class="mem-header">
+        <div class="mem-av-block">
+          <div class="mem-av amber">MR</div>
+          <div class="fl-ring l2"></div>
+        </div>
+        <div class="mem-info">
+          <div class="mem-name">Marco Rossi <span class="fl-pill l2">L2</span></div>
+          <div class="mem-byline">
+            <span>Pivot Host · ★</span>
+            <span class="dot"></span>
+            <em>1 saat önce</em>
+          </div>
+        </div>
+        <div class="mem-timer">⏱ 22:48:32</div>
+      </div>
+
+      <div class="pl-spotify">
+        <div class="pl-cover"></div>
+        <div class="pl-info">
+          <div class="pl-title-row"><span class="pl-spotify-logo">▮ SPOTIFY</span></div>
+          <div class="pl-name">Aperitivo Sunset Mix</div>
+          <div class="pl-meta">23 şarkı · 1s 24dk · Marco Rossi</div>
+        </div>
+        <div class="pl-play">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+      </div>
+
+      <div class="pl-tracks">
+        <div class="pl-track">
+          <span class="pl-track-num">01</span>
+          <span class="pl-track-name">Vita d'Aperitivo</span>
+          <span class="pl-track-artist">Mina</span>
+          <span class="pl-track-time">3:14</span>
+        </div>
+        <div class="pl-track">
+          <span class="pl-track-num">02</span>
+          <span class="pl-track-name">Brera Notte</span>
+          <span class="pl-track-artist">Calcutta</span>
+          <span class="pl-track-time">4:02</span>
+        </div>
+        <div class="pl-track">
+          <span class="pl-track-num">03</span>
+          <span class="pl-track-name">Spritz al Tramonto</span>
+          <span class="pl-track-artist">Thegiornalisti</span>
+          <span class="pl-track-time">3:58</span>
+        </div>
+        <div class="pl-track">
+          <span class="pl-track-num">04</span>
+          <span class="pl-track-name">Milano Mediterranea</span>
+          <span class="pl-track-artist">Coma_Cose</span>
+          <span class="pl-track-time">3:42</span>
+        </div>
+      </div>
+
+      <div class="mem-actions">
+        <div class="mem-action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 6c-1.7 0-3.2 1-4 2.4C11.2 7 9.7 6 8 6 5.2 6 3 8.2 3 11c0 5 9 11 9 11s9-6 9-11c0-2.8-2.2-5-5-5z"/></svg>
+          <span>18</span>
+        </div>
+        <div class="mem-action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13M9 9l12-2"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <span>4</span>
+        </div>
+        <div class="mem-spacer"></div>
+        <div class="mem-share">↗ Paylaş</div>
+      </div>
+    </div>
+
+    <!-- VIII. BADGE -->
+    <div class="section-rule">
+      <span class="roman">VIII.</span>
+      <span class="label">Badge unlocked</span>
+      <span class="line"></span>
+    </div>
+
+    <div class="badge-card">
+      <div class="badge-row">
+        <div class="badge-emoji">🌈</div>
+        <div class="badge-info">
+          <div class="badge-tag">Yeni rozet</div>
+          <h3 class="badge-title">Diversity Champion</h3>
+          <div class="badge-cond">DS_ema ≥ 0.80 · 12 ritual sürdürüldü</div>
+        </div>
+      </div>
+      <div class="badge-rarity">
+        <span class="badge-rarity-label">RARITY</span>
+        <div class="rarity-bar"><div class="rarity-fill"></div></div>
+        <span class="rarity-pct">88%</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <div class="tab active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h3l3-9 6 18 3-9h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Pulse</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+      <span>Local</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M9 3v4M15 3v4" stroke-linecap="round"/></svg>
+      <span>Rhythm</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+      <span>Passport</span>
+    </div>
+  </div>
+
+</div>
+</div>
+
+</body>
+</html>

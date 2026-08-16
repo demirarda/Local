@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Pulse · Sabah</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;--gold-pale:rgba(200,169,106,.1);--gold-border:rgba(200,169,106,.3);
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --teal:#0F766E;--teal-pale:#CCFBF1;
+  --sky:#0284C7;--sky-l:#0369A1;
+  --sky-pale:#F0F9FF;--sky-border:rgba(2,132,199,.18);
+  --dawn:#F59E0B; /* güneş sarısı */
+  --dawn-pale:#FFFBEB;
+  --g50:#FAFAFA;--g100:#F5F5F5;--g150:#F0F0F0;
+  --g200:#E5E5E5;--g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:var(--g150);max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;height:44px;background:var(--g150)}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 10px;background:var(--g150)}
+.tb-logo{font-family:'Instrument Serif',serif;font-size:26px;color:#000;letter-spacing:-.5px}
+.tb-logo span{display:inline-block;width:5px;height:5px;background:#000;border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:4px}
+.tb-right{display:flex;gap:8px;align-items:center}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:all .15s}
+.icon-btn:hover{border-color:var(--navy)}
+.notif-dot{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.profile-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4a3728,#C4956A);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:14px;color:#fff;cursor:pointer;border:2px solid var(--gold-border)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:6px;padding:0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px}
+.filter-row::-webkit-scrollbar{display:none}
+.fc{display:flex;align-items:center;gap:4px;padding:6px 13px;border-radius:100px;font-size:10px;font-weight:600;border:1.5px solid var(--g200);color:var(--g500);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.fc:hover{border-color:var(--g300);color:var(--g600)}
+.fc.live{background:var(--red-pale);border-color:rgba(220,38,38,.25);color:var(--red)}
+.fc-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.fc.on-sky{background:var(--sky);color:#fff;border-color:var(--sky)}
+.fc-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px}
+.fc.on-sky .fc-badge{background:rgba(255,255,255,.25);color:#fff}
+.fc:not([class*="on-"]):not(.live) .fc-badge{background:var(--g200);color:var(--g500)}
+
+.scroll-content{padding-bottom:90px}
+
+/* ══════════════════════════════════
+   SABAH BANNER — sunrise
+══════════════════════════════════ */
+.morning-banner{
+  margin:0 16px 16px;
+  border-radius:20px;overflow:hidden;position:relative;min-height:150px;
+}
+/* Gün doğumu gradyanı */
+.mb-sky{
+  position:absolute;inset:0;
+  background:linear-gradient(
+    180deg,
+    #0C4A6E 0%,   /* gece mavisi */
+    #075985 12%,
+    #0369A1 28%,
+    #0284C7 45%,
+    #38BDF8 68%,  /* açık mavi */
+    #FDE68A 85%,  /* sarı ufuk */
+    #FCA5A5 100%  /* pembe tan */
+  );
+}
+/* Güneş diski */
+.mb-sun{
+  position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);
+  width:64px;height:64px;border-radius:50%;
+  background:radial-gradient(circle at 45% 40%,#FFF7AE,#FCD34D 40%,#F59E0B 75%,#D97706);
+  box-shadow:0 0 0 8px rgba(253,230,138,.18),0 0 0 16px rgba(253,230,138,.08),0 0 40px 10px rgba(245,158,11,.25);
+}
+/* Yatay ışık çizgileri */
+.mb-rays{
+  position:absolute;bottom:0;left:0;right:0;height:50%;
+  background:repeating-linear-gradient(
+    180deg,
+    transparent,transparent 10px,
+    rgba(255,255,255,.03) 10px,rgba(255,255,255,.03) 11px
+  );
+}
+.mb-body{padding:16px 16px 18px;position:relative;z-index:2}
+.mb-time-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+  padding:4px 12px;border-radius:100px;
+  font-size:9px;font-weight:700;color:#fff;
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:9px;
+}
+.mb-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.mb-title{font-family:'Instrument Serif',serif;font-size:24px;color:#fff;line-height:1.2;letter-spacing:-.3px;text-shadow:0 1px 8px rgba(0,0,0,.2)}
+.mb-sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:3px}
+/* Saat göstergesi */
+.mb-clock{flex-shrink:0;text-align:right}
+.mb-clock-time{font-family:'Instrument Serif',serif;font-size:32px;color:#fff;line-height:1;text-shadow:0 1px 6px rgba(0,0,0,.2)}
+.mb-clock-label{font-size:8px;color:rgba(255,255,255,.45);font-weight:700;letter-spacing:.3px;text-align:right}
+.mb-stats{display:flex;gap:6px;flex-wrap:wrap}
+.mb-stat{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:600;color:rgba(255,255,255,.85);
+}
+
+/* ══════════════════════════════════
+   ZAMAN DİLİMİ FİLTRESİ
+══════════════════════════════════ */
+.time-filter{
+  display:flex;gap:0;margin:0 16px 14px;
+  background:#fff;border:1px solid var(--g200);border-radius:12px;overflow:hidden;
+}
+.tf-btn{
+  flex:1;padding:9px 4px;text-align:center;
+  font-size:10px;font-weight:600;color:var(--g500);
+  cursor:pointer;transition:all .15s;position:relative;
+  border-right:1px solid var(--g200);
+}
+.tf-btn:last-child{border-right:none}
+.tf-btn:hover{background:var(--g50)}
+.tf-btn.on{background:var(--sky);color:#fff}
+.tf-icon{font-size:12px;display:block;margin-bottom:2px}
+.tf-label{font-size:9px;font-weight:700;display:block}
+.tf-range{font-size:8px;opacity:.6;display:block}
+.tf-btn.on .tf-range{opacity:.5;color:#fff}
+
+/* ══════════════════════════════════
+   SECTION LABEL
+══════════════════════════════════ */
+.sec-label{display:flex;align-items:center;gap:8px;padding:8px 18px 6px}
+.sl-line{flex:1;height:1px;background:var(--g200)}
+.sl-text{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+.sl-count{font-size:9px;color:var(--g300);background:var(--g100);padding:2px 7px;border-radius:100px;font-weight:600}
+
+/* ══════════════════════════════════
+   MORNING CARD
+══════════════════════════════════ */
+.morning-card{
+  margin:0 16px 9px;background:#fff;
+  border:1px solid var(--g200);border-radius:16px;
+  overflow:hidden;cursor:pointer;transition:all .2s;position:relative;
+}
+.morning-card:hover{box-shadow:0 3px 14px rgba(0,0,0,.08);transform:translateY(-1px)}
+.morning-card.mc-sky{border-color:var(--sky-border)}
+.morning-card.mc-sky::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--sky)}
+.morning-card.mc-dawn{border-color:rgba(245,158,11,.2)}
+.morning-card.mc-dawn::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--dawn)}
+.morning-card.mc-green{border-color:rgba(22,163,74,.2)}
+.morning-card.mc-green::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--green)}
+.morning-card.mc-live{border-color:rgba(220,38,38,.2)}
+.morning-card.mc-live::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red)}
+
+/* HERO */
+.mc-hero{width:100%;height:152px;position:relative;overflow:hidden}
+.mc-hero-img{width:100%;height:100%}
+.mc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.06) 0%,rgba(0,0,0,.48) 58%,rgba(0,0,0,.88) 100%)}
+.mc-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between;align-items:flex-start}
+.mc-bot{position:absolute;bottom:0;left:0;right:0;padding:9px 13px;z-index:2}
+.mc-name{font-family:'Instrument Serif',serif;font-size:17px;color:#fff;line-height:1.25;margin-bottom:2px}
+.mc-venue{font-size:10px;color:rgba(255,255,255,.55)}
+
+/* Time badge on card */
+.time-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:100px;
+  font-size:9px;font-weight:700;
+}
+.tb-sky{background:rgba(2,132,199,.88);color:#fff}
+.tb-dawn{background:rgba(245,158,11,.9);color:#000}
+.tb-green{background:rgba(22,163,74,.88);color:#fff}
+.tb-live{background:var(--red);color:#fff}
+.tb-live-dot{width:5px;height:5px;border-radius:50%;background:#fff;animation:blink 1.3s ease-in-out infinite}
+
+.mc-chip{background:rgba(0,0,0,.5);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);font-size:9px;font-weight:600;padding:3px 9px;border-radius:100px}
+
+/* BODY */
+.mc-body{padding:10px 13px 6px}
+.mc-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mc-left{flex:1;min-width:0}
+.mc-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-venue-body{font-size:10px;color:var(--g400);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.mt{font-size:8px;font-weight:600;padding:2px 7px;border-radius:4px}
+.mt-sky{background:var(--sky-pale);color:var(--sky-l);border:1px solid var(--sky-border)}
+.mt-navy{background:var(--navy-pale);color:var(--navy)}
+.mt-green{background:var(--green-pale);color:var(--green)}
+.mt-amber{background:var(--amber-pale);color:#92400E}
+.mt-red{background:var(--red-pale);color:var(--red)}
+.mt-dark{background:#000;color:#fff}
+.mt-gold{background:var(--gold-pale);color:#92400E;border:1px solid var(--gold-border)}
+.mt-grey{background:var(--g100);color:var(--g500)}
+.mt-blue{background:#DBEAFE;color:#1D4ED8}
+.mt-live{background:var(--red-pale);color:var(--red)}
+.mt-dawn{background:var(--dawn-pale);color:#92400E;border:1px solid rgba(245,158,11,.2)}
+
+/* Occ */
+.occ-row{display:flex;align-items:center;gap:8px;margin:3px 0 6px}
+.occ-bg{flex:1;height:4px;background:var(--g100);border-radius:2px;overflow:hidden}
+.occ-fill{height:100%;border-radius:2px}
+.of-sky{background:var(--sky)}
+.of-green{background:var(--green)}
+.of-amber{background:var(--amber)}
+.of-red{background:var(--red)}
+.of-dawn{background:var(--dawn)}
+
+.mc-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.mc-btn{padding:9px 15px;border-radius:11px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;white-space:nowrap}
+.mc-btn:hover{opacity:.85}
+.mcb-sky{background:var(--sky);color:#fff}
+.mcb-n{background:var(--navy);color:#fff}
+.mcb-r{background:var(--red);color:#fff}
+.mcb-green{background:var(--green);color:#fff}
+.mcb-dawn{background:var(--dawn);color:#000}
+
+/* FOOTER */
+.mc-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 13px 10px;border-top:1px solid var(--g100);margin-top:6px}
+.mf-left{display:flex;align-items:center;flex:1;min-width:0}
+.mf-avs{display:flex}
+.mf-av{width:20px;height:20px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:8px}
+.mf-av:not(:first-child){margin-left:-7px}
+.mf-text{font-size:10px;color:var(--g500);margin-left:6px}
+.mf-right{display:flex;gap:5px;flex-shrink:0}
+.mf-btn{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .15s}
+.mf-btn:hover{border-color:var(--sky)}
+.mf-btn.saved{background:var(--sky-pale);border-color:var(--sky-border)}
+.mf-react{display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:7px;background:var(--g100);border:1px solid var(--g200);font-size:11px;cursor:pointer;transition:all .15s}
+.mf-react:hover{background:var(--g200)}
+.mf-react.on{background:var(--sky-pale);border-color:var(--sky-border)}
+.mf-react-count{font-size:10px;color:var(--g400);font-weight:600}
+.mf-react.on .mf-react-count{color:var(--sky-l)}
+
+/* ══════════════════════════════════
+   COMPACT ROW
+══════════════════════════════════ */
+.compact-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;background:#fff;border-radius:13px;
+  margin:0 16px 6px;border:1px solid var(--g200);
+  cursor:pointer;transition:all .15s;position:relative;overflow:hidden;
+}
+.compact-row:hover{box-shadow:0 2px 8px rgba(0,0,0,.07);transform:translateY(-1px)}
+.cr-sky::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--sky)}
+.cr-dawn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--dawn)}
+.cr-green::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green)}
+.cr-thumb{width:44px;height:44px;border-radius:10px;flex-shrink:0;position:relative;overflow:hidden}
+.cr-ov{position:absolute;inset:0;background:rgba(0,0,0,.1)}
+.cr-info{flex:1;min-width:0}
+.cr-time{font-size:10px;font-weight:700;color:var(--sky);margin-bottom:2px;display:flex;align-items:center;gap:5px}
+.cr-time.ct-dawn{color:var(--amber)}
+.cr-time.ct-green{color:var(--green)}
+.cr-name{font-size:13px;font-weight:600;color:#000;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-meta{font-size:10px;color:var(--g400);display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.cr-dot{width:3px;height:3px;border-radius:50%;background:var(--g300)}
+.cr-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.cr-seats{font-size:9px;font-weight:600}
+.cr-btn{padding:7px 13px;border-radius:9px;font-size:10px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s}
+.cr-btn:hover{opacity:.85}
+.crb-sky{background:var(--sky);color:#fff}
+.crb-n{background:var(--navy);color:#fff}
+.crb-green{background:var(--green);color:#fff}
+.crb-r{background:var(--red);color:#fff}
+
+/* ══════════════════════════════════
+   HORIZONTAL SCROLL
+══════════════════════════════════ */
+.h-scroll{display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;margin-bottom:8px}
+.h-scroll::-webkit-scrollbar{display:none}
+.h-card{
+  flex-shrink:0;width:152px;background:#fff;border-radius:14px;
+  border:1px solid var(--g200);overflow:hidden;cursor:pointer;transition:all .2s;
+}
+.h-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);transform:translateY(-1px)}
+.h-card.hc-sky{border-color:var(--sky-border)}
+.h-card.hc-sky::before{content:'';display:block;height:2px;background:var(--sky)}
+.h-card.hc-dawn::before{content:'';display:block;height:2px;background:var(--dawn)}
+.h-card.hc-green::before{content:'';display:block;height:2px;background:var(--green)}
+.hc-img{width:100%;height:84px;position:relative;overflow:hidden}
+.hc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.04) 0%,rgba(0,0,0,.5) 100%)}
+.hc-top{position:absolute;top:6px;left:7px;z-index:2}
+.hc-bot{position:absolute;bottom:6px;left:7px;right:7px;z-index:2}
+.hc-name{font-family:'Instrument Serif',serif;font-size:12px;color:#fff;line-height:1.2}
+.hc-venue{font-size:8px;color:rgba(255,255,255,.55)}
+.hc-body{padding:7px 9px 9px}
+.hc-time{font-size:10px;font-weight:700;margin-bottom:4px}
+.hcf-row{display:flex;align-items:center;justify-content:space-between}
+.hcf-seats{font-size:9px;font-weight:600}
+.hcf-btn{padding:4px 10px;border-radius:7px;font-size:9px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.hcfb-sky{background:var(--sky);color:#fff}
+.hcfb-n{background:var(--navy);color:#fff}
+.hcfb-green{background:var(--green);color:#fff}
+.hcfb-dawn{background:var(--dawn);color:#000}
+
+/* ══════════════════════════════════
+   SABAHÇILIk STREAK KARTI
+══════════════════════════════════ */
+.streak-card{
+  margin:0 16px 14px;
+  background:linear-gradient(135deg,var(--sky-pale) 0%,#fff 55%);
+  border:1.5px solid var(--sky-border);
+  border-radius:14px;padding:13px 14px;
+  cursor:pointer;transition:all .2s;
+}
+.streak-card:hover{box-shadow:0 2px 12px rgba(2,132,199,.1);transform:translateY(-1px)}
+.sc-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sc-icon{
+  width:44px;height:44px;border-radius:13px;flex-shrink:0;
+  background:var(--sky);display:flex;align-items:center;justify-content:center;font-size:20px;
+  box-shadow:0 2px 8px rgba(2,132,199,.25);
+}
+.sc-info{flex:1}
+.sc-label{font-size:9px;font-weight:700;color:var(--sky);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.sc-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;margin-bottom:1px}
+.sc-sub{font-size:10px;color:var(--g500)}
+.sc-num{font-family:'Instrument Serif',serif;font-size:30px;color:var(--sky);line-height:1;text-align:right;flex-shrink:0}
+.sc-num-label{font-size:8px;color:var(--g400);font-weight:600;text-align:right}
+/* Day dots */
+.sc-days{display:flex;gap:4px;margin-top:4px}
+.sd-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1}
+.sd-dot{width:100%;height:6px;border-radius:3px;background:var(--g200)}
+.sd-dot.on{background:var(--sky)}
+.sd-dot.today{background:var(--navy);position:relative}
+.sd-dot.today::after{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--navy)}
+.sd-day{font-size:7px;font-weight:700;color:var(--g400);text-transform:uppercase}
+.sd-wrap.today-col .sd-day{color:var(--navy)}
+
+/* ══════════════════════════════════
+   HAVA DURUMU KARTI
+══════════════════════════════════ */
+.weather-card{
+  margin:0 16px 14px;
+  background:#fff;border:1px solid var(--g200);border-radius:14px;overflow:hidden;
+}
+.wc-top{
+  background:linear-gradient(135deg,var(--sky) 0%,#38BDF8 100%);
+  padding:11px 14px;display:flex;align-items:center;justify-content:space-between;
+}
+.wct-left{display:flex;align-items:center;gap:8px}
+.wct-icon{font-size:26px}
+.wct-info{}
+.wct-temp{font-family:'Instrument Serif',serif;font-size:22px;color:#fff;line-height:1}
+.wct-desc{font-size:10px;color:rgba(255,255,255,.7)}
+.wct-right{text-align:right}
+.wct-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:3px}
+.wct-good{font-size:11px;font-weight:700;color:#fff}
+.wc-body{padding:9px 14px}
+.wcb-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g400);margin-bottom:6px}
+.wcb-rituals{display:flex;flex-direction:column;gap:4px}
+.wcb-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 8px;background:var(--sky-pale);border-radius:8px;
+  cursor:pointer;transition:all .15s;
+}
+.wcb-row:hover{background:rgba(2,132,199,.1)}
+.wcb-name{font-size:11px;font-weight:600;color:#000}
+.wcb-meta{font-size:9px;color:var(--g400);margin-top:1px}
+.wcb-time{font-size:10px;font-weight:700;color:var(--sky)}
+
+/* ══════════════════════════════════
+   TOAST
+══════════════════════════════════ */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.82);color:#fff;padding:9px 18px;border-radius:100px;font-size:12px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:76px;border-top:1.5px solid var(--g200);background:rgba(255,255,255,.98);backdrop-filter:blur(10px);display:flex;align-items:flex-start;padding-top:10px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-iw{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-iw.on{background:#000}
+.nav-ic{font-size:16px}
+.nav-ic.inv{filter:invert(1)}
+.nav-l{font-size:8px;font-weight:700;color:#000}
+.nav-lo{font-size:8px;font-weight:500;color:var(--g400)}
+
+/* IMG */
+.i-run{background:radial-gradient(circle at 50% 25%,rgba(255,200,100,.5) 0%,transparent 45%),linear-gradient(180deg,#87CEEB 0%,#98D1A8 30%,#6B8E4E 60%,#3A5028 100%)}
+.i-coffee{background:radial-gradient(circle at 40% 50%,rgba(180,130,80,.5) 0%,transparent 40%),linear-gradient(145deg,#2C1810 0%,#5C3D2E 30%,#8B6B4A 55%,#3A2418 100%)}
+.i-yoga{background:linear-gradient(135deg,#2d6a2d 0%,#4CAF50 50%,#8BC34A 80%,#1B5E20 100%)}
+.i-sunrise{background:radial-gradient(circle at 50% 65%,rgba(253,230,138,.6) 0%,rgba(252,165,165,.3) 35%,transparent 60%),linear-gradient(180deg,#0C4A6E 0%,#075985 20%,#0284C7 45%,#38BDF8 65%,#FDE68A 82%,#FCA5A5 100%)}
+.i-park{background:radial-gradient(circle at 50% 30%,rgba(150,220,100,.4) 0%,transparent 50%),linear-gradient(180deg,#87CEEB 0%,#A8D060 40%,#5A8A28 70%,#1A3008 100%)}
+.i-swim{background:linear-gradient(145deg,#0C4A6E 0%,#075985 30%,#0284C7 60%,#38BDF8 100%)}
+.i-med{background:radial-gradient(circle at 50% 35%,rgba(253,230,138,.4) 0%,transparent 50%),linear-gradient(145deg,#1e1e2e 0%,#2d2d4e 40%,#3d3d6e 70%,#1e1e2e 100%)}
+.i-bike{background:radial-gradient(circle at 45% 30%,rgba(255,200,100,.45) 0%,transparent 40%),linear-gradient(180deg,#38BDF8 0%,#7DD3FC 25%,#86EFAC 55%,#4ADE80 80%,#166534 100%)}
+.i-photo{background:linear-gradient(135deg,#0c1a2e 0%,#1e3a5f 40%,#2e5d9e 70%,#0c1a2e 100%)}
+.i-dawn{background:radial-gradient(circle at 50% 70%,rgba(253,230,138,.7) 0%,rgba(252,165,165,.4) 40%,transparent 65%),linear-gradient(180deg,#7C3AED 0%,#DB2777 30%,#EA580C 55%,#F59E0B 75%,#FDE68A 100%)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="status-bar">
+  <span class="sb-time">19:47</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<div class="top-bar">
+  <div class="tb-logo">L<span></span></div>
+  <div class="tb-right">
+    <div class="icon-btn" onclick="t('Bildirimler')">🔔<div class="notif-dot"></div></div>
+    <div class="profile-av" onclick="t('Profil')">T</div>
+  </div>
+</div>
+
+<!-- FILTER ROW -->
+<div class="filter-row">
+  <div class="fc live" onclick="t('Canlı')"><div class="fc-live-dot"></div>Canlı<span class="fc-badge">4</span></div>
+  <div class="fc" onclick="t('Bu Gece')">🌙 Bu Gece<span class="fc-badge">11</span></div>
+  <div class="fc on-sky" onclick="t('Sabah aktif')">🌅 Sabah<span class="fc-badge">11</span></div>
+  <div class="fc" onclick="t('Bu Hafta')">📅 Bu Hafta<span class="fc-badge">34</span></div>
+  <div class="fc" onclick="t('Tekrarlanan')">🔄 Tekrarlanan<span class="fc-badge">22</span></div>
+  <div class="fc" onclick="t('Yakınımda')">📍 Yakınımda<span class="fc-badge">9</span></div>
+</div>
+
+<div class="scroll-content">
+
+  <!-- ── SABAH BANNER ── -->
+  <div class="morning-banner">
+    <div class="mb-sky"></div>
+    <div class="mb-sun"></div>
+    <div class="mb-rays"></div>
+    <div class="mb-body">
+      <div class="mb-time-badge">🌅 06:00 — 12:00</div>
+      <div class="mb-row">
+        <div>
+          <div class="mb-title">Güne nasıl<br>başlamak istersin?</div>
+          <div class="mb-sub">Sabah ritüelleri · Yarın & Bu Hafta</div>
+        </div>
+        <div class="mb-clock">
+          <div class="mb-clock-time">07:30</div>
+          <div class="mb-clock-label">YARININ PIKI</div>
+        </div>
+      </div>
+      <div class="mb-stats">
+        <div class="mb-stat">☀️ 11 sabah ritüeli</div>
+        <div class="mb-stat">🔄 7'si haftalık</div>
+        <div class="mb-stat">📍 5 yürüme mesafesinde</div>
+        <div class="mb-stat">👥 3 arkadaş gidiyor</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HAVA DURUMU + AÇIK HAVA ÖNERİSİ ── -->
+  <div class="weather-card">
+    <div class="wc-top">
+      <div class="wct-left">
+        <div class="wct-icon">⛅</div>
+        <div class="wct-info">
+          <div class="wct-temp">17°C</div>
+          <div class="wct-desc">Yarın sabah · Parçalı bulutlu</div>
+        </div>
+      </div>
+      <div class="wct-right">
+        <div class="wct-label">SABAH SPORU</div>
+        <div class="wct-good">✓ Uygun hava</div>
+      </div>
+    </div>
+    <div class="wc-body">
+      <div class="wcb-label">Hava durumuna göre öneriler</div>
+      <div class="wcb-rituals">
+        <div class="wcb-row" onclick="t('Morning Run → Ritual Detail')">
+          <div>
+            <div class="wcb-name">Morning Run Club</div>
+            <div class="wcb-meta">Parco Sempione · 12 kişi</div>
+          </div>
+          <div class="wcb-time">07:00</div>
+        </div>
+        <div class="wcb-row" onclick="t('Sunrise Yoga → Ritual Detail')">
+          <div>
+            <div class="wcb-name">Sunrise Yoga</div>
+            <div class="wcb-meta">Sempione Kapı · 8 kişi</div>
+          </div>
+          <div class="wcb-time">07:30</div>
+        </div>
+        <div class="wcb-row" onclick="t('Bisiklet Turu → Ritual Detail')">
+          <div>
+            <div class="wcb-name">Sabah Bisiklet Turu</div>
+            <div class="wcb-meta">Navigli rotası · 6 kişi</div>
+          </div>
+          <div class="wcb-time">08:00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SABAHÇILıK STREAKi ── -->
+  <div class="streak-card" onclick="t('Sabahçılık serüveniniz')">
+    <div class="sc-header">
+      <div class="sc-icon">🌅</div>
+      <div class="sc-info">
+        <div class="sc-label">Sabahçılık Serisi</div>
+        <div class="sc-title">Bu hafta 4 sabah ritüelin var</div>
+        <div class="sc-sub">Geçen haftaya göre +1 · Devam et 🔥</div>
+      </div>
+      <div>
+        <div class="sc-num">4</div>
+        <div class="sc-num-label">bu hafta</div>
+      </div>
+    </div>
+    <div class="sc-days">
+      <div class="sd-wrap">
+        <div class="sd-dot on"></div>
+        <div class="sd-day">Pzt</div>
+      </div>
+      <div class="sd-wrap">
+        <div class="sd-dot on"></div>
+        <div class="sd-day">Sal</div>
+      </div>
+      <div class="sd-wrap">
+        <div class="sd-dot on"></div>
+        <div class="sd-day">Çar</div>
+      </div>
+      <div class="sd-wrap">
+        <div class="sd-dot on"></div>
+        <div class="sd-day">Per</div>
+      </div>
+      <div class="sd-wrap today-col">
+        <div class="sd-dot today"></div>
+        <div class="sd-day">Cum</div>
+      </div>
+      <div class="sd-wrap">
+        <div class="sd-dot"></div>
+        <div class="sd-day">Cmt</div>
+      </div>
+      <div class="sd-wrap">
+        <div class="sd-dot"></div>
+        <div class="sd-day">Paz</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ZAMAN DİLİMİ FİLTRESİ ── -->
+  <div class="time-filter">
+    <div class="tf-btn on" id="tf-all" onclick="setTime(this,'all')">
+      <span class="tf-icon">🌅</span>
+      <span class="tf-label">Tümü</span>
+      <span class="tf-range">06–12</span>
+    </div>
+    <div class="tf-btn" id="tf-early" onclick="setTime(this,'early')">
+      <span class="tf-icon">🌄</span>
+      <span class="tf-label">Erken</span>
+      <span class="tf-range">06–08</span>
+    </div>
+    <div class="tf-btn" id="tf-mid" onclick="setTime(this,'mid')">
+      <span class="tf-icon">☀️</span>
+      <span class="tf-label">Sabah</span>
+      <span class="tf-range">08–10</span>
+    </div>
+    <div class="tf-btn" id="tf-late" onclick="setTime(this,'late')">
+      <span class="tf-icon">🍳</span>
+      <span class="tf-label">Geç Sabah</span>
+      <span class="tf-range">10–12</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════════
+       ŞU AN CANLI — SABAH
+  ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--red)">● Şu An Canlı · Sabah</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">1</span>
+  </div>
+
+  <div class="morning-card mc-live" onclick="t('Morning Run → Live Ritual')">
+    <div class="mc-hero">
+      <div class="mc-hero-img i-run"></div>
+      <div class="mc-ov"></div>
+      <div class="mc-top">
+        <div style="display:flex;gap:5px">
+          <div class="time-badge tb-live"><div class="tb-live-dot"></div>CANLI · 07:00</div>
+        </div>
+        <div class="mc-chip">12 kişi</div>
+      </div>
+      <div class="mc-bot">
+        <div class="mc-name">Morning Run Club</div>
+        <div class="mc-venue">📍 Parco Sempione · Sofia M. host · 52dk sürüyor</div>
+      </div>
+    </div>
+    <div class="mc-body">
+      <div class="mc-row" style="align-items:center">
+        <div class="mc-left">
+          <div class="mc-tags">
+            <span class="mt mt-live">● Canlı</span>
+            <span class="mt mt-dark">★ Pivot Host</span>
+            <span class="mt mt-green">Bilet gerekmez</span>
+            <span class="mt mt-blue">👥 2 Arkadaş</span>
+          </div>
+        </div>
+        <button class="mc-btn mcb-r" onclick="event.stopPropagation();t('Koşu → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="mc-footer">
+      <span class="mf-text" style="color:var(--g300)">Bilet gerekmez · Herkese açık</span>
+      <div class="mf-right">
+        <div class="mf-react" onclick="event.stopPropagation();toggleReact(this)">⚡<span class="mf-react-count">9</span></div>
+        <div class="mf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════
+       YARIN SABAH
+  ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--sky)">☀️ Yarın Sabah</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">5</span>
+  </div>
+
+  <!-- HERO: Sunrise Yoga -->
+  <div class="morning-card mc-sky" onclick="t('Sunrise Yoga → Ritual Detail')">
+    <div class="mc-hero">
+      <div class="mc-hero-img i-dawn"></div>
+      <div class="mc-ov"></div>
+      <div class="mc-top">
+        <div class="time-badge tb-dawn">☀️ 07:30 · Yarın</div>
+        <div class="mc-chip">6 / 12 kişi</div>
+      </div>
+      <div class="mc-bot">
+        <div class="mc-name">Sunrise Yoga · Sempione</div>
+        <div class="mc-venue">📍 Sempione Bahçesi · Lena K. Verified Host</div>
+      </div>
+    </div>
+    <div class="mc-body">
+      <div class="occ-row">
+        <div class="occ-bg"><div class="occ-fill of-sky" style="width:50%"></div></div>
+        <span class="occ-lbl" style="color:var(--sky)">6 yer kaldı</span>
+      </div>
+      <div class="mc-row" style="align-items:center">
+        <div class="mc-left">
+          <div class="mc-tags">
+            <span class="mt mt-sky">☀️ 07:30</span>
+            <span class="mt mt-navy">✓ Verified Host</span>
+            <span class="mt mt-green">Bilet gerekmez</span>
+            <span class="mt mt-blue">👥 1 Arkadaş</span>
+          </div>
+        </div>
+        <button class="mc-btn mcb-sky" onclick="event.stopPropagation();t('Yoga → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="mc-footer">
+      <div class="mf-left">
+        <div class="mf-avs">
+          <div class="mf-av" style="background:linear-gradient(145deg,#0F766E,#14B8A6);color:#fff">S</div>
+        </div>
+        <span class="mf-text">Sofia da gidiyor</span>
+      </div>
+      <div class="mf-right">
+        <div class="mf-react" onclick="event.stopPropagation();toggleReact(this)">🧘<span class="mf-react-count">14</span></div>
+        <div class="mf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compact: yarın sabah devam -->
+  <div class="compact-row cr-sky" onclick="t('Morning Run → Yarın')">
+    <div class="cr-thumb i-run"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time">🏃 07:00 · Yarın Cmt</div>
+      <div class="cr-name">Morning Run Club</div>
+      <div class="cr-meta">Parco Sempione <div class="cr-dot"></div> Sofia M. <div class="cr-dot"></div> 🔄 Her Cmt</div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-seats" style="color:var(--green)">Açık</span>
+      <button class="cr-btn crb-sky" onclick="event.stopPropagation();t('Koşu → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-dawn" onclick="t('Sabah Kahvesi → Yarın')">
+    <div class="cr-thumb i-coffee"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time ct-dawn">☕ 09:00 · Yarın Cmt</div>
+      <div class="cr-name">Morning Coffee Circle</div>
+      <div class="cr-meta">Caffe Letterario · Brera <div class="cr-dot"></div> 🔄 Haftalık</div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-seats" style="color:var(--green)">5 yer var</span>
+      <button class="cr-btn crb-n" onclick="event.stopPropagation();t('Kahve → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <!-- Yatay: daha fazla yarın -->
+  <div class="h-scroll">
+
+    <div class="h-card hc-sky" onclick="t('Sabah Yüzme → Ritual Detail')">
+      <div class="hc-img i-swim"><div class="hc-ov"></div><div class="hc-top"><div class="time-badge tb-sky" style="font-size:7px;padding:2px 7px">🏊 06:30</div></div><div class="hc-bot"><div class="hc-name">Sabah Yüzmesi</div><div class="hc-venue">Piscina Lido · Yarın</div></div></div>
+      <div class="hc-body"><div class="hc-time" style="color:var(--sky)">06:30 · Cmt</div><div class="hcf-row"><span class="hcf-seats" style="color:var(--green)">6 yer var</span><button class="hcf-btn hcfb-sky" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div></div>
+    </div>
+
+    <div class="h-card hc-green" onclick="t('Meditasyon → Ritual Detail')">
+      <div class="hc-img i-med"><div class="hc-ov"></div><div class="hc-top"><div class="time-badge tb-sky" style="font-size:7px;padding:2px 7px">🧘 07:00</div></div><div class="hc-bot"><div class="hc-name">Sabah Meditasyonu</div><div class="hc-venue">Caffe Letterario</div></div></div>
+      <div class="hc-body"><div class="hc-time" style="color:var(--green)">07:00 · Cmt</div><div class="hcf-row"><span class="hcf-seats" style="color:var(--amber)">3 yer kaldı</span><button class="hcf-btn hcfb-n" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div></div>
+    </div>
+
+    <div class="h-card hc-dawn" onclick="t('Bisiklet Turu → Ritual Detail')">
+      <div class="hc-img i-bike"><div class="hc-ov"></div><div class="hc-top"><div class="time-badge tb-dawn" style="font-size:7px;padding:2px 7px">🚴 08:00</div></div><div class="hc-bot"><div class="hc-name">Sabah Bisiklet Turu</div><div class="hc-venue">Navigli rotası</div></div></div>
+      <div class="hc-body"><div class="hc-time" style="color:var(--amber)">08:00 · Cmt</div><div class="hcf-row"><span class="hcf-seats" style="color:var(--green)">8 yer var</span><button class="hcf-btn hcfb-dawn" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div></div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════
+       BU HAFTA SABAH
+  ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text">Bu Hafta Sabah Ritüelleri</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">5</span>
+  </div>
+
+  <!-- HERO: Pazar Brunch — geç sabah -->
+  <div class="morning-card mc-dawn" onclick="t('Sunday Brunch → Ritual Detail')">
+    <div class="mc-hero">
+      <div class="mc-hero-img i-coffee"></div>
+      <div class="mc-ov"></div>
+      <div class="mc-top">
+        <div class="time-badge tb-dawn">🍳 11:00 · Pazar</div>
+        <div class="mc-chip">3 / 8 kişi</div>
+      </div>
+      <div class="mc-bot">
+        <div class="mc-name">Sunday Brunch Circle</div>
+        <div class="mc-venue">📍 Caffe Letterario · Brera · Her Pazar</div>
+      </div>
+    </div>
+    <div class="mc-body">
+      <div class="occ-row">
+        <div class="occ-bg"><div class="occ-fill of-green" style="width:37%"></div></div>
+        <span class="occ-lbl" style="color:var(--green)">5 yer var</span>
+      </div>
+      <div class="mc-row" style="align-items:center">
+        <div class="mc-left">
+          <div class="mc-tags">
+            <span class="mt mt-dawn">🍳 Geç Sabah</span>
+            <span class="mt mt-dark">★ Pivot Host</span>
+            <span class="mt mt-green">Bilet gerekmez</span>
+            <span class="mt mt-blue">👥 2 Arkadaş</span>
+          </div>
+        </div>
+        <button class="mc-btn mcb-dawn" onclick="event.stopPropagation();t('Brunch → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="mc-footer">
+      <div class="mf-left">
+        <div class="mf-avs">
+          <div class="mf-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">E</div>
+          <div class="mf-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">M</div>
+        </div>
+        <span class="mf-text">Elena ve Marco gidiyor</span>
+      </div>
+      <div class="mf-right">
+        <div class="mf-react" onclick="event.stopPropagation();toggleReact(this)">☕<span class="mf-react-count">17</span></div>
+        <div class="mf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compact: hafta içi sabahlar -->
+  <div class="compact-row cr-sky" onclick="t('Sabah Yüzmesi → Pazartesi')">
+    <div class="cr-thumb i-swim"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time">🏊 06:30 · Pazartesi</div>
+      <div class="cr-name">Sabah Yüzmesi</div>
+      <div class="cr-meta">Piscina Lido <div class="cr-dot"></div> Min RS 50 ✓ <div class="cr-dot"></div> 🔄 Haftalık</div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-seats" style="color:var(--green)">4 yer</span>
+      <button class="cr-btn crb-sky" onclick="event.stopPropagation();t('Yüzme → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-green" onclick="t('Doğa Yürüyüşü → Pazar')">
+    <div class="cr-thumb i-park"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time ct-green">🌿 09:30 · Pazar</div>
+      <div class="cr-name">Şehir İçi Doğa Yürüyüşü</div>
+      <div class="cr-meta">Parco Nord <div class="cr-dot"></div> Bilet gerekmez <div class="cr-dot"></div> 🆕 Yeni</div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-seats" style="color:var(--green)">10 yer</span>
+      <button class="cr-btn crb-green" onclick="event.stopPropagation();t('Yürüyüş → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-dawn" onclick="t('Fotoğraf Yürüyüşü → Pazar')">
+    <div class="cr-thumb i-photo"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-time ct-dawn">📷 10:00 · Pazar</div>
+      <div class="cr-name">Sabah Fotoğraf Yürüyüşü</div>
+      <div class="cr-meta">Navigli başlangıç <div class="cr-dot"></div> RS 0+ <div class="cr-dot"></div> 2 yer kaldı</div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-seats" style="color:var(--red)">Son 2 yer!</span>
+      <button class="cr-btn crb-n" onclick="event.stopPropagation();t('Fotoğraf → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div style="height:8px"></div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-iw on"><span class="nav-ic inv">〰</span></div><span class="nav-l">Pulse</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">📅</span></div><span class="nav-lo">City Rhythm</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">◉</span></div><span class="nav-lo">Passport</span></div>
+</div>
+
+<script>
+/* Time zone filter */
+function setTime(el, key) {
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  const labels = {
+    all:'Tüm sabah ritüelleri · 06:00–12:00',
+    early:'Erken sabah · 06:00–08:00',
+    mid:'Sabah · 08:00–10:00',
+    late:'Geç sabah · 10:00–12:00'
+  };
+  t(labels[key]);
+}
+
+/* React */
+function toggleReact(el) {
+  const on = el.classList.contains('on');
+  const c = el.querySelector('.mf-react-count');
+  const n = parseInt(c.textContent);
+  el.classList.toggle('on', !on);
+  c.textContent = on ? n - 1 : n + 1;
+}
+
+/* Save */
+function toggleSave(btn) {
+  const saved = btn.dataset.saved;
+  if (saved) { btn.textContent='🔖'; btn.classList.remove('saved'); delete btn.dataset.saved; }
+  else { btn.textContent='❤️'; btn.classList.add('saved'); btn.dataset.saved='1'; t('Kaydedildi'); }
+}
+
+/* Toast */
+function t(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 2300);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory · RS Delta</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1B2E4A;
+  --navy-light: #2A4470;
+  --navy-deep: #0E1B2E;
+  --gold: #C8A96A;
+  --gold-light: #E8D49A;
+  --bg: #F8F6F2;
+  --card: #FFFFFF;
+  --text: #1B2E4A;
+  --muted: #737373;
+  --border: rgba(27, 46, 74, 0.08);
+  --green: #27500A;
+  --green-pale: #EAF3DE;
+  --green-bright: #16A34A;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #E5E3DD;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  min-height: 100vh;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.frame {
+  width: 390px;
+  background: var(--bg);
+  border-radius: 38px;
+  padding: 24px 0;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.12);
+}
+.frame-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px;
+  color: var(--text);
+  padding: 0 24px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.frame-title .pip {
+  font-size: 10px;
+  background: var(--gold);
+  color: var(--text);
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-family: 'DM Sans';
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* Memory card */
+.memory-card {
+  margin: 0 16px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* Author row */
+.author-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 12px;
+}
+.avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6B8AAD, #4A6688);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  position: relative;
+}
+.avatar-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid var(--green);
+  opacity: 0.7;
+}
+.author-info { flex: 1; }
+.author-name { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.fl-badge {
+  background: var(--green-pale);
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.author-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.timer {
+  background: rgba(27, 46, 74, 0.05);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.timer::before { content: "⏱"; font-size: 9px; }
+
+/* Navy gradient hero */
+.delta-hero {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(200, 169, 106, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(74, 102, 136, 0.4) 0%, transparent 55%),
+    linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  padding: 28px 22px 24px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.delta-hero::before {
+  content: "";
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 1px solid rgba(200, 169, 106, 0.15);
+}
+.delta-hero::after {
+  content: "";
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 1px solid rgba(200, 169, 106, 0.25);
+}
+
+.delta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(200, 169, 106, 0.18);
+  color: var(--gold-light);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 100px;
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 1;
+}
+.delta-tag::before { content: "◈"; font-size: 11px; }
+
+.delta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 1;
+}
+.delta-arrow {
+  font-size: 22px;
+  color: var(--green-bright);
+}
+.delta-value {
+  font-family: 'Instrument Serif', serif;
+  font-size: 64px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+.delta-value .sign { color: var(--green-bright); }
+.delta-unit {
+  font-size: 14px;
+  color: rgba(255,255,255,0.55);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.delta-from {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  position: relative;
+  z-index: 1;
+  margin-bottom: 22px;
+}
+.delta-from .from-rs {
+  font-family: 'Instrument Serif', serif;
+  font-size: 16px;
+  color: rgba(255,255,255,0.85);
+}
+.delta-from .arrow { color: var(--gold); }
+.delta-from .to-rs {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px;
+  color: var(--gold-light);
+  font-weight: 600;
+}
+
+/* RS bar */
+.rs-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 100px;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: visible;
+}
+.rs-fill {
+  height: 100%;
+  width: 73%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  border-radius: 100px;
+  position: relative;
+}
+.rs-fill::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translate(50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--gold-light);
+  box-shadow: 0 0 0 3px rgba(232, 212, 154, 0.25);
+}
+.rs-marks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 18px;
+}
+
+/* Ritual context */
+.context-bar {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+.cb-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-family: 'Instrument Serif', serif;
+}
+.cb-text { flex: 1; }
+.cb-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+.cb-meta {
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
+}
+
+/* Breakdown CTA */
+.breakdown-cta {
+  margin: 14px 16px 4px;
+  padding: 14px;
+  background: rgba(27, 46, 74, 0.04);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.bc-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--text);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.bc-text { flex: 1; }
+.bc-title { font-size: 12px; font-weight: 600; color: var(--text); }
+.bc-sub { font-size: 10px; color: var(--muted); }
+.bc-arrow { color: var(--muted); font-size: 14px; }
+
+/* Reactions */
+.reactions {
+  padding: 10px 16px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.reaction {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.reaction-icon { font-size: 14px; }
+.reaction-spacer { flex: 1; }
+.share-btn { font-size: 12px; color: var(--text); font-weight: 600; }
+
+/* Annotation */
+.annot {
+  position: fixed;
+  top: 24px; left: 24px;
+  background: var(--text);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  z-index: 100;
+}
+.annot strong { color: var(--gold); margin-right: 6px; }
+
+/* Spec note */
+.spec-note {
+  width: 280px;
+  padding: 24px;
+  background: var(--card);
+  border-radius: 16px;
+  margin-top: 24px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.spec-note h3 { font-family: 'Instrument Serif', serif; font-size: 18px; color: var(--text); margin-bottom: 12px; }
+.spec-note ul { padding-left: 16px; margin: 8px 0; }
+.spec-note code { background: rgba(27, 46, 74, 0.05); padding: 2px 5px; border-radius: 4px; font-size: 10px; color: var(--text); }
+</style>
+</head>
+<body>
+<div class="annot"><strong>PL-Memory</strong>Tip: RS Delta</div>
+
+<div class="frame">
+  <div class="frame-title">Pulse Akışı <span class="pip">RS DELTA</span></div>
+
+  <article class="memory-card">
+    <!-- Author -->
+    <div class="author-row">
+      <div class="avatar">
+        AD
+        <span class="avatar-ring"></span>
+      </div>
+      <div class="author-info">
+        <div class="author-name">
+          Arda Demir
+          <span class="fl-badge">L1</span>
+        </div>
+        <div class="author-meta">Sosyal Pasaport · az önce</div>
+      </div>
+      <div class="timer">23h 51m</div>
+    </div>
+
+    <!-- Navy gradient delta hero -->
+    <div class="delta-hero">
+      <span class="delta-tag">RS DEĞİŞİMİ</span>
+
+      <div class="delta-row">
+        <span class="delta-arrow">↗</span>
+        <span class="delta-value"><span class="sign">+</span>0.09</span>
+      </div>
+
+      <div class="delta-from">
+        <span class="from-rs">7.04</span>
+        <span class="arrow">→</span>
+        <span class="to-rs">7.13</span>
+        <span style="margin-left: 6px;">· Reliable</span>
+      </div>
+
+      <div class="rs-bar">
+        <div class="rs-fill"></div>
+      </div>
+      <div class="rs-marks">
+        <span>1.0</span>
+        <span>5.0</span>
+        <span>7.13</span>
+        <span>10.0</span>
+      </div>
+
+      <div class="context-bar">
+        <div class="cb-icon">B</div>
+        <div class="cb-text">
+          <div class="cb-title">Bocconi Felsefe Çevresi</div>
+          <div class="cb-meta">Bar Magenta · 4 değerlendirici · BC5 ↑</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Breakdown CTA -->
+    <div class="breakdown-cta">
+      <div class="bc-icon">≡</div>
+      <div class="bc-text">
+        <div class="bc-title">RS detaylarını gör</div>
+        <div class="bc-sub">IQ · CF · A · M · IF — bileşen kırılımı</div>
+      </div>
+      <div class="bc-arrow">›</div>
+    </div>
+
+    <!-- Reactions -->
+    <div class="reactions">
+      <div class="reaction">
+        <span class="reaction-icon">🎉</span>
+        <span>8</span>
+      </div>
+      <div class="reaction">
+        <span class="reaction-icon">↗</span>
+        <span>3</span>
+      </div>
+      <div class="reaction-spacer"></div>
+      <div class="share-btn">Paylaş</div>
+    </div>
+  </article>
+</div>
+
+<div class="spec-note">
+  <h3>Spec Notu</h3>
+  <p><strong>Tip:</strong> RS Delta (◈)</p>
+  <p><strong>Ömür:</strong> 24 saat</p>
+  <p style="margin-top: 12px;"><strong>Bileşenler:</strong></p>
+  <ul>
+    <li>Lacivert degrade hero</li>
+    <li>Büyük delta sayısı (Instrument Serif)</li>
+    <li>Eski → yeni RS gösterimi</li>
+    <li>RS bar (1.0 → 10.0)</li>
+    <li>Ritual bağlamı + değerlendirici sayısı</li>
+    <li>"RS detaylarını gör" CTA → RSTransparencyScreen</li>
+  </ul>
+  <p style="margin-top: 12px;"><strong>Implementation tag:</strong></p>
+  <p><code>[DELTA]</code> → HostMemoryShareCard.js render path eklenmeli</p>
+  <p style="margin-top: 8px;"><strong>Renk paleti:</strong> +Δ yeşil <code>#16A34A</code>, −Δ kırmızı <code>#DC2626</code></p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOCAL — Ana Ekran Tasarımları (v2 Editorial)</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1B2E4A;
+  --navy-deep: #0E1B2E;
+  --gold: #C8A96A;
+  --gold-light: #E8D49A;
+  --gold-deep: #8B6F36;
+  --bg: #F5F2EB;
+  --bg-paper: #EFEAE0;
+  --card: #FFFFFF;
+  --ink: #1B2E4A;
+  --muted: #8A8275;
+  --line: rgba(27, 46, 74, 0.08);
+  --rose: #B45249;
+  --green: #4A6B3A;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse at top right, rgba(200,169,106,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at bottom left, rgba(74,107,134,0.08) 0%, transparent 60%);
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3'/><feColorMatrix values='0 0 0 0 0.1, 0 0 0 0 0.1, 0 0 0 0 0.1, 0 0 0 0.012 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: multiply;
+}
+
+.wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 72px 32px 96px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Top metadata strip */
+.meta-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.meta-strip .gold { color: var(--gold); }
+.meta-strip .left { display: flex; gap: 12px; align-items: center; }
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(27,46,74,0.18), transparent);
+  margin-bottom: 28px;
+}
+
+/* Masthead */
+.brand-mark {
+  font-family: 'Instrument Serif', serif;
+  font-size: 16px;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  text-transform: uppercase;
+  font-weight: 400;
+  margin-bottom: 12px;
+}
+h1 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 72px;
+  line-height: 1;
+  font-weight: 400;
+  margin-bottom: 16px;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+h1 .it {
+  font-style: italic;
+  color: var(--gold-deep);
+}
+.kicker {
+  font-family: 'Caveat', cursive;
+  font-size: 22px;
+  color: var(--gold-deep);
+  margin-bottom: 20px;
+  letter-spacing: 0.01em;
+}
+.lede {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-style: italic;
+  color: var(--muted);
+  max-width: 660px;
+  line-height: 1.55;
+  margin-bottom: 14px;
+  letter-spacing: 0.005em;
+}
+.tags-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 56px;
+  flex-wrap: wrap;
+}
+.tag-pill {
+  font-size: 10.5px;
+  background: rgba(27, 46, 74, 0.05);
+  color: var(--ink);
+  padding: 5px 11px;
+  border-radius: 100px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.tag-pill.gold {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: var(--ink);
+  font-weight: 600;
+}
+.tag-pill.gold::before { content: "★"; }
+.tag-pill .num {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  color: var(--gold-deep);
+  font-size: 13px;
+  margin-right: 2px;
+}
+
+/* Sections */
+.section {
+  margin-top: 80px;
+}
+.section-rule {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.sr-roman {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 22px;
+  color: var(--gold);
+  font-weight: 400;
+}
+.sr-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 28px;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.sr-title .it {
+  font-style: italic;
+  color: var(--gold-deep);
+}
+.sr-line {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.sr-meta {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Card grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 28px;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+  display: block;
+  position: relative;
+  cursor: pointer;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(27, 46, 74, 0.12);
+}
+.card .preview {
+  height: 200px;
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+}
+.preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.6) 100%);
+}
+.preview-1 {
+  background-image:
+    linear-gradient(135deg, rgba(0,0,0,0.4) 0%, transparent 60%),
+    url('https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&q=80');
+}
+.preview-2 {
+  background-image:
+    linear-gradient(180deg, rgba(11,21,32,0.55) 0%, rgba(11,21,32,0.85) 100%),
+    radial-gradient(circle at 30% 50%, rgba(180,82,73,0.5) 0%, transparent 25%),
+    radial-gradient(circle at 65% 35%, rgba(200,169,106,0.5) 0%, transparent 25%),
+    radial-gradient(circle at 70% 65%, rgba(91,58,82,0.4) 0%, transparent 25%),
+    linear-gradient(135deg, #0B1520 0%, #091828 100%);
+}
+.preview-2::before {
+  content: "Milano";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 32px;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.1em;
+  z-index: 1;
+}
+.preview-3 {
+  background-image:
+    radial-gradient(ellipse at 35% 20%, rgba(200,169,106,0.55) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 80%, rgba(74,107,134,0.45) 0%, transparent 55%),
+    linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+}
+.preview-3::before {
+  content: "AD";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70px; height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #B5A485, #8E7A56);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'Instrument Serif', serif;
+  font-size: 24px;
+  border: 2px solid var(--gold);
+  box-shadow:
+    0 0 0 3px rgba(200,169,106,0.18),
+    0 0 0 6px rgba(200,169,106,0.08),
+    0 8px 20px rgba(0,0,0,0.3);
+}
+
+.preview-overlay {
+  position: absolute;
+  bottom: 14px; left: 14px; right: 14px;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 8px;
+}
+.preview-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(10px);
+  padding: 4px 9px;
+  border-radius: 100px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.preview-id .num {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  color: var(--gold-deep);
+  font-size: 11px;
+}
+.preview-cta {
+  font-family: 'Caveat', cursive;
+  font-size: 16px;
+  color: var(--gold-light);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  letter-spacing: 0.02em;
+}
+
+.card-body {
+  padding: 22px 24px 24px;
+}
+.card-kicker {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--gold-deep);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+.card-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 30px;
+  line-height: 1.05;
+  color: var(--ink);
+  margin-bottom: 12px;
+  letter-spacing: -0.015em;
+}
+.card-title .it {
+  font-style: italic;
+  color: var(--gold-deep);
+}
+.card-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 18px;
+}
+.card-desc strong { color: var(--ink); font-weight: 500; }
+
+.card-list {
+  margin-bottom: 18px;
+}
+.card-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px dashed var(--line);
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.4;
+}
+.card-list-item:first-child { border-top: 0; }
+.cli-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 22px;
+  font-weight: 500;
+}
+.cli-text { flex: 1; }
+.cli-text strong { font-weight: 600; }
+.cli-text em { font-style: italic; color: var(--muted); }
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.spec-id {
+  font-size: 9px;
+  background: rgba(27, 46, 74, 0.05);
+  color: var(--ink);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.spec-id.gold { background: rgba(200,169,106,0.18); color: var(--gold-deep); }
+.card-arrow {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 22px;
+  color: var(--gold);
+  transition: transform 0.3s;
+}
+.card:hover .card-arrow {
+  transform: translateX(4px);
+  color: var(--gold-deep);
+}
+
+/* Footer note */
+.footer-note {
+  margin-top: 88px;
+  padding: 32px;
+  background: var(--bg-paper);
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+.footer-block h3 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.footer-block h3 .it { font-style: italic; color: var(--gold-deep); }
+.footer-block p {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.footer-block p strong { color: var(--ink); font-weight: 500; }
+.footer-block code {
+  background: rgba(27,46,74,0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'DM Sans';
+  color: var(--ink);
+  font-weight: 500;
+}
+.footer-block ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 6px;
+}
+.footer-block li {
+  font-size: 12.5px;
+  color: var(--muted);
+  padding: 5px 0;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.footer-block li:first-child { border-top: 0; }
+.footer-block li .roman {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  color: var(--gold);
+  width: 20px;
+  flex-shrink: 0;
+}
+.footer-block li strong { color: var(--ink); font-weight: 500; }
+
+/* Bottom credit */
+.credit {
+  margin-top: 56px;
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.credit::before {
+  content: "❦";
+  display: block;
+  font-size: 22px;
+  color: var(--gold);
+  margin-bottom: 8px;
+  font-style: normal;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="meta-strip">
+    <div class="left">
+      <span>Sabato · 1 Maggio 2026</span>
+      <span class="gold">·</span>
+      <span>Milano</span>
+      <span class="gold">·</span>
+      <span>Edizione di tutti i giorni</span>
+    </div>
+    <span class="gold">№ 087 · v3.0</span>
+  </div>
+  <div class="divider"></div>
+
+  <div class="brand-mark">L · LOCAL · Editorial Editions</div>
+  <h1>Ana Ekran<br><span class="it">Tasarımları</span></h1>
+  <p class="kicker">~ a magazine for the city's social pulse</p>
+  <p class="lede">Üç ana sekme için yeniden düşünülmüş, editöryel bir dille tasarlanmış görsel referanslar. <strong style="color: var(--ink); font-weight: 500;">Pulse, City Rhythm, Social Passport</strong> — her biri ayrı bir yayın gibi tasarlandı: kapak hikayesi, kartografik almanak, premium kimlik belgesi.</p>
+
+  <div class="tags-row">
+    <span class="tag-pill gold">3 sekme</span>
+    <span class="tag-pill"><span class="num">№</span> v2 Editorial</span>
+    <span class="tag-pill">Standalone HTML</span>
+    <span class="tag-pill">Instrument Serif × DM Sans × Cormorant × Caveat</span>
+  </div>
+
+  <!-- ─────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-rule">
+      <span class="sr-roman">I.</span>
+      <h2 class="sr-title">Üç Sekme · <span class="it">three editions</span></h2>
+      <span class="sr-line"></span>
+      <span class="sr-meta">click to open</span>
+    </div>
+
+    <div class="grid">
+
+      <!-- PULSE -->
+      <a class="card" href="pulse.html">
+        <div class="preview preview-1">
+          <div class="preview-overlay">
+            <div class="preview-id"><span class="num">№</span> Tab 1</div>
+            <div class="preview-cta">~ tonight's cover</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-kicker">~ editorial magazine</div>
+          <h3 class="card-title">Pulse · <span class="it">the daily</span></h3>
+          <p class="card-desc">Bir derginin nabız sayfası. <strong>Kapak hikayesi</strong>, <strong>Live Now carousel'i</strong>, friend activity, photo memory (FL halkalı + dashed tagged box), Cormorant pull-out alıntı, RS Milestone (5-bileşen kırılımı), Spotify embed (4 track preview), gold leaf badge unlock.</p>
+          <div class="card-list">
+            <div class="card-list-item">
+              <span class="cli-num">I.</span>
+              <span class="cli-text"><strong>Cover Story</strong> — full-bleed photo, Caveat kicker, gold cta</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">II.</span>
+              <span class="cli-text"><strong>Live Now</strong> · 3-card horizontal · timer + capacity bar</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">III.</span>
+              <span class="cli-text"><strong>Friend Activity</strong> + <em>Memory · Photo</em> (tagged dashed box)</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">V.</span>
+              <span class="cli-text"><strong>Quote pull-out</strong> · italic Cormorant · Italian translation</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">VI.</span>
+              <span class="cli-text"><strong>RS Milestone</strong> · 5-component breakdown (A/IQ/CF/M/IF)</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">VIII.</span>
+              <span class="cli-text"><strong>Badge unlocked</strong> · gold leaf · rarity 88%</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div class="card-tags">
+              <span class="spec-id">PL-01</span>
+              <span class="spec-id">PL-03</span>
+              <span class="spec-id">PL-06</span>
+              <span class="spec-id">PL-07</span>
+              <span class="spec-id">PL-08</span>
+              <span class="spec-id">PL-09</span>
+              <span class="spec-id gold">PL-13</span>
+              <span class="spec-id gold">PL-14</span>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- CITY RHYTHM -->
+      <a class="card" href="city_rhythm.html">
+        <div class="preview preview-2">
+          <div class="preview-overlay">
+            <div class="preview-id"><span class="num">№</span> Tab 3</div>
+            <div class="preview-cta">~ city's almanac</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-kicker">~ cartographic almanac</div>
+          <h3 class="card-title">City <span class="it">Rhythm</span></h3>
+          <p class="card-desc">Yan yana iki frame: <strong>liste + harita</strong>. <strong>24h ritim grafiği</strong> üstte (rose canlı bar = şu an), zaman gruplamalı ritual kartları, "Tonight's pulse" navy kart. Mapbox dark style harita: 3D bina katmanı, heat zones, gold arc connections, italic mahalle isimleri (brera, navigli, sempione, isola, porta romana).</p>
+          <div class="card-list">
+            <div class="card-list-item">
+              <span class="cli-num">I.</span>
+              <span class="cli-text"><strong>24h Rhythm graph</strong> · saatlik aktivite barları · "şimdi" oku</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">II.</span>
+              <span class="cli-text"><strong>Time-grouped feed</strong> · Bugün — Sabato · Yarın — Domenica</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">III.</span>
+              <span class="cli-text"><strong>RS-Locked</strong> · grayscale + 🔒 + Min RS warning</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">IV.</span>
+              <span class="cli-text"><strong>Mapbox dark</strong> · #0B1520 zemin · 3D bina silüetleri</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">V.</span>
+              <span class="cli-text"><strong>Heat zones</strong> + <strong>arc connections</strong> · 5 pin tipi</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">VI.</span>
+              <span class="cli-text"><strong>Bottom sheet</strong> · neighborhood analytics · avg RS · doluluk</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div class="card-tags">
+              <span class="spec-id">CR-01</span>
+              <span class="spec-id">CR-03</span>
+              <span class="spec-id">CR-05</span>
+              <span class="spec-id">CR-06</span>
+              <span class="spec-id gold">v3 spec preview</span>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- SOCIAL PASSPORT -->
+      <a class="card" href="social_passport.html">
+        <div class="preview preview-3">
+          <div class="preview-overlay">
+            <div class="preview-id"><span class="num">№</span> Tab 4</div>
+            <div class="preview-cta">~ identity document</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-kicker">~ premium identity</div>
+          <h3 class="card-title">Social <span class="it">Passport</span></h3>
+          <p class="card-desc">Pasaport metaforu. Çift çerçeveli kapak (gold border), conic-gradient RS halkası tick-mark'larla, gold rosette (7.13 RS), serial № LCL·MIL·087·213. Hexagonal DS radar (6 eksenli), <strong>9 stamp ritual ledger</strong> (delta etiketli), 4 katmanlı sosyal grafik (L1/L2/Core), 8 rozet showcase (rarity tag).</p>
+          <div class="card-list">
+            <div class="card-list-item">
+              <span class="cli-num">I.</span>
+              <span class="cli-text"><strong>Passport cover</strong> · double-frame + serial № + RS rosette</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">II.</span>
+              <span class="cli-text"><strong>Hexagonal DS radar</strong> · 6 axis (people/venues/types/times/mood/areas)</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">III.</span>
+              <span class="cli-text"><strong>Trust Ledger</strong> · 9 stamp + delta etiketleri + BC5 özet</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">IV.</span>
+              <span class="cli-text"><strong>Badges 8'li grid</strong> · gold leaf · rarity tag (RARE)</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">V.</span>
+              <span class="cli-text"><strong>Friendship rings</strong> · L1 (yeşil) · L2 (amber) · Core (ink)</span>
+            </div>
+            <div class="card-list-item">
+              <span class="cli-num">VI.</span>
+              <span class="cli-text"><strong>3×6 memory archive</strong> · gerçek Unsplash fotolar · timestamp</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div class="card-tags">
+              <span class="spec-id">SP-01</span>
+              <span class="spec-id">SP-03</span>
+              <span class="spec-id">SP-04</span>
+              <span class="spec-id">SP-06</span>
+              <span class="spec-id">SP-07</span>
+              <span class="spec-id gold">RS rosette</span>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────── -->
+  <div class="footer-note">
+    <div class="footer-block">
+      <h3>Tasarım <span class="it">dili</span></h3>
+      <p><strong>Tipografi:</strong> dört font sistemi.</p>
+      <ul>
+        <li><span class="roman">a.</span><strong>Instrument Serif</strong> — display (32–72px başlıklar)</li>
+        <li><span class="roman">b.</span><strong>DM Sans</strong> — UI gövde (11–15px)</li>
+        <li><span class="roman">c.</span><strong>Cormorant Garamond italic</strong> — pull-out alıntı, mahalle etiketleri, kicker</li>
+        <li><span class="roman">d.</span><strong>Caveat</strong> — el yazısı vurgusu ("tonight at Bar Magenta")</li>
+      </ul>
+      <p style="margin-top: 14px;"><strong>Renk paleti:</strong> Navy <code>#1B2E4A</code> · Gold <code>#C8A96A</code> · Gold light <code>#E8D49A</code> · Cağıl yeşil L1 <code>#4A6B3A</code> · Amber L2 <code>#B8721F</code> · Rose <code>#B45249</code> · Plum <code>#5B3A52</code> · Paper <code>#F5F2EB</code>.</p>
+    </div>
+    <div class="footer-block">
+      <h3>Editöryel <span class="it">notlar</span></h3>
+      <p>Üç sekme bilinçli olarak <strong>üç farklı yayın türünü</strong> taklit ediyor:</p>
+      <ul>
+        <li><span class="roman">I.</span><strong>Pulse</strong> — günlük dergi sayısı (cover story, sections, roman numerals)</li>
+        <li><span class="roman">II.</span><strong>City Rhythm</strong> — kartografik almanak (24h ritim grafiği, harita, neighborhood labels)</li>
+        <li><span class="roman">III.</span><strong>Passport</strong> — premium kimlik belgesi (serial №, rosette, ledger, hexagonal radar)</li>
+      </ul>
+      <p style="margin-top: 14px;">Tasarımlar <strong>entegre edilmedi</strong> — Mobile/RN tarafında <code>mobile/src/screens/</code>'de mevcut ekranlar var, bu HTML'ler design refresh için referans olarak kullanılacak. Gerçek Unsplash fotoları kullanıldı; offline'da çalışmazsa CSS gradient fallback'leri devreye girer.</p>
+    </div>
+  </div>
+
+  <p class="credit">LOCAL · Editorial № 087 · v2 · Milano · 2026</p>
+
+</div>
+</body>
+</html>

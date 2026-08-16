@@ -1,0 +1,19 @@
+{
+  "ignore_dirs": [
+    "node_modules",
+    ".expo",
+    ".git",
+    "dist",
+    "build",
+    ".expo-shared",
+    "ios",
+    "android",
+    ".idea",
+    ".vscode",
+    "__tests__",
+    "coverage",
+    ".nyc_output"
+  ],
+  "settle": 20,
+  "idle_reap_age": 600
+}

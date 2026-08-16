@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Pulse · Takip Edilenler</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;--gold-pale:rgba(200,169,106,.12);
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --purple:#7C3AED;--purple-pale:#EDE9FE;
+  --teal:#0F766E;--teal-pale:#CCFBF1;
+  --g50:#FAFAFA;--g100:#F5F5F5;--g150:#F0F0F0;
+  --g200:#E5E5E5;--g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:var(--g150);max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;height:44px;background:var(--g150)}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 10px;background:var(--g150)}
+.tb-logo{font-family:'Instrument Serif',serif;font-size:26px;color:#000;letter-spacing:-.5px}
+.tb-logo span{display:inline-block;width:5px;height:5px;background:#000;border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:4px}
+.tb-right{display:flex;gap:8px;align-items:center}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:all .15s}
+.icon-btn:hover{border-color:var(--navy)}
+.notif-dot{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.profile-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4a3728,#C4956A);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:14px;color:#fff;cursor:pointer;border:2px solid var(--gold)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:6px;padding:0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px}
+.filter-row::-webkit-scrollbar{display:none}
+.fc{display:flex;align-items:center;gap:4px;padding:6px 13px;border-radius:100px;font-size:10px;font-weight:600;border:1.5px solid var(--g200);color:var(--g500);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.fc:hover{border-color:var(--g300);color:var(--g600)}
+.fc.live{background:var(--red-pale);border-color:rgba(220,38,38,.25);color:var(--red)}
+.fc-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.fc.on-gold{background:var(--navy);color:var(--gold);border-color:var(--navy)}
+.fc-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px}
+.fc.on-gold .fc-badge{background:rgba(200,169,106,.25);color:var(--gold)}
+.fc:not([class*="on-"]):not(.live) .fc-badge{background:var(--g200);color:var(--g500)}
+
+.scroll-content{padding-bottom:90px}
+
+/* ── HEADER ── */
+.follows-header{
+  margin:0 16px 14px;
+  background:var(--navy);
+  border-radius:20px;overflow:hidden;position:relative;
+}
+.fh-texture{
+  position:absolute;inset:0;
+  background-image:radial-gradient(circle at 15% 50%,rgba(200,169,106,.06) 0%,transparent 40%),
+    radial-gradient(circle at 85% 20%,rgba(200,169,106,.05) 0%,transparent 40%);
+}
+.fh-line{position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.fh-body{padding:16px 16px 18px;position:relative;z-index:2}
+.fh-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(200,169,106,.6);margin-bottom:7px}
+.fh-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:10px}
+.fh-title{font-family:'Instrument Serif',serif;font-size:22px;color:#fff;line-height:1.2}
+.fh-sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:3px}
+.fh-badge-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.fh-pivot-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(200,169,106,.15);border:1px solid rgba(200,169,106,.3);
+  padding:5px 11px;border-radius:100px;
+  font-size:10px;font-weight:700;color:var(--gold);
+}
+.fh-verified-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+  padding:4px 10px;border-radius:100px;
+  font-size:10px;font-weight:600;color:rgba(255,255,255,.6);
+}
+.fh-stats{display:flex;gap:6px;flex-wrap:wrap}
+.fh-stat{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:600;color:rgba(255,255,255,.6);
+}
+
+/* ── HOST SCROLL ── */
+.host-scroll{display:flex;gap:8px;padding:0 16px 14px;overflow-x:auto;scrollbar-width:none}
+.host-scroll::-webkit-scrollbar{display:none}
+.host-bubble{
+  flex-shrink:0;width:88px;text-align:center;
+  cursor:pointer;transition:all .15s;
+}
+.host-bubble:hover .hb-ring{border-color:var(--gold);box-shadow:0 0 12px rgba(200,169,106,.25)}
+.hb-ring{
+  width:58px;height:58px;border-radius:50%;
+  margin:0 auto 6px;
+  border:2.5px solid var(--g200);
+  padding:2px;
+  position:relative;transition:all .2s;
+}
+.hb-ring.hb-pivot{border-color:var(--gold);box-shadow:0 0 8px rgba(200,169,106,.2)}
+.hb-ring.hb-verified{border-color:var(--navy-l)}
+.hb-ring.hb-new{border-color:var(--red)}
+.hb-av{
+  width:100%;height:100%;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:20px;
+}
+.hb-status{
+  position:absolute;bottom:1px;right:1px;
+  width:15px;height:15px;border-radius:50%;
+  border:2.5px solid var(--g150);
+  display:flex;align-items:center;justify-content:center;font-size:7px;
+}
+.hbs-live{background:var(--red)}
+.hbs-soon{background:var(--amber)}
+.hbs-idle{background:var(--g300)}
+.hb-name{font-size:10px;font-weight:600;color:#000;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb-role{font-size:8px;font-weight:700;padding:2px 8px;border-radius:100px;display:inline-block}
+.hbr-pivot{background:rgba(200,169,106,.15);color:#92400E}
+.hbr-verified{background:var(--navy-pale);color:var(--navy)}
+.hbr-new{background:var(--red-pale);color:var(--red)}
+.hb-new-dot{position:absolute;top:0;right:0;width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--g150)}
+
+/* ── TYPE FILTER ── */
+.type-filter{display:flex;gap:0;margin:0 16px 14px;background:#fff;border:1px solid var(--g200);border-radius:12px;overflow:hidden}
+.tf-btn{flex:1;padding:9px 4px;text-align:center;font-size:10px;font-weight:600;color:var(--g500);cursor:pointer;transition:all .15s;border-right:1px solid var(--g200)}
+.tf-btn:last-child{border-right:none}
+.tf-btn:hover{background:var(--g50)}
+.tf-btn.on{background:var(--navy);color:#fff}
+.tf-btn .tf-count{font-size:8px;font-weight:700;opacity:.6;display:block;margin-top:1px}
+.tf-btn.on .tf-count{opacity:.55}
+
+/* ── SECTION LABEL ── */
+.sec-label{display:flex;align-items:center;gap:8px;padding:8px 18px 6px}
+.sl-line{flex:1;height:1px;background:var(--g200)}
+.sl-text{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+.sl-count{font-size:9px;color:var(--g300);background:var(--g100);padding:2px 7px;border-radius:100px;font-weight:600}
+
+/* ── POST CARD (ana içerik kartı) ── */
+.post-card{
+  margin:0 16px 10px;background:#fff;
+  border:1px solid var(--g200);border-radius:16px;
+  overflow:hidden;cursor:pointer;transition:all .2s;position:relative;
+}
+.post-card:hover{box-shadow:0 3px 16px rgba(0,0,0,.08);transform:translateY(-1px)}
+.post-card.pc-live{border-color:rgba(220,38,38,.2)}
+.post-card.pc-live::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red)}
+.post-card.pc-pivot{border-color:rgba(200,169,106,.3)}
+.post-card.pc-pivot::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold)}
+.post-card.pc-memory{border-color:var(--navy-pale)}
+.post-card.pc-memory::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--navy)}
+
+/* POST HEADER — host kimliği */
+.post-header{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 13px 0;
+}
+.ph-av{
+  width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:15px;
+  position:relative;
+}
+.ph-av-ring{
+  position:absolute;inset:-3px;border-radius:50%;
+  border:2px solid var(--gold);pointer-events:none;
+}
+.ph-av-ring.pvr-verified{border-color:var(--navy)}
+.ph-av-ring.pvr-live{border-color:var(--red);animation:ring-pulse .8s ease-in-out infinite}
+@keyframes ring-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.ph-info{flex:1;min-width:0}
+.ph-name-row{display:flex;align-items:center;gap:5px;margin-bottom:1px}
+.ph-name{font-size:13px;font-weight:600;color:#000}
+.ph-badge{font-size:8px;font-weight:700;padding:2px 7px;border-radius:100px}
+.phb-pivot{background:rgba(200,169,106,.15);color:#92400E;border:1px solid rgba(200,169,106,.25)}
+.phb-verified{background:var(--navy-pale);color:var(--navy);border:1px solid rgba(27,46,74,.12)}
+.phb-new{background:var(--red-pale);color:var(--red)}
+.ph-sub{font-size:10px;color:var(--g400);display:flex;align-items:center;gap:4px}
+.ph-sub-dot{width:3px;height:3px;border-radius:50%;background:var(--g300)}
+.ph-action{flex-shrink:0}
+.ph-follow-btn{
+  padding:5px 12px;border-radius:100px;
+  font-size:10px;font-weight:700;border:1.5px solid var(--navy);
+  color:var(--navy);background:#fff;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all .15s;
+}
+.ph-follow-btn:hover{background:var(--navy);color:#fff}
+.ph-follow-btn.following{background:var(--navy);color:#fff}
+.ph-follow-btn.following:hover{background:transparent;color:var(--navy)}
+.ph-unfollow-btn{
+  padding:5px 12px;border-radius:100px;
+  font-size:10px;font-weight:600;
+  border:1.5px solid var(--g200);color:var(--g400);
+  background:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;
+}
+
+/* POST IMAGE */
+.post-img{width:100%;height:160px;position:relative;overflow:hidden;margin-top:10px}
+.post-img-bg{width:100%;height:100%}
+.post-img-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.06) 0%,rgba(0,0,0,.5) 65%,rgba(0,0,0,.88) 100%)}
+.post-img-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between;align-items:flex-start}
+.post-img-bot{position:absolute;bottom:0;left:0;right:0;padding:9px 13px;z-index:2}
+.pi-title{font-family:'Instrument Serif',serif;font-size:17px;color:#fff;line-height:1.25;margin-bottom:2px}
+.pi-venue{font-size:10px;color:rgba(255,255,255,.55)}
+
+/* badges on image */
+.b-live{display:inline-flex;align-items:center;gap:4px;background:var(--red);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#fff}
+.b-live-dot{width:5px;height:5px;border-radius:50%;background:#fff;animation:blink 1.3s ease-in-out infinite}
+.b-gold{background:rgba(200,169,106,.9);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#000;display:inline-block}
+.b-dark{background:rgba(0,0,0,.5);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);font-size:9px;font-weight:600;padding:3px 9px;border-radius:100px}
+
+/* POST BODY */
+.post-body{padding:10px 13px 6px}
+.post-caption{font-size:12px;color:var(--g600);line-height:1.6;margin-bottom:8px}
+.post-caption b{color:#000;font-weight:600}
+.post-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.pt{font-size:8px;font-weight:600;padding:2px 7px;border-radius:4px}
+.pt-navy{background:var(--navy-pale);color:var(--navy)}
+.pt-green{background:var(--green-pale);color:var(--green)}
+.pt-amber{background:var(--amber-pale);color:#92400E}
+.pt-red{background:var(--red-pale);color:var(--red)}
+.pt-dark{background:#000;color:#fff}
+.pt-gold{background:var(--gold-pale);color:#92400E;border:1px solid rgba(200,169,106,.25)}
+.pt-grey{background:var(--g100);color:var(--g500)}
+.pt-blue{background:#DBEAFE;color:#1D4ED8}
+.pt-live{background:var(--red-pale);color:var(--red)}
+
+/* OCCUPANCY */
+.occ-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.occ-bg{flex:1;height:4px;background:var(--g100);border-radius:2px;overflow:hidden}
+.occ-fill{height:100%;border-radius:2px}
+.of-green{background:var(--green)}
+.of-amber{background:var(--amber)}
+.of-red{background:var(--red)}
+.occ-lbl{font-size:9px;font-weight:600;white-space:nowrap}
+
+.post-cta{display:flex;align-items:center;justify-content:space-between}
+.pc-btn{padding:9px 16px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;white-space:nowrap}
+.pc-btn:hover{opacity:.85}
+.pcb-r{background:var(--red);color:#fff}
+.pcb-n{background:var(--navy);color:#fff}
+.pcb-g{background:var(--gold);color:#000}
+.pcb-o{background:#fff;color:var(--g400);border:1.5px solid var(--g200);cursor:not-allowed;opacity:.5}
+
+/* POST FOOTER */
+.post-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 13px 10px;border-top:1px solid var(--g100);margin-top:6px;
+}
+.pf-left{display:flex;gap:6px;align-items:center}
+.pf-react{
+  display:flex;align-items:center;gap:3px;
+  padding:4px 9px;border-radius:8px;
+  background:var(--g100);border:1px solid var(--g200);
+  font-size:11px;cursor:pointer;transition:all .15s;
+}
+.pf-react:hover{background:var(--g200)}
+.pf-react.on{background:var(--navy-pale);border-color:var(--navy-pale)}
+.pf-react-count{font-size:10px;color:var(--g400);font-weight:600}
+.pf-react.on .pf-react-count{color:var(--navy)}
+.pf-right{display:flex;gap:5px;align-items:center}
+.pf-btn{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .15s}
+.pf-btn:hover{border-color:var(--navy)}
+.pf-btn.saved{background:var(--navy-pale);border-color:var(--navy)}
+.pf-time{font-size:9px;color:var(--g300);margin-left:2px}
+
+/* ── MEMORY POST (metin ağırlıklı) ── */
+.memory-post{
+  margin:0 16px 10px;background:#fff;
+  border:1px solid var(--navy-pale);border-radius:16px;
+  overflow:hidden;cursor:pointer;transition:all .2s;
+}
+.memory-post:hover{box-shadow:0 3px 14px rgba(0,0,0,.07);transform:translateY(-1px)}
+.mp-header{padding:11px 13px 0}
+.mp-body{padding:10px 13px}
+.mp-quote{
+  font-family:'Instrument Serif',serif;font-style:italic;
+  font-size:15px;color:var(--navy);line-height:1.65;
+  border-left:2.5px solid var(--navy-pale);
+  padding-left:12px;margin-bottom:8px;
+}
+.mp-playlist{
+  display:flex;align-items:center;gap:10px;
+  background:var(--navy-mist);border:1px solid var(--navy-pale);
+  border-radius:10px;padding:9px 11px;margin-bottom:8px;
+}
+.mp-playlist-icon{font-size:22px;flex-shrink:0}
+.mp-playlist-info{flex:1;min-width:0}
+.mp-playlist-name{font-size:12px;font-weight:600;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-playlist-tracks{font-size:10px;color:var(--g400)}
+.mp-play-btn{
+  width:30px;height:30px;border-radius:50%;background:var(--navy);
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:12px;flex-shrink:0;cursor:pointer;
+}
+.mp-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;border-radius:10px;overflow:hidden}
+.mp-photo{height:80px;position:relative;overflow:hidden}
+.mp-photo-ov{position:absolute;inset:0;background:rgba(0,0,0,.08)}
+.mp-caption{font-size:12px;color:var(--g600);line-height:1.55;margin-bottom:6px}
+.mp-ritual-link{font-size:10px;color:var(--navy);font-weight:600;display:flex;align-items:center;gap:4px}
+
+/* ── NEW HOST CARD ── */
+.new-host-card{
+  margin:0 16px 10px;
+  background:linear-gradient(135deg,var(--navy-mist) 0%,#fff 100%);
+  border:1.5px solid var(--navy-pale);
+  border-radius:14px;padding:13px 14px;
+  cursor:pointer;transition:all .2s;
+}
+.new-host-card:hover{box-shadow:0 2px 12px rgba(27,46,74,.1);transform:translateY(-1px)}
+.nhc-row{display:flex;align-items:center;gap:12px}
+.nhc-av{
+  width:50px;height:50px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:20px;
+  border:2.5px solid var(--navy-pale);
+}
+.nhc-info{flex:1;min-width:0}
+.nhc-top{font-size:9px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:flex;align-items:center;gap:4px}
+.nhc-name{font-family:'Instrument Serif',serif;font-size:16px;color:#000;margin-bottom:2px}
+.nhc-sub{font-size:10px;color:var(--g400)}
+.nhc-btn{padding:8px 14px;border-radius:10px;background:var(--navy);color:#fff;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0}
+
+/* ── HORIZONTAL MINI SCROLL ── */
+.h-scroll{display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;margin-bottom:6px}
+.h-scroll::-webkit-scrollbar{display:none}
+.mini-card{
+  flex-shrink:0;width:150px;background:#fff;border-radius:12px;
+  border:1px solid var(--g200);overflow:hidden;cursor:pointer;transition:all .2s;
+}
+.mini-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);transform:translateY(-1px)}
+.mini-card.mc-gold{border-color:rgba(200,169,106,.3)}
+.mini-card.mc-gold::before{content:'';display:block;height:2px;background:var(--gold)}
+.mc-img{width:100%;height:82px;position:relative;overflow:hidden}
+.mc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 0%,rgba(0,0,0,.5) 100%)}
+.mc-top{position:absolute;top:6px;left:7px;z-index:2}
+.mc-bot{position:absolute;bottom:6px;left:7px;right:7px;z-index:2}
+.mc-name{font-family:'Instrument Serif',serif;font-size:11px;color:#fff;line-height:1.2}
+.mc-venue{font-size:8px;color:rgba(255,255,255,.55)}
+.mc-body{padding:7px 9px 9px}
+.mc-host{font-size:9px;color:var(--g400);margin-bottom:5px;display:flex;align-items:center;gap:3px}
+.mc-host b{color:var(--g600);font-weight:600}
+.mcf-row{display:flex;align-items:center;justify-content:space-between}
+.mcf-seats{font-size:9px;font-weight:600}
+.mcf-btn{padding:4px 10px;border-radius:6px;font-size:9px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.mcfb-n{background:var(--navy);color:#fff}
+.mcfb-g{background:var(--gold);color:#000}
+.mcfb-r{background:var(--red);color:#fff}
+
+/* ── PIVOT HOST ALERT (özel duyuru) ── */
+.pivot-alert{
+  margin:0 16px 10px;
+  border-radius:14px;overflow:hidden;
+  border:1.5px solid rgba(200,169,106,.35);
+  background:#fff;
+}
+.pa-header{
+  background:linear-gradient(135deg,var(--navy) 0%,var(--navy-l) 100%);
+  padding:10px 13px;display:flex;align-items:center;gap:9px;
+}
+.pa-av{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:13px;border:2px solid rgba(200,169,106,.4)}
+.pa-info{flex:1}
+.pa-who{font-size:11px;font-weight:600;color:#fff;margin-bottom:1px}
+.pa-label{font-size:9px;color:rgba(200,169,106,.7);font-weight:700;letter-spacing:.3px}
+.pa-gold{font-size:12px;flex-shrink:0}
+.pa-body{padding:10px 13px}
+.pa-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;margin-bottom:4px}
+.pa-text{font-size:11px;color:var(--g500);line-height:1.6;margin-bottom:8px}
+.pa-actions{display:flex;gap:6px}
+.pa-btn-main{flex:1;padding:9px;border-radius:10px;background:var(--navy);color:#fff;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.pa-btn-sec{padding:9px 14px;border-radius:10px;background:var(--g100);color:var(--g500);font-size:11px;font-weight:600;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* ── EMPTY STATE ── */
+.empty-card{
+  margin:10px 16px 14px;background:#fff;border:1px solid var(--g200);
+  border-radius:14px;padding:22px 20px;text-align:center;
+}
+.ec-icon{font-size:32px;margin-bottom:10px}
+.ec-title{font-family:'Instrument Serif',serif;font-size:16px;color:#000;margin-bottom:5px}
+.ec-sub{font-size:11px;color:var(--g400);line-height:1.6;margin-bottom:14px}
+.ec-btn{padding:9px 24px;border-radius:100px;background:var(--navy);color:#fff;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.82);color:#fff;padding:9px 18px;border-radius:100px;font-size:12px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:76px;border-top:1.5px solid var(--g200);background:rgba(255,255,255,.98);backdrop-filter:blur(10px);display:flex;align-items:flex-start;padding-top:10px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-iw{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-iw.on{background:#000}
+.nav-ic{font-size:16px}
+.nav-ic.inv{filter:invert(1)}
+.nav-l{font-size:8px;font-weight:700;color:#000}
+.nav-lo{font-size:8px;font-weight:500;color:var(--g400)}
+
+/* IMG */
+.i-jazz{background:radial-gradient(circle at 45% 35%,rgba(255,180,80,.45) 0%,transparent 45%),linear-gradient(145deg,#1A1A2E 0%,#2A2040 30%,#3A2850 55%,#1A1520 100%)}
+.i-coffee{background:radial-gradient(circle at 40% 50%,rgba(180,130,80,.5) 0%,transparent 40%),linear-gradient(145deg,#2C1810 0%,#5C3D2E 30%,#8B6B4A 55%,#3A2418 100%)}
+.i-run{background:radial-gradient(circle at 50% 25%,rgba(255,200,100,.5) 0%,transparent 45%),linear-gradient(180deg,#87CEEB 0%,#98D1A8 30%,#6B8E4E 60%,#3A5028 100%)}
+.i-phil{background:linear-gradient(135deg,#4a3728 0%,#8B6345 40%,#C4956A 70%,#5D3A2A 100%)}
+.i-chess{background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 40%,#444 70%,#111 100%)}
+.i-wine{background:linear-gradient(135deg,#4a0a20 0%,#9C1A3A 40%,#E91E63 70%,#2a0512 100%)}
+.i-yoga{background:linear-gradient(135deg,#2d6a2d 0%,#4CAF50 50%,#8BC34A 80%,#1B5E20 100%)}
+.i-art{background:linear-gradient(135deg,#2a1040 0%,#6B21A8 40%,#A855F7 70%,#1a0830 100%)}
+.i-navy{background:linear-gradient(135deg,#1B2E4A 0%,#2A4470 50%,#1B2E4A 100%)}
+.i-sunset{background:radial-gradient(circle at 50% 30%,rgba(255,150,50,.5) 0%,rgba(255,100,50,.3) 30%,transparent 60%),linear-gradient(180deg,#FF8C42 0%,#C4453A 40%,#2A1B3D 100%)}
+.i-teal{background:linear-gradient(145deg,#0F766E,#14B8A6)}
+.i-kanye{background:radial-gradient(circle at 55% 35%,rgba(255,220,50,.1) 0%,transparent 50%),linear-gradient(160deg,#050505 0%,#111 35%,#222 55%,#050505 100%)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="status-bar">
+  <span class="sb-time">19:47</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<div class="top-bar">
+  <div class="tb-logo">L<span></span></div>
+  <div class="tb-right">
+    <div class="icon-btn" onclick="t('Bildirimler')">🔔<div class="notif-dot"></div></div>
+    <div class="profile-av" onclick="t('Profil')">T</div>
+  </div>
+</div>
+
+<!-- FILTER ROW -->
+<div class="filter-row">
+  <div class="fc live" onclick="t('Canlı')"><div class="fc-live-dot"></div>Canlı<span class="fc-badge">4</span></div>
+  <div class="fc" onclick="t('Başlamak Üzere')">⏱ Başlamak Üzere<span class="fc-badge">7</span></div>
+  <div class="fc" onclick="t('Yer Var')">◎ Yer Var<span class="fc-badge">14</span></div>
+  <div class="fc" onclick="t('Yakınımda')">📍 Yakınımda<span class="fc-badge">9</span></div>
+  <div class="fc" onclick="t('Bu Gece')">🌙 Bu Gece<span class="fc-badge">11</span></div>
+  <div class="fc" onclick="t('Arkadaşlar')">👥 Arkadaşlar<span class="fc-badge">18</span></div>
+  <div class="fc on-gold" onclick="t('Takip Edilenler aktif')">★ Takip Edilenler<span class="fc-badge">12</span></div>
+</div>
+
+<div class="scroll-content">
+
+  <!-- ── HEADER ── -->
+  <div class="follows-header">
+    <div class="fh-texture"></div>
+    <div class="fh-line"></div>
+    <div class="fh-body">
+      <div class="fh-label">★ Takip Edilenler</div>
+      <div class="fh-row">
+        <div>
+          <div class="fh-title">Pivot Host'lar &<br>Verified Host'lar</div>
+          <div class="fh-sub">Takip ettiğin 14 host · 5'i şu an aktif</div>
+        </div>
+        <div class="fh-badge-wrap">
+          <div class="fh-pivot-badge">★ 4 Pivot Host</div>
+          <div class="fh-verified-badge">✓ 10 Verified</div>
+        </div>
+      </div>
+      <div class="fh-stats">
+        <div class="fh-stat">● 2 canlı ritüel</div>
+        <div class="fh-stat">📢 3 duyuru</div>
+        <div class="fh-stat">📸 5 yeni anı</div>
+        <div class="fh-stat">🆕 1 yeni host</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HOST SCROLL ── -->
+  <div style="padding:0 18px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--g400)">Takip Ettiklerin</div>
+  <div class="host-scroll">
+
+    <div class="host-bubble" onclick="t('Alessandro R. → Profil')">
+      <div class="hb-ring hb-pivot" style="position:relative">
+        <div class="hb-av i-jazz" style="border-radius:50%"></div>
+        <div class="hb-status hbs-live" style="font-size:6px;color:#fff">●</div>
+      </div>
+      <div class="hb-name">Alessandro</div>
+      <div class="hb-role hbr-pivot">★ Pivot</div>
+    </div>
+
+    <div class="host-bubble" onclick="t('Sofia M. → Profil')">
+      <div class="hb-ring hb-pivot">
+        <div class="hb-av" style="background:linear-gradient(145deg,#0F766E,#14B8A6);border-radius:50%;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center">S</div>
+        <div class="hb-status hbs-live" style="font-size:6px;color:#fff">●</div>
+      </div>
+      <div class="hb-name">Sofia M.</div>
+      <div class="hb-role hbr-pivot">★ Pivot</div>
+    </div>
+
+    <div class="host-bubble" onclick="t('Davide C. → Profil')">
+      <div class="hb-ring hb-verified">
+        <div class="hb-av" style="background:linear-gradient(145deg,#4a3728,#8B6B4A);border-radius:50%;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center">D</div>
+        <div class="hb-status hbs-soon"></div>
+      </div>
+      <div class="hb-name">Davide C.</div>
+      <div class="hb-role hbr-verified">✓ Verified</div>
+    </div>
+
+    <div class="host-bubble" onclick="t('Chiara B. → Profil')">
+      <div class="hb-ring hb-pivot" style="position:relative">
+        <div class="hb-av" style="background:linear-gradient(145deg,#9C1A3A,#E91E63);border-radius:50%;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center">C</div>
+        <div class="hb-status hbs-idle"></div>
+        <div class="hb-new-dot"></div>
+      </div>
+      <div class="hb-name">Chiara B.</div>
+      <div class="hb-role hbr-pivot">★ Pivot</div>
+    </div>
+
+    <div class="host-bubble" onclick="t('Ravi P. → Profil')">
+      <div class="hb-ring hb-new" style="position:relative">
+        <div class="hb-av" style="background:linear-gradient(145deg,#2a1040,#6B21A8);border-radius:50%;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center">R</div>
+        <div class="hb-status hbs-idle"></div>
+      </div>
+      <div class="hb-name">Ravi P.</div>
+      <div class="hb-role hbr-new">🆕 Yeni</div>
+    </div>
+
+    <div class="host-bubble" onclick="t('Lena K. → Profil')">
+      <div class="hb-ring hb-verified">
+        <div class="hb-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);border-radius:50%;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center">L</div>
+        <div class="hb-status hbs-idle"></div>
+      </div>
+      <div class="hb-name">Lena K.</div>
+      <div class="hb-role hbr-verified">✓ Verified</div>
+    </div>
+
+    <div class="host-bubble" onclick="t('Tümünü gör')">
+      <div class="hb-ring" style="background:var(--g100);border-color:var(--g200)">
+        <div class="hb-av" style="border-radius:50%;font-size:11px;font-weight:700;color:var(--g400);display:flex;align-items:center;justify-content:center">+8</div>
+      </div>
+      <div class="hb-name" style="color:var(--g400)">Tümü</div>
+      <div class="hb-role" style="background:var(--g100);color:var(--g400)">14 kişi</div>
+    </div>
+
+  </div>
+
+  <!-- ── İÇERİK TİPİ FİLTRESİ ── -->
+  <div class="type-filter">
+    <div class="tf-btn on" id="tf-all" onclick="setType(this,'all')">Tümü<span class="tf-count">12</span></div>
+    <div class="tf-btn" id="tf-ritual" onclick="setType(this,'ritual')">Ritüel<span class="tf-count">7</span></div>
+    <div class="tf-btn" id="tf-memory" onclick="setType(this,'memory')">Anı<span class="tf-count">3</span></div>
+    <div class="tf-btn" id="tf-announce" onclick="setType(this,'announce')">Duyuru<span class="tf-count">2</span></div>
+  </div>
+
+  <!-- ════════════════════════════════ -->
+  <!-- CANLI — PİVOT HOST RİTÜELİ   -->
+  <!-- ════════════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--red)">● Şu An Canlı</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">2</span>
+  </div>
+
+  <!-- POST: Alessandro — canlı, Pivot -->
+  <div class="post-card pc-live" onclick="t('Jazz Night → Live Ritual')">
+    <div class="post-header">
+      <div class="ph-av" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8)">
+        A
+        <div class="ph-av-ring pvr-live"></div>
+      </div>
+      <div class="ph-info">
+        <div class="ph-name-row">
+          <span class="ph-name">Alessandro R.</span>
+          <span class="ph-badge phb-pivot">★ Pivot Host</span>
+        </div>
+        <div class="ph-sub">
+          Şu an host ediyor
+          <div class="ph-sub-dot"></div>
+          8 dakika önce
+        </div>
+      </div>
+      <div class="ph-action">
+        <button class="ph-unfollow-btn" onclick="event.stopPropagation();t('Takibi bırak')">Takipte</button>
+      </div>
+    </div>
+
+    <div class="post-img">
+      <div class="post-img-bg i-jazz"></div>
+      <div class="post-img-ov"></div>
+      <div class="post-img-top">
+        <div class="b-live"><div class="b-live-dot"></div>CANLI · 1sa 17dk</div>
+        <div class="b-dark">8 / 12 kişi</div>
+      </div>
+      <div class="post-img-bot">
+        <div class="pi-title">Jazz Night at Blue Note</div>
+        <div class="pi-venue">📍 Via Borsieri · Navigli · Pencere 10s 43dk</div>
+      </div>
+    </div>
+
+    <div class="post-body">
+      <div class="post-caption">Bu akşam kuartet inanılmaz bir set oynuyor. <b>Hâlâ 4 yer var</b>, bekleyenlere üzüleceğim! 🎷</div>
+      <div class="occ-row">
+        <div class="occ-bg"><div class="occ-fill of-amber" style="width:67%"></div></div>
+        <span class="occ-lbl" style="color:var(--amber)">4 yer kaldı</span>
+      </div>
+      <div class="post-cta">
+        <div class="post-tags">
+          <span class="pt pt-live">● Canlı</span>
+          <span class="pt pt-dark">★ Pivot</span>
+          <span class="pt pt-green">✓ Venue</span>
+        </div>
+        <button class="pc-btn pcb-r" onclick="event.stopPropagation();t('Jazz → Katıl')">Katıl →</button>
+      </div>
+    </div>
+
+    <div class="post-footer">
+      <div class="pf-left">
+        <div class="pf-react" onclick="event.stopPropagation();toggleReact(this)">🔥<span class="pf-react-count">23</span></div>
+        <div class="pf-react" onclick="event.stopPropagation();toggleReact(this)">🎵<span class="pf-react-count">11</span></div>
+      </div>
+      <div class="pf-right">
+        <span class="pf-time">8 dk önce</span>
+        <div class="pf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POST: Sofia — canlı, Pivot -->
+  <div class="post-card pc-live" onclick="t('Morning Run → Live Ritual')">
+    <div class="post-header">
+      <div class="ph-av" style="background:linear-gradient(145deg,#0F766E,#14B8A6);color:#fff">
+        S
+        <div class="ph-av-ring pvr-live"></div>
+      </div>
+      <div class="ph-info">
+        <div class="ph-name-row">
+          <span class="ph-name">Sofia M.</span>
+          <span class="ph-badge phb-pivot">★ Pivot Host</span>
+        </div>
+        <div class="ph-sub">Run Club · devam ediyor <div class="ph-sub-dot"></div> 52 dk önce</div>
+      </div>
+      <div class="ph-action">
+        <button class="ph-unfollow-btn" onclick="event.stopPropagation();t('Takibi bırak')">Takipte</button>
+      </div>
+    </div>
+
+    <div class="post-body" style="padding-top:12px">
+      <div class="post-caption">8 km tamamlandı! Herkes hâlâ enerjik 💪 Sempione'nin şu anki havasına kelimeler yetmez.</div>
+      <div class="post-cta">
+        <div class="post-tags">
+          <span class="pt pt-live">● Canlı · 52dk</span>
+          <span class="pt pt-green">✓ Verified Host</span>
+          <span class="pt pt-grey">12 kişi</span>
+        </div>
+        <button class="pc-btn pcb-r" onclick="event.stopPropagation();t('Koşu → Katıl')">Katıl</button>
+      </div>
+    </div>
+
+    <div class="post-footer">
+      <div class="pf-left">
+        <div class="pf-react" onclick="event.stopPropagation();toggleReact(this)">⚡<span class="pf-react-count">18</span></div>
+      </div>
+      <div class="pf-right">
+        <span class="pf-time">52 dk önce</span>
+        <div class="pf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════ -->
+  <!-- YAKINDA — HOST'LAR  -->
+  <!-- ════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--amber)">⏱ Başlamak Üzere</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">3</span>
+  </div>
+
+  <!-- POST: Davide — yakında, verified -->
+  <div class="post-card" onclick="t('Chess Evening → Ritual Detail')">
+    <div class="post-header">
+      <div class="ph-av" style="background:linear-gradient(145deg,#4a3728,#8B6B4A);color:#fff">
+        D
+        <div class="ph-av-ring pvr-verified"></div>
+      </div>
+      <div class="ph-info">
+        <div class="ph-name-row">
+          <span class="ph-name">Davide C.</span>
+          <span class="ph-badge phb-verified">✓ Verified Host</span>
+        </div>
+        <div class="ph-sub">21:00 · 1sa 13dk <div class="ph-sub-dot"></div> 2 sa önce paylaştı</div>
+      </div>
+      <div class="ph-action">
+        <button class="ph-unfollow-btn" onclick="event.stopPropagation();t('Takibi bırak')">Takipte</button>
+      </div>
+    </div>
+
+    <div class="post-img">
+      <div class="post-img-bg i-chess"></div>
+      <div class="post-img-ov"></div>
+      <div class="post-img-top">
+        <div class="b-dark">♟ 21:00 · 1sa 13dk</div>
+        <div class="b-dark">5 / 8 kişi</div>
+      </div>
+      <div class="post-img-bot">
+        <div class="pi-title">Chess Evening · Isola</div>
+        <div class="pi-venue">📍 Isola Cafe · Davide host ediyor</div>
+      </div>
+    </div>
+
+    <div class="post-body">
+      <div class="post-caption">Bu hafta turnuva formatını deniyoruz. Son 3 yer açık — şimdiye kadar en rekabetçi gece olacak.</div>
+      <div class="occ-row">
+        <div class="occ-bg"><div class="occ-fill of-red" style="width:62%"></div></div>
+        <span class="occ-lbl" style="color:var(--red)">Son 3 yer!</span>
+      </div>
+      <div class="post-cta">
+        <div class="post-tags">
+          <span class="pt pt-amber">Min RS 50 ✓</span>
+          <span class="pt pt-red">Son 3 yer!</span>
+        </div>
+        <button class="pc-btn pcb-n" onclick="event.stopPropagation();t('Satranç → Katıl')">Katıl</button>
+      </div>
+    </div>
+
+    <div class="post-footer">
+      <div class="pf-left">
+        <div class="pf-react" onclick="event.stopPropagation();toggleReact(this)">♟<span class="pf-react-count">7</span></div>
+        <div class="pf-react" onclick="event.stopPropagation();toggleReact(this)">🔥<span class="pf-react-count">4</span></div>
+      </div>
+      <div class="pf-right">
+        <span class="pf-time">2 sa önce</span>
+        <div class="pf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Yatay: diğer yakında -->
+  <div class="h-scroll">
+    <div class="mini-card mc-gold" onclick="t('Philosophy Walk')">
+      <div class="mc-img i-phil"><div class="mc-ov"></div><div class="mc-top"><div class="b-gold" style="font-size:7px;padding:2px 7px">★ Pivot</div></div><div class="mc-bot"><div class="mc-name">Philosophy Walk</div><div class="mc-venue">Darsena · 20:30</div></div></div>
+      <div class="mc-body">
+        <div class="mc-host"><b>Chiara B.</b> · ★ Pivot Host</div>
+        <div class="mcf-row"><span class="mcf-seats" style="color:var(--amber)">2 yer kaldı</span><button class="mcf-btn mcfb-n" onclick="event.stopPropagation();t('Felsefe → Katıl')">Katıl</button></div>
+      </div>
+    </div>
+    <div class="mini-card" onclick="t('Sunset Yoga')">
+      <div class="mc-img i-yoga"><div class="mc-ov"></div><div class="mc-top"><div class="b-dark" style="font-size:7px;padding:2px 7px">✓ Verified</div></div><div class="mc-bot"><div class="mc-name">Sunset Yoga</div><div class="mc-venue">Sempione · 20:30</div></div></div>
+      <div class="mc-body">
+        <div class="mc-host"><b>Lena K.</b> · ✓ Verified Host</div>
+        <div class="mcf-row"><span class="mcf-seats" style="color:var(--green)">5 yer var</span><button class="mcf-btn mcfb-n" onclick="event.stopPropagation();t('Yoga → Katıl')">Katıl</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ -->
+  <!-- PİVOT DUYURUSU    -->
+  <!-- ═══════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:#92400E">★ Pivot Host Duyurusu</span>
+    <div class="sl-line"></div>
+  </div>
+
+  <div class="pivot-alert">
+    <div class="pa-header">
+      <div class="pa-av" style="background:linear-gradient(145deg,#9C1A3A,#E91E63);color:#fff">C</div>
+      <div class="pa-info">
+        <div class="pa-who">Chiara B. · ★ Pivot Host</div>
+        <div class="pa-label">ÖZEL DUYURU · 3 saat önce</div>
+      </div>
+      <div class="pa-gold">★</div>
+    </div>
+    <div class="pa-body">
+      <div class="pa-title">Mayıs için Philosophy serisi duyurusu</div>
+      <div class="pa-text">Mayıs boyunca her Çarşamba akşamı özel bir felsefe okuma serisi başlatıyorum. Her hafta farklı bir düşünür, farklı bir mekan. Erken katılım için yer sayısı sınırlı tutulacak.</div>
+      <div class="pa-actions">
+        <button class="pa-btn-main" onclick="t('Seri → Tüm ritüeller')">Tüm Seriyi Gör →</button>
+        <button class="pa-btn-sec" onclick="t('Bildirim kur')">🔔 Bildir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ -->
+  <!-- ANI PAYLAŞIMLARI  -->
+  <!-- ═══════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text">Yeni Anılar</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">3</span>
+  </div>
+
+  <!-- Memory: Quote -->
+  <div class="memory-post" onclick="t('Alessandro alıntısı')">
+    <div class="mp-header">
+      <div class="post-header" style="padding:0">
+        <div class="ph-av" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8);width:34px;height:34px;font-size:13px">
+          A<div class="ph-av-ring" style="border-color:var(--gold)"></div>
+        </div>
+        <div class="ph-info">
+          <div class="ph-name-row"><span class="ph-name">Alessandro R.</span><span class="ph-badge phb-pivot">★ Pivot</span></div>
+          <div class="ph-sub">Alıntı anısı <div class="ph-sub-dot"></div> 1 saat önce</div>
+        </div>
+      </div>
+    </div>
+    <div class="mp-body">
+      <div class="mp-quote">"Caz müzikte doğaçlama, güvene dayalı konuşmalar gibidir — ne söyleyeceğini bilmeden başlarsın, ama birlikte bir şey inşa edersiniz."</div>
+      <div class="mp-ritual-link">🎵 Jazz Night at Blue Note · Navigli · Şu an canlı</div>
+    </div>
+    <div class="post-footer">
+      <div class="pf-left">
+        <div class="pf-react" onclick="event.stopPropagation();toggleReact(this)">✨<span class="pf-react-count">31</span></div>
+        <div class="pf-react" onclick="event.stopPropagation();toggleReact(this)">❤️<span class="pf-react-count">14</span></div>
+      </div>
+      <div class="pf-right">
+        <span class="pf-time">1 sa önce</span>
+        <div class="pf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Memory: Playlist -->
+  <div class="memory-post" onclick="t('Sofia playlist')">
+    <div class="mp-header">
+      <div class="post-header" style="padding:0">
+        <div class="ph-av" style="background:linear-gradient(145deg,#0F766E,#14B8A6);color:#fff;width:34px;height:34px;font-size:13px">
+          S<div class="ph-av-ring" style="border-color:var(--gold)"></div>
+        </div>
+        <div class="ph-info">
+          <div class="ph-name-row"><span class="ph-name">Sofia M.</span><span class="ph-badge phb-pivot">★ Pivot</span></div>
+          <div class="ph-sub">Playlist anısı <div class="ph-sub-dot"></div> 3 saat önce</div>
+        </div>
+      </div>
+    </div>
+    <div class="mp-body">
+      <div class="mp-playlist">
+        <div class="mp-playlist-icon">🎵</div>
+        <div class="mp-playlist-info">
+          <div class="mp-playlist-name">Morning Run — Hız & Ritim</div>
+          <div class="mp-playlist-tracks">18 şarkı · 52 dk · Bu sabahın seti</div>
+        </div>
+        <div class="mp-play-btn" onclick="event.stopPropagation();t('Playlist aç')">▶</div>
+      </div>
+      <div class="mp-caption">Bugün herkes bu settin ritminde koştu. Tempo düşmedi, gülüşmeler de. 🏃</div>
+      <div class="mp-ritual-link">🏃 Morning Run Club · Sempione · Bu sabah</div>
+    </div>
+    <div class="post-footer">
+      <div class="pf-left">
+        <div class="pf-react" onclick="event.stopPropagation();toggleReact(this)">🎵<span class="pf-react-count">19</span></div>
+        <div class="pf-react" onclick="event.stopPropagation();toggleReact(this)">⚡<span class="pf-react-count">8</span></div>
+      </div>
+      <div class="pf-right">
+        <span class="pf-time">3 sa önce</span>
+        <div class="pf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ -->
+  <!-- YENİ HOST         -->
+  <!-- ═══════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--green)">🆕 Yeni Takip Edebilirsin</span>
+    <div class="sl-line"></div>
+  </div>
+
+  <div class="new-host-card" onclick="t('Ravi P. → Profil')">
+    <div class="nhc-row">
+      <div class="nhc-av" style="background:linear-gradient(145deg,#2a1040,#6B21A8);color:#fff">R</div>
+      <div class="nhc-info">
+        <div class="nhc-top">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block"></span>
+          Yeni Verified Host
+        </div>
+        <div class="nhc-name">Ravi P.</div>
+        <div class="nhc-sub">Felsefe & Meditasyon · Brera bölgesi · 8 ritüel tamamladı</div>
+      </div>
+      <button class="nhc-btn" onclick="event.stopPropagation();followHost(this)">+ Takip Et</button>
+    </div>
+  </div>
+
+  <div style="height:8px"></div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-iw on"><span class="nav-ic inv">〰</span></div><span class="nav-l">Pulse</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">📅</span></div><span class="nav-lo">City Rhythm</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">◉</span></div><span class="nav-lo">Passport</span></div>
+</div>
+
+<script>
+/* Type filter */
+function setType(el, key) {
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  const labels = {all:'Tümü gösteriliyor',ritual:'Ritüel paylaşımları',memory:'Anı paylaşımları',announce:'Duyurular'};
+  t(labels[key]);
+}
+
+/* React */
+function toggleReact(el) {
+  const on = el.classList.contains('on');
+  const c = el.querySelector('.pf-react-count');
+  const n = parseInt(c.textContent);
+  el.classList.toggle('on', !on);
+  c.textContent = on ? n - 1 : n + 1;
+}
+
+/* Save */
+function toggleSave(btn) {
+  const saved = btn.dataset.saved;
+  if (saved) { btn.textContent='🔖'; btn.classList.remove('saved'); delete btn.dataset.saved; }
+  else { btn.textContent='❤️'; btn.classList.add('saved'); btn.dataset.saved='1'; t('Kaydedildi'); }
+}
+
+/* Follow host */
+function followHost(btn) {
+  if (btn.dataset.following) {
+    btn.textContent = '+ Takip Et';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+    delete btn.dataset.following;
+    t('Takipten çıkıldı');
+  } else {
+    btn.textContent = '✓ Takipte';
+    btn.style.background = 'var(--green)';
+    btn.style.color = '#fff';
+    btn.dataset.following = '1';
+    t('Takip edildi · Bildirimler açık');
+  }
+}
+
+/* Toast */
+function t(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 2100);
+}
+</script>
+</body>
+</html>

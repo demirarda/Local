@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Pulse · LOCAL'de Yeni</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;--gold-pale:rgba(200,169,106,.1);--gold-border:rgba(200,169,106,.3);
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --teal:#0F766E;--teal-pale:#CCFBF1;
+  --orange:#EA580C;--orange-l:#C2410C;
+  --orange-pale:#FFF7ED;--orange-border:rgba(234,88,12,.22);
+  --g50:#FAFAFA;--g100:#F5F5F5;--g150:#F0F0F0;
+  --g200:#E5E5E5;--g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:var(--g150);max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;height:44px;background:var(--g150)}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 10px;background:var(--g150)}
+.tb-logo{font-family:'Instrument Serif',serif;font-size:26px;color:#000;letter-spacing:-.5px}
+.tb-logo span{display:inline-block;width:5px;height:5px;background:#000;border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:4px}
+.tb-right{display:flex;gap:8px;align-items:center}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:all .15s}
+.icon-btn:hover{border-color:var(--navy)}
+.notif-dot{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.profile-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4a3728,#C4956A);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:14px;color:#fff;cursor:pointer;border:2px solid var(--gold-border)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:6px;padding:0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px}
+.filter-row::-webkit-scrollbar{display:none}
+.fc{display:flex;align-items:center;gap:4px;padding:6px 13px;border-radius:100px;font-size:10px;font-weight:600;border:1.5px solid var(--g200);color:var(--g500);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.fc:hover{border-color:var(--g300);color:var(--g600)}
+.fc.live{background:var(--red-pale);border-color:rgba(220,38,38,.25);color:var(--red)}
+.fc-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.fc.on-orange{background:var(--orange);color:#fff;border-color:var(--orange)}
+.fc-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px}
+.fc.on-orange .fc-badge{background:rgba(255,255,255,.25);color:#fff}
+.fc:not([class*="on-"]):not(.live) .fc-badge{background:var(--g200);color:var(--g500)}
+
+.scroll-content{padding-bottom:90px}
+
+/* ══════════════════════════════════
+   BANNER
+══════════════════════════════════ */
+.new-banner{
+  margin:0 16px 16px;
+  border-radius:20px;overflow:hidden;position:relative;min-height:145px;
+}
+.nb-bg{
+  position:absolute;inset:0;
+  background:linear-gradient(135deg,
+    #431407 0%,
+    #9A3412 25%,
+    #EA580C 60%,
+    #C2410C 100%
+  );
+}
+.nb-glow{position:absolute;top:-40px;right:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none}
+.nb-dots{
+  position:absolute;inset:0;
+  background-image:radial-gradient(circle at 10% 80%,rgba(255,255,255,.08) 1px,transparent 1px),
+    radial-gradient(circle at 90% 20%,rgba(255,255,255,.06) 1px,transparent 1px),
+    radial-gradient(circle at 50% 50%,rgba(255,255,255,.04) 1px,transparent 1px);
+  background-size:24px 24px,18px 18px,30px 30px;
+}
+.nb-body{padding:16px 16px 14px;position:relative;z-index:2}
+.nb-label{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+  padding:4px 12px;border-radius:100px;
+  font-size:9px;font-weight:700;color:#fff;
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:9px;
+}
+.nb-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.nb-title{font-family:'Instrument Serif',serif;font-size:24px;color:#fff;line-height:1.2;letter-spacing:-.3px}
+.nb-title em{font-style:normal;opacity:.7}
+.nb-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:3px}
+/* New count badge */
+.nb-count-wrap{flex-shrink:0;text-align:right}
+.nb-count{font-family:'Instrument Serif',serif;font-size:40px;color:#fff;line-height:1;opacity:.9}
+.nb-count-label{font-size:8px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:.3px;text-align:right}
+.nb-stats{display:flex;gap:6px;flex-wrap:wrap}
+.nb-stat{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:600;color:rgba(255,255,255,.8);
+}
+
+/* ══════════════════════════════════
+   CATEGORY TABS
+══════════════════════════════════ */
+.cat-tabs{display:flex;gap:6px;padding:0 16px 14px;overflow-x:auto;scrollbar-width:none}
+.cat-tabs::-webkit-scrollbar{display:none}
+.cat-tab{
+  display:flex;align-items:center;gap:4px;
+  padding:7px 14px;border-radius:100px;font-size:10px;font-weight:600;
+  border:1.5px solid var(--g200);color:var(--g500);
+  white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;
+}
+.cat-tab:hover{border-color:var(--orange);color:var(--orange)}
+.cat-tab.on{background:var(--orange);color:#fff;border-color:var(--orange)}
+.ct-count{font-size:8px;font-weight:700;opacity:.6}
+.cat-tab.on .ct-count{opacity:.55}
+
+/* ══════════════════════════════════
+   SECTION LABEL
+══════════════════════════════════ */
+.sec-label{display:flex;align-items:center;gap:8px;padding:8px 18px 6px}
+.sl-line{flex:1;height:1px;background:var(--g200)}
+.sl-text{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+.sl-count{font-size:9px;color:var(--g300);background:var(--g100);padding:2px 7px;border-radius:100px;font-weight:600}
+
+/* ══════════════════════════════════
+   NEW BADGE
+══════════════════════════════════ */
+.b-new{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--orange);
+  padding:3px 9px;border-radius:100px;
+  font-size:8px;font-weight:700;color:#fff;
+}
+.b-new-pale{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--orange-pale);border:1px solid var(--orange-border);
+  padding:3px 9px;border-radius:100px;
+  font-size:8px;font-weight:700;color:var(--orange-l);
+}
+.b-live{display:inline-flex;align-items:center;gap:4px;background:var(--red);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#fff}
+.b-live-dot{width:5px;height:5px;border-radius:50%;background:#fff;animation:blink 1.3s ease-in-out infinite}
+.b-chip{background:rgba(0,0,0,.5);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);font-size:9px;font-weight:600;padding:3px 9px;border-radius:100px}
+.b-gold{background:rgba(200,169,106,.9);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#000}
+
+/* ══════════════════════════════════
+   FEATURE CARD — yeni ritüel (hero)
+══════════════════════════════════ */
+.new-card{
+  margin:0 16px 10px;background:#fff;
+  border:1.5px solid var(--orange-border);
+  border-radius:18px;overflow:hidden;
+  cursor:pointer;transition:all .2s;position:relative;
+}
+.new-card:hover{box-shadow:0 4px 18px rgba(234,88,12,.12);transform:translateY(-1px)}
+.new-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2.5px;background:linear-gradient(90deg,var(--orange),rgba(234,88,12,.4))}
+.new-card.nc-live{border-color:rgba(220,38,38,.2)}
+.new-card.nc-live::before{background:linear-gradient(90deg,var(--red),var(--orange))}
+
+/* HERO */
+.nc-hero{width:100%;height:155px;position:relative;overflow:hidden}
+.nc-hero-img{width:100%;height:100%}
+.nc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.06) 0%,rgba(0,0,0,.5) 60%,rgba(0,0,0,.9) 100%)}
+.nc-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between;align-items:flex-start}
+.nc-bot{position:absolute;bottom:0;left:0;right:0;padding:9px 13px;z-index:2}
+.nc-name{font-family:'Instrument Serif',serif;font-size:17px;color:#fff;line-height:1.25;margin-bottom:2px}
+.nc-venue{font-size:10px;color:rgba(255,255,255,.55)}
+
+/* NEW AGE PILL on card */
+.age-pill{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(0,0,0,.5);backdrop-filter:blur(5px);
+  border:1px solid rgba(255,255,255,.15);
+  padding:3px 9px;border-radius:100px;
+  font-size:9px;font-weight:600;color:rgba(255,255,255,.7);
+}
+
+/* BODY */
+.nc-body{padding:10px 13px 6px}
+.nc-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.nc-left{flex:1;min-width:0}
+.nc-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nc-venue-body{font-size:10px;color:var(--g400);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.nt{font-size:8px;font-weight:600;padding:2px 7px;border-radius:4px}
+.nt-orange{background:var(--orange-pale);color:var(--orange-l);border:1px solid var(--orange-border)}
+.nt-navy{background:var(--navy-pale);color:var(--navy)}
+.nt-green{background:var(--green-pale);color:var(--green)}
+.nt-amber{background:var(--amber-pale);color:#92400E}
+.nt-red{background:var(--red-pale);color:var(--red)}
+.nt-dark{background:#000;color:#fff}
+.nt-gold{background:var(--gold-pale);color:#92400E;border:1px solid var(--gold-border)}
+.nt-grey{background:var(--g100);color:var(--g500)}
+.nt-blue{background:#DBEAFE;color:#1D4ED8}
+.nt-live{background:var(--red-pale);color:var(--red)}
+
+/* Occ */
+.occ-row{display:flex;align-items:center;gap:8px;margin:3px 0 6px}
+.occ-bg{flex:1;height:4px;background:var(--g100);border-radius:2px;overflow:hidden}
+.occ-fill{height:100%;border-radius:2px}
+.of-green{background:var(--green)}
+.of-amber{background:var(--amber)}
+.of-red{background:var(--red)}
+.of-orange{background:var(--orange)}
+
+.nc-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.nc-btn{padding:9px 16px;border-radius:11px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;white-space:nowrap}
+.nc-btn:hover{opacity:.85}
+.ncb-o{background:var(--orange);color:#fff;box-shadow:0 2px 8px rgba(234,88,12,.2)}
+.ncb-n{background:var(--navy);color:#fff}
+.ncb-r{background:var(--red);color:#fff}
+
+/* FOOTER */
+.nc-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 13px 10px;border-top:1px solid var(--g100);margin-top:6px}
+.nf-left{display:flex;align-items:center;flex:1;min-width:0}
+.nf-avs{display:flex}
+.nf-av{width:20px;height:20px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:8px}
+.nf-av:not(:first-child){margin-left:-7px}
+.nf-text{font-size:10px;color:var(--g500);margin-left:6px}
+.nf-right{display:flex;gap:5px;flex-shrink:0}
+.nf-btn{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .15s}
+.nf-btn:hover{border-color:var(--orange)}
+.nf-btn.saved{background:var(--orange-pale);border-color:var(--orange-border)}
+.nf-react{display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:7px;background:var(--g100);border:1px solid var(--g200);font-size:11px;cursor:pointer;transition:all .15s}
+.nf-react:hover{background:var(--g200)}
+.nf-react.on{background:var(--orange-pale);border-color:var(--orange-border)}
+.nf-react-count{font-size:10px;color:var(--g400);font-weight:600}
+.nf-react.on .nf-react-count{color:var(--orange-l)}
+
+/* ══════════════════════════════════
+   COMPACT ROW
+══════════════════════════════════ */
+.compact-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;background:#fff;border-radius:13px;
+  margin:0 16px 6px;border:1px solid var(--g200);
+  cursor:pointer;transition:all .15s;position:relative;overflow:hidden;
+}
+.compact-row:hover{box-shadow:0 2px 8px rgba(0,0,0,.07);transform:translateY(-1px)}
+.compact-row.cr-new{border-color:var(--orange-border)}
+.compact-row.cr-new::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--orange)}
+.cr-thumb{width:44px;height:44px;border-radius:10px;flex-shrink:0;position:relative;overflow:hidden}
+.cr-ov{position:absolute;inset:0;background:rgba(0,0,0,.1)}
+.cr-info{flex:1;min-width:0}
+.cr-age{font-size:9px;font-weight:600;color:var(--orange);margin-bottom:2px;display:flex;align-items:center;gap:4px}
+.cr-name{font-size:13px;font-weight:600;color:#000;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-meta{font-size:10px;color:var(--g400);display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.cr-meta-dot{width:3px;height:3px;border-radius:50%;background:var(--g300)}
+.cr-tags{display:flex;gap:3px;margin-top:3px;flex-wrap:wrap}
+.cr-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.cr-seats{font-size:9px;font-weight:600}
+.cr-btn{padding:7px 13px;border-radius:9px;font-size:10px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s}
+.cr-btn:hover{opacity:.85}
+.crb-o{background:var(--orange);color:#fff}
+.crb-n{background:var(--navy);color:#fff}
+.crb-green{background:var(--green);color:#fff}
+
+/* ══════════════════════════════════
+   HORIZONTAL SCROLL
+══════════════════════════════════ */
+.h-scroll{display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;margin-bottom:8px}
+.h-scroll::-webkit-scrollbar{display:none}
+.h-card{
+  flex-shrink:0;width:155px;background:#fff;border-radius:14px;
+  border:1.5px solid var(--orange-border);overflow:hidden;cursor:pointer;transition:all .2s;
+}
+.h-card:hover{box-shadow:0 2px 10px rgba(234,88,12,.1);transform:translateY(-1px)}
+.h-card::before{content:'';display:block;height:2px;background:var(--orange)}
+.hc-img{width:100%;height:86px;position:relative;overflow:hidden}
+.hc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.04) 0%,rgba(0,0,0,.5) 100%)}
+.hc-top{position:absolute;top:6px;left:7px;z-index:2}
+.hc-bot{position:absolute;bottom:6px;left:7px;right:7px;z-index:2}
+.hc-name{font-family:'Instrument Serif',serif;font-size:12px;color:#fff;line-height:1.2}
+.hc-venue{font-size:8px;color:rgba(255,255,255,.55)}
+.hc-body{padding:7px 9px 9px}
+.hc-age{font-size:8px;font-weight:700;color:var(--orange);margin-bottom:4px}
+.hcf-row{display:flex;align-items:center;justify-content:space-between}
+.hcf-seats{font-size:9px;font-weight:600}
+.hcf-btn{padding:4px 10px;border-radius:7px;font-size:9px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.hcfb-o{background:var(--orange);color:#fff}
+.hcfb-n{background:var(--navy);color:#fff}
+.hcfb-green{background:var(--green);color:#fff}
+
+/* ══════════════════════════════════
+   NEW HOST CARD
+══════════════════════════════════ */
+.new-host-card{
+  margin:0 16px 8px;
+  background:#fff;border:1.5px solid var(--orange-border);
+  border-radius:14px;padding:12px 14px;
+  cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+}
+.new-host-card:hover{box-shadow:0 2px 12px rgba(234,88,12,.1);transform:translateY(-1px)}
+.new-host-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--orange)}
+.nhc-row{display:flex;align-items:center;gap:12px}
+.nhc-av-wrap{position:relative;flex-shrink:0}
+.nhc-av{
+  width:52px;height:52px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:21px;
+  border:2.5px solid rgba(234,88,12,.2);
+}
+.nhc-new-badge{
+  position:absolute;bottom:-2px;right:-2px;
+  background:var(--orange);border:2px solid #fff;
+  border-radius:100px;padding:1px 5px;
+  font-size:7px;font-weight:700;color:#fff;white-space:nowrap;
+}
+.nhc-info{flex:1;min-width:0}
+.nhc-top-row{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.nhc-name{font-family:'Instrument Serif',serif;font-size:15px;color:#000}
+.nhc-role{font-size:8px;font-weight:700;padding:2px 8px;border-radius:100px}
+.nhr-verified{background:var(--navy-pale);color:var(--navy)}
+.nhc-sub{font-size:10px;color:var(--g400);margin-bottom:5px}
+.nhc-rituals-preview{display:flex;gap:4px;flex-wrap:wrap}
+.nhc-ritual-pill{
+  font-size:8px;font-weight:600;padding:2px 8px;border-radius:100px;
+  background:var(--orange-pale);color:var(--orange-l);
+  border:1px solid var(--orange-border);
+}
+.nhc-btn{
+  flex-shrink:0;padding:9px 15px;border-radius:10px;
+  font-size:11px;font-weight:700;border:1.5px solid var(--orange-border);
+  color:var(--orange-l);background:var(--orange-pale);
+  cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;
+}
+.nhc-btn:hover{background:var(--orange);color:#fff;border-color:var(--orange)}
+.nhc-btn.following{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* ══════════════════════════════════
+   NEW VENUE CARD (compact)
+══════════════════════════════════ */
+.new-venue-row{
+  display:flex;gap:10px;align-items:center;
+  padding:10px 14px;background:#fff;border-radius:13px;
+  margin:0 16px 6px;border:1px solid var(--orange-border);
+  cursor:pointer;transition:all .15s;position:relative;overflow:hidden;
+}
+.new-venue-row:hover{box-shadow:0 2px 8px rgba(234,88,12,.1);transform:translateY(-1px)}
+.new-venue-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--orange)}
+.nvr-thumb{width:48px;height:48px;border-radius:11px;flex-shrink:0;position:relative;overflow:hidden}
+.nvr-ov{position:absolute;inset:0;background:rgba(0,0,0,.1)}
+.nvr-info{flex:1;min-width:0}
+.nvr-age{font-size:9px;font-weight:700;color:var(--orange);margin-bottom:2px;display:flex;align-items:center;gap:4px}
+.nvr-name{font-size:13px;font-weight:600;color:#000;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nvr-meta{font-size:10px;color:var(--g400);display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.nvr-meta-dot{width:3px;height:3px;border-radius:50%;background:var(--g300)}
+.nvr-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.nvr-rs{font-size:12px;font-weight:700;color:var(--navy)}
+.nvr-rs-label{font-size:8px;color:var(--g400)}
+.nvr-btn{padding:5px 12px;border-radius:8px;font-size:10px;font-weight:700;background:var(--orange-pale);color:var(--orange-l);border:1px solid var(--orange-border);cursor:pointer;font-family:'DM Sans',sans-serif}
+.nvr-btn:hover{background:var(--orange);color:#fff}
+
+/* ══════════════════════════════════
+   FIRST RITUAL CTA (onboarding nudge)
+══════════════════════════════════ */
+.first-ritual-cta{
+  margin:0 16px 14px;
+  border-radius:16px;overflow:hidden;
+  background:linear-gradient(135deg,var(--orange-pale) 0%,#fff 60%);
+  border:1.5px solid var(--orange-border);
+  padding:14px 14px;
+}
+.frc-row{display:flex;align-items:center;gap:12px}
+.frc-icon{
+  width:48px;height:48px;border-radius:14px;flex-shrink:0;
+  background:var(--orange);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;
+  box-shadow:0 2px 8px rgba(234,88,12,.25);
+}
+.frc-info{flex:1}
+.frc-label{font-size:9px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.frc-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;margin-bottom:3px}
+.frc-sub{font-size:10px;color:var(--g500);line-height:1.5}
+.frc-btn{
+  margin-top:10px;width:100%;padding:10px;border-radius:11px;
+  background:var(--orange);color:#fff;
+  font-size:12px;font-weight:700;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:opacity .15s;
+}
+.frc-btn:hover{opacity:.88}
+
+/* ══════════════════════════════════
+   TOAST
+══════════════════════════════════ */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.82);color:#fff;padding:9px 18px;border-radius:100px;font-size:12px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:76px;border-top:1.5px solid var(--g200);background:rgba(255,255,255,.98);backdrop-filter:blur(10px);display:flex;align-items:flex-start;padding-top:10px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-iw{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-iw.on{background:#000}
+.nav-ic{font-size:16px}
+.nav-ic.inv{filter:invert(1)}
+.nav-l{font-size:8px;font-weight:700;color:#000}
+.nav-lo{font-size:8px;font-weight:500;color:var(--g400)}
+
+/* IMG */
+.i-jazz{background:radial-gradient(circle at 45% 35%,rgba(255,180,80,.45) 0%,transparent 45%),linear-gradient(145deg,#1A1A2E 0%,#2A2040 30%,#3A2850 55%,#1A1520 100%)}
+.i-coffee{background:radial-gradient(circle at 40% 50%,rgba(180,130,80,.5) 0%,transparent 40%),linear-gradient(145deg,#2C1810 0%,#5C3D2E 30%,#8B6B4A 55%,#3A2418 100%)}
+.i-run{background:radial-gradient(circle at 50% 25%,rgba(255,200,100,.5) 0%,transparent 45%),linear-gradient(180deg,#87CEEB 0%,#98D1A8 30%,#6B8E4E 60%,#3A5028 100%)}
+.i-phil{background:linear-gradient(135deg,#4a3728 0%,#8B6345 40%,#C4956A 70%,#5D3A2A 100%)}
+.i-yoga{background:linear-gradient(135deg,#2d6a2d 0%,#4CAF50 50%,#8BC34A 80%,#1B5E20 100%)}
+.i-art{background:linear-gradient(135deg,#2a1040 0%,#6B21A8 40%,#A855F7 70%,#1a0830 100%)}
+.i-teal{background:linear-gradient(145deg,#0F766E,#14B8A6)}
+.i-board{background:linear-gradient(145deg,#1e3a5f,#2563EB,#1e3a5f)}
+.i-film{background:linear-gradient(135deg,#0a0a0a 0%,#1a1a1a 40%,#2a2a2a 70%,#0a0a0a 100%)}
+.i-cook{background:radial-gradient(circle at 40% 40%,rgba(220,120,60,.5) 0%,transparent 50%),linear-gradient(145deg,#3a1a00 0%,#7a3800 40%,#C8601A 70%,#3a1a00 100%)}
+.i-lang{background:linear-gradient(145deg,#0F766E,#0D9488,#14B8A6)}
+.i-photo{background:linear-gradient(135deg,#0c1a2e 0%,#1e3a5f 40%,#2e5d9e 70%,#0c1a2e 100%)}
+.i-park{background:radial-gradient(circle at 50% 30%,rgba(150,220,100,.4) 0%,transparent 50%),linear-gradient(180deg,#A8D060 0%,#5A8A28 40%,#2E5010 70%,#1A3008 100%)}
+.i-bar{background:radial-gradient(circle at 35% 40%,rgba(255,200,100,.35) 0%,transparent 50%),linear-gradient(145deg,#1A0F00 0%,#3D2800 40%,#6B4A00 70%,#1A0F00 100%)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="status-bar">
+  <span class="sb-time">19:47</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<div class="top-bar">
+  <div class="tb-logo">L<span></span></div>
+  <div class="tb-right">
+    <div class="icon-btn" onclick="t('Bildirimler')">🔔<div class="notif-dot"></div></div>
+    <div class="profile-av" onclick="t('Profil')">T</div>
+  </div>
+</div>
+
+<!-- FILTER ROW -->
+<div class="filter-row">
+  <div class="fc live" onclick="t('Canlı')"><div class="fc-live-dot"></div>Canlı<span class="fc-badge">4</span></div>
+  <div class="fc" onclick="t('Bu Hafta')">📅 Bu Hafta<span class="fc-badge">34</span></div>
+  <div class="fc on-orange" onclick="t('LOCAL\'de Yeni aktif')">🆕 LOCAL'de Yeni<span class="fc-badge">14</span></div>
+  <div class="fc" onclick="t('Arkadaşlar')">👥 Arkadaşlar<span class="fc-badge">18</span></div>
+  <div class="fc" onclick="t('Ücretsiz')">🆓 Ücretsiz<span class="fc-badge">16</span></div>
+  <div class="fc" onclick="t('Doğrulanmış Host')">✓ Doğrulanmış Host<span class="fc-badge">21</span></div>
+</div>
+
+<div class="scroll-content">
+
+  <!-- ── BANNER ── -->
+  <div class="new-banner">
+    <div class="nb-bg"></div>
+    <div class="nb-glow"></div>
+    <div class="nb-dots"></div>
+    <div class="nb-body">
+      <div class="nb-label">🆕 LOCAL'de Yeni</div>
+      <div class="nb-row">
+        <div>
+          <div class="nb-title">Yeni ritüeller,<br><em>yeni yüzler.</em></div>
+          <div class="nb-sub">Son 30 gün içinde eklenenler</div>
+        </div>
+        <div class="nb-count-wrap">
+          <div class="nb-count">14</div>
+          <div class="nb-count-label">YENİ İÇERİK</div>
+        </div>
+      </div>
+      <div class="nb-stats">
+        <div class="nb-stat">🆕 9 yeni ritüel</div>
+        <div class="nb-stat">👤 3 yeni host</div>
+        <div class="nb-stat">🏛 2 yeni mekan</div>
+        <div class="nb-stat">● 1 şu an canlı</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CATEGORY TABS ── -->
+  <div class="cat-tabs">
+    <div class="cat-tab on" id="ct-all" onclick="setCat(this,'all')">Tümü <span class="ct-count">14</span></div>
+    <div class="cat-tab" id="ct-ritual" onclick="setCat(this,'ritual')">🎯 Yeni Ritüel <span class="ct-count">9</span></div>
+    <div class="cat-tab" id="ct-host" onclick="setCat(this,'host')">👤 Yeni Host <span class="ct-count">3</span></div>
+    <div class="cat-tab" id="ct-venue" onclick="setCat(this,'venue')">🏛 Yeni Mekan <span class="ct-count">2</span></div>
+  </div>
+
+  <!-- ── İLK RİTÜEL DAVETI (kişisel bağlam varsa gösterilir) ── -->
+  <div class="first-ritual-cta" onclick="t('İlk ritüelin → keşfet')">
+    <div class="frc-row">
+      <div class="frc-icon">🎯</div>
+      <div class="frc-info">
+        <div class="frc-label">Senin için seçildi</div>
+        <div class="frc-title">İlk LOCAL ritüeline hazır mısın?</div>
+        <div class="frc-sub">Buradaki ritüeller yeni — hem sen hem ritüel LOCAL'de ilk adımını atıyor.</div>
+      </div>
+    </div>
+    <button class="frc-btn" onclick="event.stopPropagation();t('Keşfetmeye başla')">Keşfetmeye Başla →</button>
+  </div>
+
+  <!-- ════════════════════════
+       YENİ RİTÜELLER
+  ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--orange)">🆕 Yeni Ritüeller</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">9</span>
+  </div>
+
+  <!-- HERO: Board Game Night — 2 gün önce eklendi, canlı -->
+  <div class="new-card nc-live" onclick="t('Board Game Night → Live Ritual')">
+    <div class="nc-hero">
+      <div class="nc-hero-img i-board"></div>
+      <div class="nc-ov"></div>
+      <div class="nc-top">
+        <div style="display:flex;gap:5px">
+          <div class="b-new">🆕 2 gün önce</div>
+          <div class="b-live"><div class="b-live-dot"></div>CANLI</div>
+        </div>
+        <div class="b-chip">6 / 10 kişi</div>
+      </div>
+      <div class="nc-bot">
+        <div class="nc-name">Board Game Night · Isola</div>
+        <div class="nc-venue">📍 Isola Cafe · Davide C. host · İlk kez düzenleniyor</div>
+      </div>
+    </div>
+    <div class="nc-body">
+      <div class="occ-row">
+        <div class="occ-bg"><div class="occ-fill of-green" style="width:60%"></div></div>
+        <span class="occ-lbl" style="color:var(--green)">4 yer kaldı</span>
+      </div>
+      <div class="nc-row" style="align-items:center">
+        <div class="nc-left">
+          <div class="nc-tags">
+            <span class="nt nt-orange">🆕 LOCAL'de yeni</span>
+            <span class="nt nt-live">● Canlı</span>
+            <span class="nt nt-navy">✓ Verified Host</span>
+            <span class="nt nt-grey">RS 0+</span>
+          </div>
+        </div>
+        <button class="nc-btn ncb-r" onclick="event.stopPropagation();t('Board Game → Katıl')">Katıl →</button>
+      </div>
+    </div>
+    <div class="nc-footer">
+      <span class="nf-text" style="color:var(--g300)">Bu ritüelin ilk katılımcılarından ol</span>
+      <div class="nf-right">
+        <div class="nf-react" onclick="event.stopPropagation();toggleReact(this)">🎲<span class="nf-react-count">3</span></div>
+        <div class="nf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HERO 2: Film Kulübü — 5 gün önce -->
+  <div class="new-card" onclick="t('Film Kulübü → Ritual Detail')">
+    <div class="nc-hero">
+      <div class="nc-hero-img i-film"></div>
+      <div class="nc-ov"></div>
+      <div class="nc-top">
+        <div style="display:flex;gap:5px">
+          <div class="b-new">🆕 5 gün önce</div>
+          <div class="b-chip">⏱ Yarın 21:00</div>
+        </div>
+        <div class="b-chip">3 / 8 kişi</div>
+      </div>
+      <div class="nc-bot">
+        <div class="nc-name">Film Kulübü · Brera</div>
+        <div class="nc-venue">📍 Caffe Letterario · Chiara B. host</div>
+      </div>
+    </div>
+    <div class="nc-body">
+      <div class="occ-row">
+        <div class="occ-bg"><div class="occ-fill of-green" style="width:37%"></div></div>
+        <span class="occ-lbl" style="color:var(--green)">5 yer var</span>
+      </div>
+      <div class="nc-row" style="align-items:center">
+        <div class="nc-left">
+          <div class="nc-tags">
+            <span class="nt nt-orange">🆕 LOCAL'de yeni</span>
+            <span class="nt nt-dark">★ Pivot Host</span>
+            <span class="nt nt-amber">Min RS 60 · 7.4 ✓</span>
+          </div>
+        </div>
+        <button class="nc-btn ncb-o" onclick="event.stopPropagation();t('Film → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="nc-footer">
+      <span class="nf-text" style="color:var(--g300)">Yönlendirmeli tartışma formatı · İlk seans</span>
+      <div class="nf-right">
+        <div class="nf-react" onclick="event.stopPropagation();toggleReact(this)">🎬<span class="nf-react-count">7</span></div>
+        <div class="nf-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Yatay scroll: diğer yeni ritüeller -->
+  <div class="h-scroll">
+
+    <div class="h-card" onclick="t('Yemek Pişirme → Ritual Detail')">
+      <div class="hc-img i-cook"><div class="hc-ov"></div><div class="hc-top"><div class="b-new" style="font-size:7px;padding:2px 7px">🆕 8 gün</div></div><div class="hc-bot"><div class="hc-name">Yemek Pişirme</div><div class="hc-venue">Navigli · Perşembe</div></div></div>
+      <div class="hc-body"><div class="hc-age">8 gün önce eklendi</div><div class="hcf-row"><span class="hcf-seats" style="color:var(--green)">7 yer var</span><button class="hcf-btn hcfb-o" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div></div>
+    </div>
+
+    <div class="h-card" onclick="t('Fotoğrafçılık → Ritual Detail')">
+      <div class="hc-img i-photo"><div class="hc-ov"></div><div class="hc-top"><div class="b-new" style="font-size:7px;padding:2px 7px">🆕 12 gün</div></div><div class="hc-bot"><div class="hc-name">Fotoğrafçılık 101</div><div class="hc-venue">Brera · Cuma</div></div></div>
+      <div class="hc-body"><div class="hc-age">12 gün önce eklendi</div><div class="hcf-row"><span class="hcf-seats" style="color:var(--amber)">3 yer kaldı</span><button class="hcf-btn hcfb-o" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div></div>
+    </div>
+
+    <div class="h-card" onclick="t('Koşu Başlangıç → Ritual Detail')">
+      <div class="hc-img i-run"><div class="hc-ov"></div><div class="hc-top"><div class="b-new" style="font-size:7px;padding:2px 7px">🆕 3 gün</div></div><div class="hc-bot"><div class="hc-name">Koşu Başlangıç</div><div class="hc-venue">Sempione · Pzt</div></div></div>
+      <div class="hc-body"><div class="hc-age">3 gün önce eklendi</div><div class="hcf-row"><span class="hcf-seats" style="color:var(--green)">10 yer var</span><button class="hcf-btn hcfb-green" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div></div>
+    </div>
+
+  </div>
+
+  <!-- Compact: daha fazla yeni ritüel -->
+  <div class="compact-row cr-new" onclick="t('Dil Buluşması Yeni Format → Ritual Detail')">
+    <div class="cr-thumb i-lang"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-age">🆕 14 gün önce eklendi</div>
+      <div class="cr-name">İspanyolca Buluşması</div>
+      <div class="cr-meta">
+        Çarşamba 18:00 <div class="cr-meta-dot"></div>
+        Darsena Bar <div class="cr-meta-dot"></div>
+        RS 0+
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-seats" style="color:var(--green)">8 yer var</span>
+      <button class="cr-btn crb-o" onclick="event.stopPropagation();t('İspanyolca → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-new" onclick="t('Tarot Okuma → Ritual Detail')">
+    <div class="cr-thumb i-art"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-age">🆕 18 gün önce eklendi</div>
+      <div class="cr-name">Tarot &amp; Sezgi Atölyesi</div>
+      <div class="cr-meta">
+        Pazar 15:00 <div class="cr-meta-dot"></div>
+        Porta Romana <div class="cr-meta-dot"></div>
+        RS 55+
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-seats" style="color:var(--amber)">2 yer kaldı</span>
+      <button class="cr-btn crb-o" onclick="event.stopPropagation();t('Tarot → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════
+       YENİ HOSTLAR
+  ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--orange)">👤 Yeni Verified Hostlar</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">3</span>
+  </div>
+
+  <!-- Ravi P. -->
+  <div class="new-host-card" onclick="t('Ravi P. → Profil')">
+    <div class="nhc-row">
+      <div class="nhc-av-wrap">
+        <div class="nhc-av" style="background:linear-gradient(145deg,#2a1040,#6B21A8);color:#fff">R</div>
+        <div class="nhc-new-badge">🆕 Yeni</div>
+      </div>
+      <div class="nhc-info">
+        <div class="nhc-top-row">
+          <div class="nhc-name">Ravi P.</div>
+          <div class="nhc-role nhr-verified">✓ Verified</div>
+        </div>
+        <div class="nhc-sub">Felsefe &amp; Meditasyon · Brera · 9 gün önce katıldı</div>
+        <div class="nhc-rituals-preview">
+          <span class="nhc-ritual-pill">Meditasyon Çemberi</span>
+          <span class="nhc-ritual-pill">Felsefe Yürüyüşü</span>
+        </div>
+      </div>
+      <button class="nhc-btn" onclick="event.stopPropagation();toggleFollow(this)">+ Takip</button>
+    </div>
+  </div>
+
+  <!-- Selin A. -->
+  <div class="new-host-card" onclick="t('Selin A. → Profil')">
+    <div class="nhc-row">
+      <div class="nhc-av-wrap">
+        <div class="nhc-av" style="background:linear-gradient(145deg,#0F766E,#14B8A6);color:#fff">S</div>
+        <div class="nhc-new-badge">🆕 Yeni</div>
+      </div>
+      <div class="nhc-info">
+        <div class="nhc-top-row">
+          <div class="nhc-name">Selin A.</div>
+          <div class="nhc-role nhr-verified">✓ Verified</div>
+        </div>
+        <div class="nhc-sub">Yoga &amp; Nefes Çalışması · Sempione · 21 gün önce katıldı</div>
+        <div class="nhc-rituals-preview">
+          <span class="nhc-ritual-pill">Sabah Yogası</span>
+          <span class="nhc-ritual-pill">Nefes Atölyesi</span>
+        </div>
+      </div>
+      <button class="nhc-btn" onclick="event.stopPropagation();toggleFollow(this)">+ Takip</button>
+    </div>
+  </div>
+
+  <!-- Luca M. -->
+  <div class="new-host-card" onclick="t('Luca M. → Profil')">
+    <div class="nhc-row">
+      <div class="nhc-av-wrap">
+        <div class="nhc-av" style="background:linear-gradient(145deg,#1a1a1a,#3a3a3a);color:#fff">L</div>
+        <div class="nhc-new-badge">🆕 Yeni</div>
+      </div>
+      <div class="nhc-info">
+        <div class="nhc-top-row">
+          <div class="nhc-name">Luca M.</div>
+          <div class="nhc-role nhr-verified">✓ Verified</div>
+        </div>
+        <div class="nhc-sub">Film &amp; Sinema · Brera · 5 gün önce katıldı</div>
+        <div class="nhc-rituals-preview">
+          <span class="nhc-ritual-pill">Film Kulübü</span>
+          <span class="nhc-ritual-pill">Yönetmen Tartışması</span>
+        </div>
+      </div>
+      <button class="nhc-btn" onclick="event.stopPropagation();toggleFollow(this)">+ Takip</button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════
+       YENİ MEKANLAR
+  ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--orange)">🏛 Yeni Mekanlar</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">2</span>
+  </div>
+
+  <div class="new-venue-row" onclick="t('Studio Porta Romana → Mekan Detayı')">
+    <div class="nvr-thumb i-park"><div class="nvr-ov"></div></div>
+    <div class="nvr-info">
+      <div class="nvr-age">🆕 7 gün önce eklendi</div>
+      <div class="nvr-name">Studio Porta Romana</div>
+      <div class="nvr-meta">
+        Porta Romana <div class="nvr-meta-dot"></div>
+        Stüdyo · Kapalı <div class="nvr-meta-dot"></div>
+        Kap: 12
+      </div>
+    </div>
+    <div class="nvr-right">
+      <div class="nvr-rs">6.2</div>
+      <div class="nvr-rs-label">Venue RS</div>
+      <button class="nvr-btn" onclick="event.stopPropagation();t('Mekan detayı')">Gör →</button>
+    </div>
+  </div>
+
+  <div class="new-venue-row" onclick="t('Terrazza Navigli → Mekan Detayı')">
+    <div class="nvr-thumb i-bar"><div class="nvr-ov"></div></div>
+    <div class="nvr-info">
+      <div class="nvr-age">🆕 23 gün önce eklendi</div>
+      <div class="nvr-name">Terrazza Navigli</div>
+      <div class="nvr-meta">
+        Navigli <div class="nvr-meta-dot"></div>
+        Bar · Teras <div class="nvr-meta-dot"></div>
+        Kap: 24
+      </div>
+    </div>
+    <div class="nvr-right">
+      <div class="nvr-rs">5.8</div>
+      <div class="nvr-rs-label">Venue RS</div>
+      <button class="nvr-btn" onclick="event.stopPropagation();t('Mekan detayı')">Gör →</button>
+    </div>
+  </div>
+
+  <div style="height:8px"></div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-iw on"><span class="nav-ic inv">〰</span></div><span class="nav-l">Pulse</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">📅</span></div><span class="nav-lo">City Rhythm</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">◉</span></div><span class="nav-lo">Passport</span></div>
+</div>
+
+<script>
+function setCat(el, key) {
+  document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  const labels = {
+    all:'Tüm yeni içerikler · 14',
+    ritual:'Yeni ritüeller · 9',
+    host:'Yeni Verified Hostlar · 3',
+    venue:'Yeni mekanlar · 2'
+  };
+  t(labels[key]);
+}
+
+function toggleFollow(btn) {
+  const following = btn.classList.contains('following');
+  if (following) {
+    btn.textContent = '+ Takip';
+    btn.classList.remove('following');
+    t('Takipten çıkıldı');
+  } else {
+    btn.textContent = '✓ Takipte';
+    btn.classList.add('following');
+    t('Takip edildi · Bildirimler açık');
+  }
+}
+
+function toggleReact(el) {
+  const on = el.classList.contains('on');
+  const c = el.querySelector('.nf-react-count');
+  const n = parseInt(c.textContent);
+  el.classList.toggle('on', !on);
+  c.textContent = on ? n - 1 : n + 1;
+}
+
+function toggleSave(btn) {
+  const saved = btn.dataset.saved;
+  if (saved) { btn.textContent='🔖'; btn.classList.remove('saved'); delete btn.dataset.saved; }
+  else { btn.textContent='❤️'; btn.classList.add('saved'); btn.dataset.saved='1'; t('Kaydedildi'); }
+}
+
+function t(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 2300);
+}
+</script>
+</body>
+</html>

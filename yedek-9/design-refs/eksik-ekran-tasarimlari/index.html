@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOCAL — Eksik Ekran Tasarımları</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1B2E4A;
+    --gold: #C8A96A;
+    --bg: #F8F6F2;
+    --card: #FFFFFF;
+    --text: #1B2E4A;
+    --muted: #737373;
+    --border: rgba(27, 46, 74, 0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 48px 24px 80px;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  .lockup {
+    font-family: 'Instrument Serif', serif;
+    font-size: 14px;
+    letter-spacing: 0.18em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 48px;
+    line-height: 1.05;
+    font-weight: 400;
+    margin-bottom: 12px;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 620px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(27, 46, 74, 0.05);
+    color: var(--navy);
+    padding: 6px 12px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 40px;
+  }
+  .meta::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+  .section {
+    margin-top: 56px;
+  }
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+  .section-sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: block;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(27, 46, 74, 0.08); }
+  .card-id {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .card-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 20px;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .card-desc { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
+  .card-tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  .tag-onb { background: #FEF3C7; color: #92400E; }
+  .tag-mem { background: #DBEAFE; color: #1E40AF; }
+  .tag-bypass { background: #FEE2E2; color: #B91C1C; }
+  .tag-filter { background: #DCFCE7; color: #166534; }
+  hr { border: 0; border-top: 1px dashed var(--border); margin: 48px 0 0; }
+  .note { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 24px; }
+  .note strong { color: var(--navy); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="lockup">L · LOCAL</div>
+  <h1>Eksik Ekran Tasarımları</h1>
+  <p class="sub">v1.0 spec'inde belgelenmiş ama yedek-9 kodunda eksik olan ekran/state'lerin görsel referansları. Bu dosyalar <strong>entegre değildir</strong> — sadece tasarım onayı ve handoff için.</p>
+  <div class="meta">9 tasarım · Standalone HTML · Tasarım sistemi v1</div>
+
+  <div class="section">
+    <div class="section-title">Onboarding (2 eksik state)</div>
+    <div class="section-sub">v1 Spec OB-11 ve OB-12 — kilitli göz atma + verify modal</div>
+    <div class="grid">
+      <a class="card" href="ob11_kilitli_gozatma.html">
+        <div class="card-id">OB-11</div>
+        <div class="card-title">Kilitli Göz Atma Durumu</div>
+        <div class="card-desc">E-posta doğrulanmamış kullanıcı uygulamayı görür ama aksiyon alamaz. Üstte sarı banner. Tıklamada OB-12 tetiklenir.</div>
+        <span class="card-tag tag-onb">Onboarding</span>
+      </a>
+      <a class="card" href="ob12_verify_modal.html">
+        <div class="card-id">OB-12</div>
+        <div class="card-title">Verify Modalı (Bottom Sheet)</div>
+        <div class="card-desc">Alt sayfa kilit · "Şimdi doğrula" + "Belki daha sonra". Mevcut kod full-screen, spec modal istiyor.</div>
+        <span class="card-tag tag-onb">Onboarding</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Memory Tip Kartları (3 eksik tip)</div>
+    <div class="section-sub">Pulse'ta gözüken anı kart varyasyonları — Check-in, RS Delta, Host Teaser</div>
+    <div class="grid">
+      <a class="card" href="memory_checkin.html">
+        <div class="card-id">PL · Memory</div>
+        <div class="card-title">Anı · Check-in</div>
+        <div class="card-desc">Mekân + zaman damgası. 24h ömür. Pin ikonu + venue adı + timestamp.</div>
+        <span class="card-tag tag-mem">Memory</span>
+      </a>
+      <a class="card" href="memory_rs_delta.html">
+        <div class="card-id">PL · Memory</div>
+        <div class="card-title">Anı · RS Delta</div>
+        <div class="card-desc">RS değişiminin paylaşımı. Lacivert degrade hero · büyük delta sayısı · "RS detaylarını gör".</div>
+        <span class="card-tag tag-mem">Memory</span>
+      </a>
+      <a class="card" href="memory_host_teaser.html">
+        <div class="card-id">PL · Memory</div>
+        <div class="card-title">Anı · Host Teaser</div>
+        <div class="card-desc">Yaklaşan ritual duyurusu. Ritual dolana kadar görünür · countdown · Yer Kap CTA.</div>
+        <span class="card-tag tag-mem">Memory</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Bypass Sistem Bildirimleri (2 state)</div>
+    <div class="section-sub">No-show / Geç iptal — 1. uyarı (RS değişmez) ve 2. doğrudan ceza</div>
+    <div class="grid">
+      <a class="card" href="bypass_warning_1.html">
+        <div class="card-id">Bypass · 1st</div>
+        <div class="card-title">İlk Uyarı (RS Değişmez)</div>
+        <div class="card-desc">Sarı uyarı state. "Bu sefer için ceza yok" · "Tekrarlanırsa −0.10 RS" bilgilendirme.</div>
+        <span class="card-tag tag-bypass">Bypass</span>
+      </a>
+      <a class="card" href="bypass_penalty_2.html">
+        <div class="card-id">Bypass · 2nd</div>
+        <div class="card-title">İkinci Sefer — Direkt Ceza</div>
+        <div class="card-desc">Kırmızı state. "−0.10 RS doğrudan uygulandı" · MD bypass · pipeline atlandı.</div>
+        <span class="card-tag tag-bypass">Bypass</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Pulse Filtre Çipleri (Tam Liste)</div>
+    <div class="section-sub">v1 Spec 24 çip · kodda 11 var · 13 eksik</div>
+    <div class="grid">
+      <a class="card" href="pulse_filtreler_24.html">
+        <div class="card-id">PL · Filters</div>
+        <div class="card-title">24 Filtre Çipinin Tam Hâli</div>
+        <div class="card-desc">Şimdi Canlı, Bu Gece, Bu Hafta, Hafta Sonu, Sabah/Öğle/Akşam, Pivot Hostlar, Ücretsiz, Grup Büyüklüğü dahil eksiksiz çip seti.</div>
+        <span class="card-tag tag-filter">Pulse</span>
+      </a>
+    </div>
+  </div>
+
+  <hr>
+  <p class="note"><strong>Notlar:</strong> Tüm tasarımlar 390px mobile genişliğinde. Renk paleti: Navy <code>#1B2E4A</code>, Gold <code>#C8A96A</code>, FL renk kodları (L1 yeşil <code>#27500A</code>, L2 amber <code>#D97706</code>). Fontlar: Instrument Serif (display) + DM Sans (UI). iOS native feel. Bu tasarımlar handoff sonrası RN'de implement edilecek — şu an React Native ekran haline getirilmedi.</p>
+</div>
+</body>
+</html>

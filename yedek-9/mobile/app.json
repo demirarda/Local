@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "LOCAL",
+    "slug": "local",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.local.app",
+      "deploymentTarget": "16.2",
+      "infoPlist": {
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": true
+      }
+    },
+    "android": {
+      "package": "com.local.app"
+    },
+    "plugins": [
+      "expo-location",
+      "expo-notifications",
+      "expo-asset",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Kimlik dogrulamasi icin canli kamera gerekir. Galeri kullanilmaz."
+        }
+      ],
+      "@rnmapbox/maps",
+      "./plugins/withRitualLiveActivity.js"
+    ],
+    "extra": {}
+  }
+}

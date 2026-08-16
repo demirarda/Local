@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bypass · 1. Sefer Uyarı</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1B2E4A;
+  --gold: #C8A96A;
+  --bg: #F8F6F2;
+  --card: #FFFFFF;
+  --text: #1B2E4A;
+  --muted: #737373;
+  --border: rgba(27, 46, 74, 0.08);
+  --amber: #D97706;
+  --amber-pale: #FEF3C7;
+  --amber-deep: #92400E;
+  --green: #16A34A;
+  --green-pale: #DCFCE7;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #E5E3DD;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  min-height: 100vh;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.frame {
+  width: 390px;
+  background: linear-gradient(180deg, #FEF8E5 0%, var(--bg) 50%);
+  border-radius: 38px;
+  height: 844px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.18);
+}
+
+/* Status bar */
+.status-bar {
+  height: 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px 20px;
+}
+.back-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(27, 46, 74, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--text);
+}
+.brand {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.brand .dot { color: var(--gold); }
+
+/* Content */
+.content {
+  padding: 8px 24px 24px;
+  text-align: center;
+}
+
+/* Warning icon */
+.warn-icon-wrap {
+  width: 110px;
+  height: 110px;
+  border-radius: 32px;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FCD34D 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px auto 22px;
+  position: relative;
+}
+.warn-icon-wrap::before, .warn-icon-wrap::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 38px;
+  border: 1px dashed rgba(217, 119, 6, 0.2);
+  animation: spin 14s linear infinite;
+}
+.warn-icon-wrap::after {
+  inset: -16px;
+  border-radius: 44px;
+  animation-direction: reverse;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.warn-icon {
+  font-size: 50px;
+  z-index: 2;
+}
+
+/* Title block */
+.warn-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--amber-pale);
+  color: var(--amber-deep);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 5px 12px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+}
+.warn-tag::before { content: "⚠"; }
+
+.warn-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 30px;
+  line-height: 1.15;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.warn-sub {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-bottom: 26px;
+  padding: 0 8px;
+}
+.warn-sub strong { color: var(--text); }
+
+/* RS unchanged card */
+.rs-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+.rs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.rs-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.rs-value {
+  font-family: 'Instrument Serif', serif;
+  font-size: 36px;
+  line-height: 1;
+  color: var(--text);
+}
+.rs-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--green-pale);
+  color: #166534;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 100px;
+  letter-spacing: 0.06em;
+}
+.rs-status::before { content: "✓"; }
+.rs-bar {
+  height: 6px;
+  background: rgba(27, 46, 74, 0.06);
+  border-radius: 100px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.rs-fill {
+  height: 100%;
+  width: 71%;
+  background: linear-gradient(90deg, var(--gold), #E8D49A);
+  border-radius: 100px;
+}
+.rs-marks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rules card */
+.rules-card {
+  background: rgba(254, 243, 199, 0.5);
+  border: 1px solid rgba(252, 211, 77, 0.4);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+.rules-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--amber-deep);
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px dashed rgba(217, 119, 6, 0.2);
+}
+.rule-item:first-of-type { border-top: 0; }
+.rule-num {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.rule-text {
+  font-size: 12px;
+  color: var(--amber-deep);
+  line-height: 1.45;
+  flex: 1;
+}
+.rule-text strong { color: #78350F; }
+
+/* Footer */
+.footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 18px 24px 32px;
+  background: linear-gradient(180deg, transparent 0%, var(--bg) 30%);
+}
+.btn-primary {
+  width: 100%;
+  background: var(--text);
+  color: #fff;
+  font-family: 'DM Sans';
+  font-size: 15px;
+  font-weight: 600;
+  padding: 16px;
+  border: none;
+  border-radius: 100px;
+  margin-bottom: 8px;
+}
+.foot-note {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Annotation */
+.annot {
+  position: fixed;
+  top: 24px; left: 24px;
+  background: var(--text);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  z-index: 100;
+}
+.annot strong { color: var(--gold); margin-right: 6px; }
+.annot .pip {
+  background: var(--amber);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+</style>
+</head>
+<body>
+<div class="annot"><strong>BYPASS</strong>1. Sefer · No-show / Geç İptal <span class="pip">UYARI</span></div>
+
+<div class="frame">
+  <div class="status-bar">
+    <span>9:41</span>
+    <span style="font-size: 13px;">●●● 5G ▮</span>
+  </div>
+
+  <div class="header">
+    <div class="back-btn">×</div>
+    <div class="brand">L<span class="dot">.</span></div>
+    <div style="width: 36px;"></div>
+  </div>
+
+  <div class="content">
+    <div class="warn-icon-wrap">
+      <span class="warn-icon">⚠</span>
+    </div>
+
+    <div class="warn-tag">İLK SEFER · BYPASS</div>
+
+    <h2 class="warn-title">Bu sefer için<br>RS değişmedi</h2>
+    <p class="warn-sub"><strong>Bocconi Felsefe Çevresi</strong> ritualinden geç iptal ettiniz (4 saat önce). LOCAL'a yeni başladığınız için bu sefer affediyoruz.</p>
+
+    <!-- RS card -->
+    <div class="rs-card">
+      <div class="rs-row">
+        <div>
+          <div class="rs-label">Mevcut RS</div>
+          <div class="rs-value">7.13</div>
+        </div>
+        <span class="rs-status">Değişmedi</span>
+      </div>
+      <div class="rs-bar"><div class="rs-fill"></div></div>
+      <div class="rs-marks">
+        <span>1.0</span><span>5.0</span><span>10.0</span>
+      </div>
+    </div>
+
+    <!-- Rules -->
+    <div class="rules-card">
+      <div class="rules-title">⚖ NEDEN BU SEFER AFFEDİLDİ</div>
+
+      <div class="rule-item">
+        <div class="rule-num">1</div>
+        <div class="rule-text">İlk geç iptal — sistem 1. seferde uyarı veriyor, RS değiştirmiyor.</div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">2</div>
+        <div class="rule-text"><strong>Tekrarlanırsa −0.05 RS</strong> doğrudan uygulanır (pipeline atlanır, MD bypass).</div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">3</div>
+        <div class="rule-text">6 saatten erken iptal edersen <strong>"Nazik İptal" rozeti</strong> kazanırsın.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="btn-primary">Anladım</button>
+    <p class="foot-note">Detay için Sosyal Pasaport → RS İşlemleri</p>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,93 @@
+# Artillery Load Test Configuration
+# Alternative to k6 for load testing
+# Run: artillery run load-tests/artillery-config.yml
+
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # Warm-up phase
+    - duration: 30
+      arrivalRate: 2
+      name: "Warm up"
+    # Ramp up phase
+    - duration: 60
+      arrivalRate: 2
+      rampTo: 20
+      name: "Ramp up load"
+    # Sustained load phase
+    - duration: 120
+      arrivalRate: 20
+      name: "Sustained load"
+    # Spike test
+    - duration: 30
+      arrivalRate: 20
+      rampTo: 100
+      name: "Spike test"
+    # Cool down
+    - duration: 30
+      arrivalRate: 100
+      rampTo: 0
+      name: "Cool down"
+  processor: "./artillery-processor.js"
+  plugins:
+    expect: {}
+  variables:
+    cities:
+      - "Milano"
+      - "Istanbul"
+      - "Berlin"
+      - "Paris"
+      - "London"
+
+scenarios:
+  - name: "Health Check Flow"
+    weight: 10
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+            - contentType: json
+      - think: 1
+      - get:
+          url: "/health/detailed"
+          expect:
+            - statusCode: 200
+
+  - name: "Pulse Flow"
+    weight: 70
+    flow:
+      - function: "setRandomCity"
+      - get:
+          url: "/api/rituals/pulse"
+          qs:
+            city: "{{ city }}"
+            viewer_id: "{{ userId }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: "live_now"
+            - hasProperty: "starting_soon"
+      - think: 2
+
+  - name: "Ritual Detail Flow"
+    weight: 20
+    flow:
+      - function: "setRandomCity"
+      - get:
+          url: "/api/rituals/pulse"
+          qs:
+            city: "{{ city }}"
+            viewer_id: "{{ userId }}"
+          capture:
+            - json: "$.live_now[0].id"
+              as: "ritualId"
+      - think: 1
+      - get:
+          url: "/api/rituals/{{ ritualId }}"
+          qs:
+            viewer_id: "{{ userId }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+          onlyIf: "{{ ritualId }}"

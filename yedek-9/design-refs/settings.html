@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Ayarlar</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --g100:#F5F5F5;--g150:#F0F0F0;--g200:#E5E5E5;
+  --g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:var(--g150);max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+/* STATUS BAR */
+.status-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:12px 22px 0;height:44px;background:var(--g150);
+}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+/* TOP BAR */
+.top-bar{
+  display:flex;align-items:center;
+  padding:6px 16px 10px;background:var(--g150);
+}
+.tb-back{
+  display:flex;align-items:center;gap:5px;
+  font-size:13px;color:var(--navy);font-weight:600;cursor:pointer;
+  padding:4px 0;
+}
+.tb-title{
+  flex:1;text-align:center;
+  font-family:'Instrument Serif',serif;
+  font-size:18px;color:#000;
+}
+.tb-r{width:60px}
+
+.scroll-content{padding-bottom:40px}
+
+/* ── PROFILE CARD ── */
+.profile-card{
+  margin:0 16px 16px;
+  background:#fff;border-radius:18px;
+  overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,.06);
+}
+.pc-cover{
+  height:60px;
+  background:linear-gradient(135deg,#1B2E4A 0%,#2A4470 50%,#1B2E4A 100%);
+  position:relative;overflow:hidden;
+}
+.pc-cover-pattern{
+  position:absolute;inset:0;opacity:.1;
+  background-image:radial-gradient(circle at 20% 50%,#fff 1px,transparent 1px),
+    radial-gradient(circle at 80% 30%,#fff 1px,transparent 1px);
+  background-size:24px 24px;
+}
+.pc-body{padding:0 16px 16px}
+.pc-av-wrap{margin-top:-28px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-end}
+.pc-av{
+  width:56px;height:56px;border-radius:50%;
+  border:3px solid #fff;
+  background:linear-gradient(145deg,#4a3728,#C4956A);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:22px;color:#fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
+  position:relative;
+}
+.pc-av-edit{
+  position:absolute;bottom:-2px;right:-2px;
+  width:20px;height:20px;border-radius:50%;
+  background:var(--navy);border:2px solid #fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:#fff;cursor:pointer;
+}
+.pc-edit-btn{
+  font-size:11px;font-weight:700;color:var(--navy);
+  padding:6px 14px;border-radius:100px;
+  border:1.5px solid var(--navy-pale);background:var(--navy-pale);
+  cursor:pointer;transition:all .15s;
+}
+.pc-edit-btn:hover{background:var(--navy);color:#fff}
+.pc-name{font-family:'Instrument Serif',serif;font-size:18px;color:#000;margin-bottom:2px}
+.pc-uni{font-size:11px;color:var(--g400);margin-bottom:8px}
+.pc-badges{display:flex;gap:5px;flex-wrap:wrap}
+.pc-badge{
+  font-size:8px;font-weight:700;padding:3px 8px;
+  border-radius:5px;
+}
+.pcb-pivot{background:var(--gold);color:#000}
+.pcb-rs{background:var(--navy-pale);color:var(--navy)}
+.pcb-host{background:var(--green-pale);color:var(--green)}
+
+/* ── SETTINGS GROUP ── */
+.settings-group{margin:0 16px 12px}
+.group-label{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--g400);
+  padding:0 4px 6px;
+}
+.group-card{
+  background:#fff;border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,.05);
+}
+
+/* ── SETTING ROW ── */
+.setting-row{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 16px;
+  cursor:pointer;
+  transition:background .15s;
+  position:relative;
+}
+.setting-row:hover{background:var(--g100)}
+.setting-row:not(:last-child)::after{
+  content:'';position:absolute;
+  bottom:0;left:16px;right:0;
+  height:1px;background:var(--g100);
+}
+.sr-icon{
+  width:34px;height:34px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;
+}
+.sri-navy{background:var(--navy-pale)}
+.sri-green{background:var(--green-pale)}
+.sri-amber{background:var(--amber-pale)}
+.sri-red{background:var(--red-pale)}
+.sri-purple{background:#EDE9FE}
+.sri-dark{background:#F5F5F5}
+.sri-gold{background:#FEF3C7}
+.sri-blue{background:#DBEAFE}
+
+.sr-body{flex:1;min-width:0}
+.sr-label{font-size:13px;font-weight:500;color:#000;margin-bottom:1px}
+.sr-sub{font-size:10px;color:var(--g400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.sr-arrow{font-size:14px;color:var(--g300)}
+.sr-value{font-size:12px;color:var(--g400);font-weight:500}
+.sr-badge{
+  font-size:9px;font-weight:700;
+  padding:2px 8px;border-radius:100px;
+}
+.sbd-green{background:var(--green-pale);color:var(--green)}
+.sbd-amber{background:var(--amber-pale);color:var(--amber)}
+.sbd-red{background:var(--red-pale);color:var(--red)}
+.sbd-navy{background:var(--navy-pale);color:var(--navy)}
+.sbd-dark{background:#F5F5F5;color:var(--g500)}
+
+/* ── TOGGLE ── */
+.toggle{
+  width:44px;height:24px;border-radius:12px;
+  background:var(--g200);position:relative;
+  cursor:pointer;transition:background .25s;flex-shrink:0;
+}
+.toggle.on{background:var(--navy)}
+.toggle.on-green{background:var(--green)}
+.toggle-thumb{
+  position:absolute;top:2px;left:2px;
+  width:20px;height:20px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2);
+  transition:left .25s;
+}
+.toggle.on .toggle-thumb,.toggle.on-green .toggle-thumb{left:22px}
+
+/* ── RS DISPLAY ROW ── */
+.rs-display-row{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;
+  background:var(--navy);border-radius:14px;
+  margin:0 16px 12px;
+  cursor:pointer;
+}
+.rs-dr-num{
+  font-family:'Instrument Serif',serif;
+  font-size:36px;color:#fff;line-height:1;
+}
+.rs-dr-info .rs-dr-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.5);margin-bottom:3px}
+.rs-dr-info .rs-dr-status{font-size:13px;color:#fff;font-weight:600}
+.rs-dr-info .rs-dr-sub{font-size:10px;color:rgba(255,255,255,.55);margin-top:2px}
+.rs-dr-dots{display:flex;gap:3px;margin-top:6px}
+.rdd{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.2)}
+.rdd.f{background:rgba(255,255,255,.88)}
+.rdd.h{background:rgba(255,255,255,.4)}
+.rs-dr-arrow{margin-left:auto;font-size:16px;color:rgba(255,255,255,.4)}
+
+/* ── PRIVACY OPTIONS ── */
+.privacy-opts{padding:10px 16px 4px}
+.po-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--g400);margin-bottom:8px}
+.po-row{display:flex;gap:6px;margin-bottom:8px}
+.po-chip{
+  flex:1;padding:8px 6px;text-align:center;
+  border-radius:10px;border:1.5px solid var(--g200);
+  cursor:pointer;transition:all .15s;
+}
+.po-chip:hover{border-color:var(--navy)}
+.po-chip.on{border-color:var(--navy);background:var(--navy-pale)}
+.po-chip-icon{font-size:16px;margin-bottom:3px}
+.po-chip-label{font-size:10px;font-weight:600;color:var(--g600)}
+.po-chip.on .po-chip-label{color:var(--navy)}
+.po-chip-sub{font-size:8px;color:var(--g400);margin-top:1px}
+
+/* ── THEME ROW ── */
+.theme-row{display:flex;gap:8px;padding:10px 16px 14px}
+.theme-opt{
+  flex:1;border-radius:10px;border:1.5px solid var(--g200);
+  overflow:hidden;cursor:pointer;transition:border-color .15s;
+}
+.theme-opt:hover{border-color:var(--navy)}
+.theme-opt.on{border-color:var(--navy);border-width:2px}
+.to-preview{height:44px;display:flex;align-items:center;justify-content:center}
+.to-light{background:#fff;border-bottom:1px solid var(--g200)}
+.to-dark{background:#080808;border-bottom:1px solid #1a1a1a}
+.to-sys{
+  background:linear-gradient(90deg,#fff 50%,#080808 50%);
+  border-bottom:1px solid var(--g200);
+}
+.to-moon{font-size:18px}
+.to-label{font-size:10px;font-weight:600;text-align:center;padding:5px 4px;color:var(--g600)}
+.to-label.on{color:var(--navy)}
+.theme-check{
+  display:inline-block;width:14px;height:14px;border-radius:50%;
+  border:1.5px solid var(--g300);margin-right:3px;vertical-align:middle;
+}
+.theme-check.on{background:var(--navy);border-color:var(--navy)}
+
+/* ── NOTIF SECTION ── */
+.notif-detail{padding:4px 16px 12px}
+.nd-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 0;border-bottom:1px solid var(--g100);
+}
+.nd-row:last-child{border-bottom:none}
+.nd-dot{width:7px;height:7px;border-radius:50%;background:var(--navy);flex-shrink:0}
+.nd-label{font-size:12px;color:#000;flex:1}
+.nd-sub{font-size:10px;color:var(--g400)}
+
+/* ── DANGER ZONE ── */
+.danger-row{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 16px;cursor:pointer;transition:background .15s;
+}
+.danger-row:hover{background:var(--red-pale)}
+.danger-row:not(:last-child)::after{
+  content:'';position:absolute;
+  bottom:0;left:16px;right:0;
+  height:1px;background:var(--red-pale);
+}
+.danger-row{position:relative}
+.dr-icon{
+  width:34px;height:34px;border-radius:9px;
+  background:var(--red-pale);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;
+}
+.dr-label{font-size:13px;font-weight:500;color:var(--red);flex:1}
+.dr-sub{font-size:10px;color:var(--red);opacity:.7;margin-top:1px}
+
+/* ── APP INFO ── */
+.app-info{
+  text-align:center;padding:20px 20px 10px;
+}
+.ai-logo{
+  font-family:'Instrument Serif',serif;
+  font-size:28px;color:var(--navy);margin-bottom:4px;
+}
+.ai-logo span{display:inline-block;width:5px;height:5px;background:var(--navy);border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:3px}
+.ai-ver{font-size:11px;color:var(--g400);margin-bottom:12px}
+.ai-links{display:flex;justify-content:center;gap:16px;flex-wrap:wrap}
+.ai-link{font-size:11px;color:var(--navy);font-weight:500;cursor:pointer}
+.ai-copy{font-size:10px;color:var(--g300);margin-top:10px}
+
+/* CONFIRM MODAL */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:300;display:none;align-items:center;justify-content:center;
+  padding:20px;
+}
+.modal-overlay.open{display:flex}
+.modal-card{
+  width:100%;max-width:358px;background:#fff;
+  border-radius:18px;padding:24px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);
+}
+.modal-icon{font-size:32px;margin-bottom:12px}
+.modal-title{font-family:'Instrument Serif',serif;font-size:20px;color:#000;margin-bottom:6px}
+.modal-body{font-size:13px;color:var(--g500);line-height:1.6;margin-bottom:20px}
+.modal-btns{display:flex;gap:8px}
+.modal-btn{
+  flex:1;padding:12px;border-radius:12px;
+  font-size:13px;font-weight:700;
+  border:none;cursor:pointer;font-family:'DM Sans',sans-serif;
+  transition:opacity .15s;
+}
+.modal-btn:hover{opacity:.88}
+.mb-cancel{background:var(--g100);color:var(--g600)}
+.mb-danger{background:var(--red);color:#fff}
+.mb-navy{background:var(--navy);color:#fff}
+
+/* TOAST */
+.toast{
+  position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-80px);
+  background:rgba(0,0,0,.88);color:#fff;
+  padding:10px 20px;border-radius:100px;
+  font-size:12px;font-weight:600;
+  z-index:400;transition:transform .3s;white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* BOTTOM NAV */
+.bottom-nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:390px;height:76px;
+  border-top:1.5px solid var(--g200);
+  background:rgba(255,255,255,.98);backdrop-filter:blur(10px);
+  display:flex;align-items:flex-start;padding-top:10px;z-index:100;
+}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-icon-wrap{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-icon-wrap.on{background:#000}
+.nav-icon{font-size:16px}
+.nav-icon.inv{filter:invert(1)}
+.nav-lbl{font-size:8px;font-weight:700;color:#000}
+.nav-lbl-off{font-size:8px;font-weight:500;color:var(--g400)}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span class="sb-time">9:41</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="tb-back" onclick="history.back()">← Passport</div>
+  <div class="tb-title">Ayarlar</div>
+  <div class="tb-r"></div>
+</div>
+
+<div class="scroll-content" style="padding-bottom:100px">
+
+  <!-- ── PROFİL KARTI ── -->
+  <div class="profile-card">
+    <div class="pc-cover"><div class="pc-cover-pattern"></div></div>
+    <div class="pc-body">
+      <div class="pc-av-wrap">
+        <div class="pc-av">
+          T
+          <div class="pc-av-edit" onclick="toast('Fotoğraf değiştir')">✏</div>
+        </div>
+        <div class="pc-edit-btn" onclick="toast('Profil düzenleme açıldı')">Profili Düzenle</div>
+      </div>
+      <div class="pc-name">Taha G.</div>
+      <div class="pc-uni">Università degli Studi di Milano · IPLE</div>
+      <div class="pc-badges">
+        <span class="pc-badge pcb-pivot">★ Pivot Host</span>
+        <span class="pc-badge pcb-rs">RS 7.4</span>
+        <span class="pc-badge pcb-host">✓ Verified Host</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RS GÖSTER ── -->
+  <div class="rs-display-row" onclick="toast('RS detay sayfası açıldı')">
+    <div>
+      <div class="rs-dr-num">7.4</div>
+      <div class="rs-dr-dots" id="rs-dots"></div>
+    </div>
+    <div class="rs-dr-info">
+      <div class="rs-dr-label">Güvenilirlik Skoru</div>
+      <div class="rs-dr-status">Köklü · Yükseliyor ↑</div>
+      <div class="rs-dr-sub">+0.09 son ritüelden · 62 ritüel toplam</div>
+    </div>
+    <div class="rs-dr-arrow">›</div>
+  </div>
+
+  <!-- ── HESAP ── -->
+  <div class="settings-group">
+    <div class="group-label">Hesap</div>
+    <div class="group-card">
+
+      <div class="setting-row" onclick="toast('Profil düzenleme')">
+        <div class="sr-icon sri-navy">👤</div>
+        <div class="sr-body">
+          <div class="sr-label">Profil Bilgileri</div>
+          <div class="sr-sub">Ad, üniversite, biyografi, ruh hali etiketleri</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+
+      <div class="setting-row" onclick="toast('İlgi alanları')">
+        <div class="sr-icon sri-purple">✦</div>
+        <div class="sr-body">
+          <div class="sr-label">İlgi Alanları</div>
+          <div class="sr-sub">Kahve · Jazz · Felsefe · +4</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Üniversite doğrulama')">
+        <div class="sr-icon sri-green">🎓</div>
+        <div class="sr-body">
+          <div class="sr-label">Üniversite Doğrulaması</div>
+          <div class="sr-sub">unimi.it · Doğrulanmış</div>
+        </div>
+        <div class="sr-right">
+          <span class="sr-badge sbd-green">✓ Doğrulandı</span>
+          <span class="sr-arrow">›</span>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Şehir ayarları')">
+        <div class="sr-icon sri-navy">📍</div>
+        <div class="sr-body">
+          <div class="sr-label">Şehir</div>
+          <div class="sr-sub">Milano (aktif) · İstanbul (yakında)</div>
+        </div>
+        <div class="sr-right">
+          <span class="sr-value">Milano</span>
+          <span class="sr-arrow">›</span>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toast('E-posta değiştir')">
+        <div class="sr-icon sri-dark">✉</div>
+        <div class="sr-body">
+          <div class="sr-label">E-posta</div>
+          <div class="sr-sub">t.****@studenti.unimi.it</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Telefon numarası')">
+        <div class="sr-icon sri-dark">📱</div>
+        <div class="sr-body">
+          <div class="sr-label">Telefon Numarası</div>
+          <div class="sr-sub">+90 *** *** ** ** · Eklenmemiş</div>
+        </div>
+        <div class="sr-right">
+          <span class="sr-badge sbd-amber">Ekle</span>
+          <span class="sr-arrow">›</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── GİZLİLİK ── -->
+  <div class="settings-group">
+    <div class="group-label">Gizlilik</div>
+    <div class="group-card">
+
+      <div class="setting-row" onclick="toast('Profil görünürlüğü')">
+        <div class="sr-icon sri-navy">🔒</div>
+        <div class="sr-body">
+          <div class="sr-label">Profil Görünürlüğü</div>
+          <div class="sr-sub">Kim profilini görebilir?</div>
+        </div>
+        <div class="sr-right">
+          <span class="sr-value">Herkes</span>
+          <span class="sr-arrow">›</span>
+        </div>
+      </div>
+
+      <!-- RS GÖRÜNÜRLÜKs -->
+      <div>
+        <div class="setting-row" style="cursor:default" onclick="">
+          <div class="sr-icon sri-navy">◈</div>
+          <div class="sr-body">
+            <div class="sr-label">RS Skoru Görünürlüğü</div>
+            <div class="sr-sub">Kim RS skorunu görebilir?</div>
+          </div>
+        </div>
+        <div class="privacy-opts">
+          <div class="po-row">
+            <div class="po-chip" onclick="setRSPrivacy(this,'none')">
+              <div class="po-chip-icon">🚫</div>
+              <div class="po-chip-label">Kimse</div>
+              <div class="po-chip-sub">Tamamen gizli</div>
+            </div>
+            <div class="po-chip" onclick="setRSPrivacy(this,'dots')">
+              <div class="po-chip-icon">⊙</div>
+              <div class="po-chip-label">Nokta Skala</div>
+              <div class="po-chip-sub">Sadece görsel</div>
+            </div>
+            <div class="po-chip on" onclick="setRSPrivacy(this,'value')">
+              <div class="po-chip-icon">7.4</div>
+              <div class="po-chip-label">Tam Değer</div>
+              <div class="po-chip-sub">Sayı görünür</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANI GİZLİLİĞİ -->
+      <div>
+        <div class="setting-row" style="cursor:default">
+          <div class="sr-icon sri-purple">🖼</div>
+          <div class="sr-body">
+            <div class="sr-label">Anı Varsayılan Gizliliği</div>
+            <div class="sr-sub">Yeni anılar için varsayılan</div>
+          </div>
+        </div>
+        <div class="privacy-opts">
+          <div class="po-row">
+            <div class="po-chip" onclick="setMemPrivacy(this,'public')">
+              <div class="po-chip-icon">🌍</div>
+              <div class="po-chip-label">Herkese Açık</div>
+            </div>
+            <div class="po-chip on" onclick="setMemPrivacy(this,'friends')">
+              <div class="po-chip-icon">👥</div>
+              <div class="po-chip-label">Arkadaşlar</div>
+            </div>
+            <div class="po-chip" onclick="setMemPrivacy(this,'private')">
+              <div class="po-chip-icon">🔒</div>
+              <div class="po-chip-label">Yalnız Ben</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toggleRow(this)">
+        <div class="sr-icon sri-dark">🔍</div>
+        <div class="sr-body">
+          <div class="sr-label">Aramada Görün</div>
+          <div class="sr-sub">Kullanıcılar seni arama sonuçlarında görebilir</div>
+        </div>
+        <div class="sr-right">
+          <div class="toggle on" onclick="event.stopPropagation();toggleToggle(this)">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toggleRow(this)">
+        <div class="sr-icon sri-dark">📍</div>
+        <div class="sr-body">
+          <div class="sr-label">Konum Paylaşımı</div>
+          <div class="sr-sub">Sadece check-in sırasında kullanılır</div>
+        </div>
+        <div class="sr-right">
+          <div class="toggle on" onclick="event.stopPropagation();toggleToggle(this)">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toggleRow(this)">
+        <div class="sr-icon sri-dark">👀</div>
+        <div class="sr-body">
+          <div class="sr-label">Aktif Durumu</div>
+          <div class="sr-sub">Bağlantıların seni çevrimiçi görebilir</div>
+        </div>
+        <div class="sr-right">
+          <div class="toggle" onclick="event.stopPropagation();toggleToggle(this)">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Engellenen kullanıcılar')">
+        <div class="sr-icon sri-red">🚫</div>
+        <div class="sr-body">
+          <div class="sr-label">Engellenen Kullanıcılar</div>
+          <div class="sr-sub">0 engellenen kullanıcı</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── BİLDİRİMLER ── -->
+  <div class="settings-group">
+    <div class="group-label">Bildirimler</div>
+    <div class="group-card">
+
+      <div class="setting-row" style="cursor:default">
+        <div class="sr-icon sri-amber">🔔</div>
+        <div class="sr-body">
+          <div class="sr-label">Push Bildirimleri</div>
+          <div class="sr-sub">iOS izni verilmiş</div>
+        </div>
+        <div class="sr-right">
+          <span class="sr-badge sbd-green">Açık</span>
+        </div>
+      </div>
+
+      <div class="notif-detail">
+        <div class="po-label">Hangi bildirimler gelsin?</div>
+
+        <div class="nd-row">
+          <div class="nd-dot" style="background:var(--red)"></div>
+          <div class="nd-label">Canlı ritüel başladı</div>
+          <div class="toggle on on-green" onclick="toggleToggle(this)"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="nd-row">
+          <div class="nd-dot" style="background:var(--navy)"></div>
+          <div class="nd-label">Ritüele arkadaşın katıldı</div>
+          <div class="toggle on" onclick="toggleToggle(this)"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="nd-row">
+          <div class="nd-dot" style="background:var(--gold)"></div>
+          <div class="nd-label">RS skoru değişti</div>
+          <div class="toggle on" onclick="toggleToggle(this)"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="nd-row">
+          <div class="nd-dot" style="background:var(--green)"></div>
+          <div class="nd-label">Yeni rozet kazanıldı</div>
+          <div class="toggle on on-green" onclick="toggleToggle(this)"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="nd-row">
+          <div class="nd-dot"></div>
+          <div class="nd-label">Geri bildirim hatırlatması</div>
+          <div class="toggle on" onclick="toggleToggle(this)"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="nd-row">
+          <div class="nd-dot"></div>
+          <div class="nd-label">Arkadaş isteği</div>
+          <div class="toggle on" onclick="toggleToggle(this)"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="nd-row">
+          <div class="nd-dot" style="background:var(--g300)"></div>
+          <div class="nd-label">Anı yorumu ve tepkisi</div>
+          <div class="toggle" onclick="toggleToggle(this)"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="nd-row">
+          <div class="nd-dot" style="background:var(--g300)"></div>
+          <div class="nd-label">Pazarlama ve kampanya</div>
+          <div class="toggle" onclick="toggleToggle(this)"><div class="toggle-thumb"></div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── GÖRÜNÜM ── -->
+  <div class="settings-group">
+    <div class="group-label">Görünüm</div>
+    <div class="group-card">
+
+      <div style="padding:10px 16px 0">
+        <div class="po-label">Tema</div>
+      </div>
+      <div class="theme-row">
+        <div class="theme-opt on" onclick="setTheme(this,'light')">
+          <div class="to-preview to-light">☀</div>
+          <div class="to-label on"><span class="theme-check on"></span>Açık</div>
+        </div>
+        <div class="theme-opt" onclick="setTheme(this,'dark')">
+          <div class="to-preview to-dark"><span class="to-moon">🌙</span></div>
+          <div class="to-label"><span class="theme-check"></span>Koyu</div>
+        </div>
+        <div class="theme-opt" onclick="setTheme(this,'system')">
+          <div class="to-preview to-sys">⊙</div>
+          <div class="to-label"><span class="theme-check"></span>Sistem</div>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toggleRow(this)">
+        <div class="sr-icon sri-dark">✦</div>
+        <div class="sr-body">
+          <div class="sr-label">Animasyonları Azalt</div>
+          <div class="sr-sub">Erişilebilirlik için hareketi azalt</div>
+        </div>
+        <div class="sr-right">
+          <div class="toggle" onclick="event.stopPropagation();toggleToggle(this)">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Dil ayarları')">
+        <div class="sr-icon sri-blue">🌐</div>
+        <div class="sr-body">
+          <div class="sr-label">Uygulama Dili</div>
+          <div class="sr-sub">Arayüz ve bildirim dili</div>
+        </div>
+        <div class="sr-right">
+          <span class="sr-value">Türkçe</span>
+          <span class="sr-arrow">›</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── CREATOR PROGRAMI ── -->
+  <div class="settings-group">
+    <div class="group-label">Creator Programı</div>
+    <div class="group-card">
+
+      <div class="setting-row" onclick="toast('Creator dashboard açıldı')">
+        <div class="sr-icon sri-gold">★</div>
+        <div class="sr-body">
+          <div class="sr-label">Creator Dashboard</div>
+          <div class="sr-sub">Ritüel metrikleri · Doluluk · Bağlantı istatistikleri</div>
+        </div>
+        <div class="sr-right">
+          <span class="sr-badge sbd-navy">Pivot Host</span>
+          <span class="sr-arrow">›</span>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Venue ortaklıkları')">
+        <div class="sr-icon sri-green">🏛</div>
+        <div class="sr-body">
+          <div class="sr-label">Venue Ortaklıkları</div>
+          <div class="sr-sub">Caffe Letterario · LOCAL Partner</div>
+        </div>
+        <div class="sr-right">
+          <span class="sr-badge sbd-green">2 aktif</span>
+          <span class="sr-arrow">›</span>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Gelir paylaşımı')">
+        <div class="sr-icon sri-gold">💰</div>
+        <div class="sr-body">
+          <div class="sr-label">Gelir Paylaşımı</div>
+          <div class="sr-sub">Bu ay · €22.35 · %15 venue aboneliği</div>
+        </div>
+        <div class="sr-right">
+          <span class="sr-badge sbd-green">€22.35</span>
+          <span class="sr-arrow">›</span>
+        </div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Seçilmiş host programı')">
+        <div class="sr-icon sri-navy">🎯</div>
+        <div class="sr-body">
+          <div class="sr-label">Seçilmiş Host Programı</div>
+          <div class="sr-sub">Sonraki 1:1 görüşme · 20 Nisan</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── DESTEK ── -->
+  <div class="settings-group">
+    <div class="group-label">Destek & Hakkında</div>
+    <div class="group-card">
+
+      <div class="setting-row" onclick="toast('Yardım merkezi açıldı')">
+        <div class="sr-icon sri-blue">❓</div>
+        <div class="sr-body">
+          <div class="sr-label">Yardım Merkezi</div>
+          <div class="sr-sub">Sık sorulan sorular ve rehberler</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Geri bildirim gönderildi')">
+        <div class="sr-icon sri-green">💬</div>
+        <div class="sr-body">
+          <div class="sr-label">Geri Bildirim Gönder</div>
+          <div class="sr-sub">Ürün hakkında düşüncelerini paylaş</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Hata bildir')">
+        <div class="sr-icon sri-amber">🐛</div>
+        <div class="sr-body">
+          <div class="sr-label">Hata Bildir</div>
+          <div class="sr-sub">Bir şeyler yanlış mı gitti?</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Gizlilik politikası açıldı')">
+        <div class="sr-icon sri-dark">📄</div>
+        <div class="sr-body">
+          <div class="sr-label">Gizlilik Politikası</div>
+          <div class="sr-sub">GDPR uyumlu · UK GDPR</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+
+      <div class="setting-row" onclick="toast('Kullanım koşulları açıldı')">
+        <div class="sr-icon sri-dark">📋</div>
+        <div class="sr-body">
+          <div class="sr-label">Kullanım Koşulları</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+
+      <div class="setting-row" onclick="toast('LOCAL v1.0.0 · Build 42')">
+        <div class="sr-icon sri-dark">ℹ</div>
+        <div class="sr-body">
+          <div class="sr-label">Uygulama Versiyonu</div>
+          <div class="sr-sub">LOCAL v1.0.0 · Build 42</div>
+        </div>
+        <div class="sr-right">
+          <span class="sr-value">v1.0.0</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── OTURUM ── -->
+  <div class="settings-group">
+    <div class="group-label">Oturum</div>
+    <div class="group-card">
+      <div class="setting-row" onclick="openModal('logout')">
+        <div class="sr-icon sri-dark">↩</div>
+        <div class="sr-body">
+          <div class="sr-label">Çıkış Yap</div>
+          <div class="sr-sub">Taha G. · unimi.it</div>
+        </div>
+        <div class="sr-right"><span class="sr-arrow">›</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TEHLİKELİ BÖLGE ── -->
+  <div class="settings-group">
+    <div class="group-label">Tehlikeli Bölge</div>
+    <div class="group-card">
+      <div class="danger-row" onclick="openModal('deactivate')">
+        <div class="dr-icon">⏸</div>
+        <div>
+          <div class="dr-label">Hesabı Dondur</div>
+          <div class="dr-sub">Geçici olarak devre dışı bırak · RS korunur</div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--red-pale)"></div>
+      <div class="danger-row" onclick="openModal('delete')">
+        <div class="dr-icon">🗑</div>
+        <div>
+          <div class="dr-label">Hesabı Sil</div>
+          <div class="dr-sub">Tüm veriler kalıcı olarak silinir · Geri alınamaz</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP INFO -->
+  <div class="app-info">
+    <div class="ai-logo">L<span></span></div>
+    <div class="ai-ver">v1.0.0 · Milano 2026 · LOCAL Technologies Ltd</div>
+    <div class="ai-links">
+      <span class="ai-link" onclick="toast('Gizlilik politikası')">Gizlilik</span>
+      <span class="ai-link" onclick="toast('Kullanım koşulları')">Koşullar</span>
+      <span class="ai-link" onclick="toast('Çerez politikası')">Çerezler</span>
+      <span class="ai-link" onclick="toast('İletişim')">İletişim</span>
+    </div>
+    <div class="ai-copy">© 2026 LOCAL Technologies Ltd · Tüm hakları saklıdır</div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-icon-wrap"><span class="nav-icon">〰</span></div><span class="nav-lbl-off">Pulse</span></div>
+  <div class="nav-item"><div class="nav-icon-wrap"><span class="nav-icon">📅</span></div><span class="nav-lbl-off">City Rhythm</span></div>
+  <div class="nav-item"><div class="nav-icon-wrap on"><span class="nav-icon inv">◉</span></div><span class="nav-lbl">Passport</span></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-icon" id="modal-icon">⚠</div>
+    <div class="modal-title" id="modal-title">Başlık</div>
+    <div class="modal-body" id="modal-body">İçerik</div>
+    <div class="modal-btns">
+      <button class="modal-btn mb-cancel" onclick="closeModal()">Vazgeç</button>
+      <button class="modal-btn" id="modal-confirm" onclick="confirmAction()">Onayla</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* RS dots */
+(function(){
+  const el=document.getElementById('rs-dots');
+  const rs=7.4;
+  for(let i=1;i<=10;i++){
+    const d=document.createElement('div');
+    d.className='rdd'+(i<=Math.floor(rs)?' f':i<=Math.ceil(rs)&&rs%1>.3?' h':'');
+    el.appendChild(d);
+  }
+})();
+
+/* Toast */
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* Toggle */
+function toggleToggle(el){
+  el.classList.toggle('on');
+  const label=el.closest('.setting-row,.nd-row')?.querySelector('.sr-label,.nd-label')?.textContent||'Ayar';
+  toast((el.classList.contains('on')?'Açıldı: ':'Kapatıldı: ')+label);
+}
+function toggleRow(row){
+  const t=row.querySelector('.toggle');
+  if(t)toggleToggle(t);
+}
+
+/* Privacy options */
+function setRSPrivacy(el,val){
+  el.closest('.po-row').querySelectorAll('.po-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  const labels={none:'RS tamamen gizlendi',dots:'RS nokta skalasıyla gösterilecek',value:'RS tam değer olarak gösterilecek'};
+  toast(labels[val]);
+}
+function setMemPrivacy(el,val){
+  el.closest('.po-row').querySelectorAll('.po-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  const labels={public:'Yeni anılar herkese açık',friends:'Yeni anılar arkadaşlara açık',private:'Yeni anılar gizli'};
+  toast(labels[val]);
+}
+
+/* Theme */
+function setTheme(el,t){
+  document.querySelectorAll('.theme-opt').forEach(o=>{
+    o.classList.remove('on');
+    o.querySelector('.theme-check').classList.remove('on');
+    o.querySelector('.to-label').classList.remove('on');
+  });
+  el.classList.add('on');
+  el.querySelector('.theme-check').classList.add('on');
+  el.querySelector('.to-label').classList.add('on');
+  toast({light:'Açık tema uygulandı',dark:'Koyu tema uygulandı',system:'Sistem teması uygulandı'}[t]);
+}
+
+/* Modal */
+let currentAction='';
+const MODALS={
+  logout:{icon:'↩',title:'Çıkış Yap',body:'Hesabından çıkmak istediğine emin misin? Tekrar giriş yapmak için üniversite e-postanı kullanabilirsin.',confirm:'Çıkış Yap',cls:'mb-navy'},
+  deactivate:{icon:'⏸',title:'Hesabı Dondur',body:'Hesabın geçici olarak devre dışı bırakılacak. RS skorun ve tüm anıların korunur. İstediğin zaman tekrar aktifleştirebilirsin.',confirm:'Dondur',cls:'mb-danger'},
+  delete:{icon:'🗑',title:'Hesabı Kalıcı Sil',body:'Bu işlem geri alınamaz. Tüm ritüel geçmişin, anıların, RS skorun ve bağlantıların kalıcı olarak silinir. 30 gün içinde geri dönme şansın olmayacak.',confirm:'Kalıcı Olarak Sil',cls:'mb-danger'},
+};
+function openModal(action){
+  currentAction=action;
+  const m=MODALS[action];
+  document.getElementById('modal-icon').textContent=m.icon;
+  document.getElementById('modal-title').textContent=m.title;
+  document.getElementById('modal-body').textContent=m.body;
+  const btn=document.getElementById('modal-confirm');
+  btn.textContent=m.confirm;
+  btn.className='modal-btn '+m.cls;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(e){
+  if(!e||e.target===document.getElementById('modal'))
+    document.getElementById('modal').classList.remove('open');
+}
+function confirmAction(){
+  closeModal();
+  const msgs={logout:'Çıkış yapıldı',deactivate:'Hesap donduruldu',delete:'Hesap silme isteği gönderildi'};
+  toast(msgs[currentAction]||'İşlem tamamlandı');
+}
+</script>
+
+</body>
+</html>

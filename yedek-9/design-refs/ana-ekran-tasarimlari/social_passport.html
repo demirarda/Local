@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Social Passport · Premium Identity</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1B2E4A;
+  --navy-deep: #0E1B2E;
+  --navy-soft: #2A4470;
+  --gold: #C8A96A;
+  --gold-light: #E8D49A;
+  --gold-deep: #8B6F36;
+  --bg: #F5F2EB;
+  --bg-paper: #EFEAE0;
+  --card: #FFFFFF;
+  --ink: #1B2E4A;
+  --ink-soft: #4A6688;
+  --muted: #8A8275;
+  --line: rgba(27, 46, 74, 0.08);
+  --green: #4A6B3A;
+  --green-pale: #DDE5D0;
+  --amber: #B8721F;
+  --amber-pale: #F2E4C9;
+  --rose: #B45249;
+  --rose-pale: #F2D9D6;
+  --plum: #5B3A52;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #2D2A23;
+  background-image: radial-gradient(ellipse at top, #3D3A30 0%, #2D2A23 55%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px;
+  min-height: 100vh;
+}
+
+/* ─── PHONE FRAME ─── */
+.frame {
+  width: 390px;
+  background: var(--bg);
+  border-radius: 44px;
+  height: 844px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 11px #0A0A0C,
+    0 0 0 12px #1C1C1F,
+    0 32px 90px rgba(0,0,0,0.45);
+}
+.frame::before {
+  content: "";
+  position: absolute;
+  top: 11px; left: 50%;
+  transform: translateX(-50%);
+  width: 120px; height: 32px;
+  background: #0A0A0C;
+  border-radius: 100px;
+  z-index: 100;
+}
+.frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.1, 0 0 0 0 0.1, 0 0 0 0 0.1, 0 0 0 0.018 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  z-index: 50;
+  border-radius: 44px;
+}
+
+/* Status bar */
+.status-bar {
+  height: 52px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+.status-icons { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.signal-bars { display: inline-flex; gap: 2px; align-items: flex-end; }
+.signal-bars span { width: 3px; background: #fff; border-radius: 1px; }
+.signal-bars span:nth-child(1) { height: 4px; }
+.signal-bars span:nth-child(2) { height: 6px; }
+.signal-bars span:nth-child(3) { height: 8px; }
+.signal-bars span:nth-child(4) { height: 10px; }
+.battery {
+  width: 26px; height: 12px;
+  border: 1.5px solid #fff;
+  border-radius: 3px;
+  position: relative;
+  padding: 1.5px;
+}
+.battery::after {
+  content: "";
+  position: absolute;
+  right: -3px; top: 3px;
+  width: 2px; height: 4px;
+  background: #fff;
+  border-radius: 0 1px 1px 0;
+}
+.battery-fill { height: 100%; width: 70%; background: #fff; border-radius: 1px; }
+
+/* ─── PASSPORT HERO COVER ─── */
+.passport-cover {
+  height: 410px;
+  background:
+    radial-gradient(ellipse at 35% 20%, rgba(200,169,106,0.45) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 80%, rgba(74,107,134,0.35) 0%, transparent 55%),
+    linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative frame */
+.passport-cover::before {
+  content: "";
+  position: absolute;
+  inset: 28px 24px 24px;
+  border: 1px solid rgba(200, 169, 106, 0.15);
+  border-radius: 18px;
+  pointer-events: none;
+}
+.passport-cover::after {
+  content: "";
+  position: absolute;
+  inset: 32px 28px 28px;
+  border: 1px solid rgba(200, 169, 106, 0.08);
+  border-radius: 14px;
+  pointer-events: none;
+}
+
+/* Concentric rings background */
+.cover-rings {
+  position: absolute;
+  bottom: -120px;
+  right: -120px;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  border: 1px solid rgba(200, 169, 106, 0.12);
+}
+.cover-rings::before {
+  content: "";
+  position: absolute;
+  inset: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(200, 169, 106, 0.08);
+}
+.cover-rings::after {
+  content: "";
+  position: absolute;
+  inset: 60px;
+  border-radius: 50%;
+  border: 1px solid rgba(200, 169, 106, 0.05);
+}
+
+/* Top header strip — passport metadata */
+.cover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 28px 0;
+  position: relative;
+  z-index: 5;
+}
+.cover-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.cover-meta-left .gold { color: var(--gold); }
+.cover-icons { display: flex; gap: 6px; }
+.glass-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.15);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  cursor: pointer;
+}
+.glass-icon svg { width: 16px; height: 16px; }
+
+/* Passport ID strip */
+.passport-id-strip {
+  position: relative;
+  z-index: 5;
+  padding: 14px 28px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand-block {
+  font-family: 'Instrument Serif', serif;
+  color: #fff;
+}
+.brand-block .name {
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.brand-block .name .gold { color: var(--gold); font-style: italic; }
+.brand-block .label {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  margin-top: 2px;
+  letter-spacing: 0.04em;
+}
+.passport-serial {
+  text-align: right;
+  font-family: 'DM Sans';
+}
+.passport-serial .label {
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.passport-serial .serial {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  color: var(--gold-light);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* ─── AVATAR + RS RING ─── */
+.identity-area {
+  position: relative;
+  z-index: 5;
+  padding: 18px 28px 0;
+  text-align: center;
+}
+.av-block {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 16px;
+}
+.av-ring-outer {
+  width: 142px;
+  height: 142px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from -90deg,
+    var(--gold-light) 0deg,
+    var(--gold) 256deg,
+    rgba(200,169,106,0.12) 256deg
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.av-ring-outer::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--navy-soft), var(--navy-deep));
+}
+/* Tick marks every 30° */
+.av-ring-outer::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255,255,255,0.18) 0deg, rgba(255,255,255,0.18) 1deg, transparent 1deg, transparent 30deg,
+    rgba(255,255,255,0.18) 30deg, rgba(255,255,255,0.18) 31deg, transparent 31deg, transparent 60deg,
+    rgba(255,255,255,0.18) 60deg, rgba(255,255,255,0.18) 61deg, transparent 61deg, transparent 90deg,
+    rgba(255,255,255,0.18) 90deg, rgba(255,255,255,0.18) 91deg, transparent 91deg, transparent 120deg,
+    rgba(255,255,255,0.18) 120deg, rgba(255,255,255,0.18) 121deg, transparent 121deg, transparent 150deg,
+    rgba(255,255,255,0.18) 150deg, rgba(255,255,255,0.18) 151deg, transparent 151deg, transparent 180deg,
+    rgba(255,255,255,0.18) 180deg, rgba(255,255,255,0.18) 181deg, transparent 181deg, transparent 210deg,
+    rgba(255,255,255,0.18) 210deg, rgba(255,255,255,0.18) 211deg, transparent 211deg, transparent 240deg,
+    rgba(255,255,255,0.18) 240deg, rgba(255,255,255,0.18) 241deg, transparent 241deg, transparent 270deg,
+    rgba(255,255,255,0.18) 270deg, rgba(255,255,255,0.18) 271deg, transparent 271deg, transparent 300deg,
+    rgba(255,255,255,0.18) 300deg, rgba(255,255,255,0.18) 301deg, transparent 301deg, transparent 330deg,
+    rgba(255,255,255,0.18) 330deg, rgba(255,255,255,0.18) 331deg, transparent 331deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 56%, black 56%, black 60%, transparent 60%);
+  mask: radial-gradient(circle, transparent 56%, black 56%, black 60%, transparent 60%);
+}
+
+.av-photo {
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  background:
+    linear-gradient(135deg, #B5A485 0%, #8E7A56 100%);
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Instrument Serif', serif;
+  font-size: 42px;
+  color: #fff;
+  letter-spacing: -0.01em;
+  background-image: url('https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=400&q=80');
+  background-size: cover;
+  background-position: center;
+}
+.av-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 2px 12px rgba(255,255,255,0.18);
+}
+/* Verify check */
+.verify-tick {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 28px; height: 28px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+}
+.verify-tick svg { width: 14px; height: 14px; color: var(--green); }
+
+/* RS rosette badge */
+.rs-rosette {
+  position: absolute;
+  bottom: -6px;
+  right: -8px;
+  width: 56px; height: 56px;
+  z-index: 6;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+}
+.rs-rosette svg { width: 100%; height: 100%; }
+.rs-rosette-inner {
+  position: absolute;
+  inset: 8px;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg);
+  font-family: 'Instrument Serif', serif;
+}
+.rs-rosette-inner .num {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.rs-rosette-inner .lbl {
+  font-family: 'DM Sans';
+  font-size: 6.5px;
+  letter-spacing: 0.16em;
+  color: rgba(27,46,74,0.7);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+/* Identity name */
+.identity-name {
+  font-family: 'Instrument Serif', serif;
+  font-size: 30px;
+  color: #fff;
+  line-height: 1.05;
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+.identity-uni {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--gold-light);
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+.identity-handle {
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── SCROLL CONTENT ─── */
+.scroll-area {
+  position: absolute;
+  top: 410px;
+  left: 0; right: 0; bottom: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding-bottom: 100px;
+  background: var(--bg);
+}
+.scroll-area::-webkit-scrollbar { display: none; }
+
+/* Mood pills floating between cover and stats */
+.mood-strip {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 14px 28px 18px;
+  margin-top: -50px;
+  position: relative;
+  z-index: 8;
+}
+.mood-pill {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--ink);
+  padding: 4px 12px;
+  border-radius: 100px;
+  box-shadow: 0 4px 12px rgba(27,46,74,0.08);
+  letter-spacing: 0.02em;
+  border: 1px solid var(--line);
+}
+.mood-pill::before {
+  content: "~ ";
+  color: var(--gold-deep);
+}
+
+/* Stats row — premium */
+.stats-row {
+  margin: 4px 22px 18px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 0;
+  position: relative;
+  box-shadow: 0 8px 24px rgba(27,46,74,0.06);
+}
+.stat {
+  text-align: center;
+  border-right: 1px solid var(--line);
+  padding: 0 6px;
+  position: relative;
+}
+.stat:last-child { border-right: 0; }
+.stat-num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+.stat-num.gold { color: var(--gold-deep); }
+.stat-num .delta {
+  font-family: 'DM Sans';
+  font-size: 9px;
+  color: var(--green);
+  margin-left: 2px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.stat-label {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.stat-spark {
+  margin-top: 6px;
+  height: 16px;
+  width: 70%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Section header */
+.sec-rule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 22px 10px;
+}
+.sec-rule .roman {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.sec-rule .label {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.sec-rule .line {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.sec-rule .more {
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+/* ─── DS RADAR CARD ─── */
+.ds-card {
+  margin: 0 22px 4px;
+  background:
+    radial-gradient(ellipse at 75% 25%, rgba(200,169,106,0.35) 0%, transparent 55%),
+    linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  border-radius: 20px;
+  padding: 18px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(27,46,74,0.18);
+}
+.ds-card::before {
+  content: "";
+  position: absolute;
+  top: -40px; left: -40px;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,169,106,0.18);
+}
+.ds-card-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+}
+.ds-radar {
+  flex-shrink: 0;
+  width: 110px;
+  height: 110px;
+  position: relative;
+}
+.ds-radar svg { width: 100%; height: 100%; }
+.ds-info { flex: 1; min-width: 0; }
+.ds-tag {
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  color: var(--gold-light);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.ds-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.ds-value .num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 36px;
+  line-height: 1;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.ds-value .frac {
+  font-size: 14px;
+  color: rgba(255,255,255,0.45);
+}
+.ds-value .delta {
+  font-size: 10px;
+  color: #8DB67A;
+  font-weight: 600;
+  margin-left: 4px;
+  background: rgba(74,107,58,0.18);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.ds-status {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 10px;
+}
+.ds-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 100px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.ds-fill {
+  height: 100%;
+  width: 72%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  border-radius: 100px;
+}
+.ds-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  margin-top: 14px;
+  position: relative;
+  z-index: 2;
+}
+.ds-cta-text {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+}
+.ds-cta-text strong { color: #fff; font-weight: 600; }
+.ds-cta-arrow {
+  color: var(--gold-light);
+  font-size: 14px;
+}
+
+/* ─── RITUAL TIMELINE ─── */
+.timeline-card {
+  margin: 0 22px 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+}
+.tc-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.tc-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 17px;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.tc-meta {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+}
+.timeline-stamps {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  height: 60px;
+  align-items: flex-end;
+}
+.stamp {
+  flex: 1;
+  height: 100%;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  background-size: cover;
+  background-position: center;
+}
+.stamp::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.7) 100%);
+}
+.stamp-rs {
+  position: absolute;
+  bottom: 3px; left: 3px;
+  font-family: 'Instrument Serif', serif;
+  font-size: 9.5px;
+  color: #fff;
+  font-weight: 600;
+  z-index: 2;
+  letter-spacing: 0.04em;
+}
+.stamp-delta {
+  position: absolute;
+  top: 3px; right: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  z-index: 2;
+}
+.stamp-delta.pos { background: rgba(74,107,58,0.85); color: #fff; }
+.stamp-delta.neg { background: rgba(180,82,73,0.85); color: #fff; }
+.stamp-delta.zero { background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.85); }
+.tc-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8.5px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 12px;
+}
+.tc-summary {
+  padding: 10px 12px;
+  background: var(--bg-paper);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tc-summary-item {
+  flex: 1;
+  text-align: center;
+  border-right: 1px dashed var(--line);
+}
+.tc-summary-item:last-child { border-right: 0; }
+.tc-summary-num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 16px;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.tc-summary-num.gold { color: var(--gold-deep); }
+.tc-summary-num.green { color: var(--green); }
+.tc-summary-lbl {
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* ─── BADGE GALLERY ─── */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 0 22px;
+  margin-bottom: 8px;
+}
+.badge-tile {
+  aspect-ratio: 1;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  position: relative;
+  overflow: hidden;
+}
+.badge-tile.earned {
+  background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 100%);
+  border-color: var(--gold);
+  box-shadow: 0 4px 12px rgba(200,169,106,0.35);
+}
+.badge-tile.locked { opacity: 0.35; filter: grayscale(0.8); }
+.badge-emoji {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+.badge-tile-name {
+  font-size: 8.5px;
+  text-align: center;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.badge-rare-tag {
+  position: absolute;
+  top: 4px; right: 4px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 6.5px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+
+/* Showcase rarity */
+.rare-hint {
+  margin: 8px 22px 0;
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+/* ─── FRIENDS NETWORK CARD ─── */
+.friends-card {
+  margin: 0 22px 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+}
+.friends-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.friends-head-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 17px;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.friends-rings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: 140px;
+  margin-bottom: 14px;
+}
+/* Concentric rings */
+.fr-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px dashed;
+}
+.fr-ring.l3 {
+  width: 130px; height: 130px;
+  border-color: var(--ink);
+  border-style: solid;
+  background: rgba(27,46,74,0.04);
+}
+.fr-ring.l2 {
+  width: 90px; height: 90px;
+  border-color: var(--amber);
+  background: rgba(184,114,31,0.04);
+  border-style: dashed;
+}
+.fr-ring.l1 {
+  width: 50px; height: 50px;
+  border-color: var(--green);
+  background: rgba(74,107,58,0.04);
+  border-style: dashed;
+}
+/* Floating avatars */
+.fr-av {
+  position: absolute;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--card);
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-family: 'DM Sans';
+}
+.fr-av.center {
+  width: 36px; height: 36px;
+  font-size: 12px;
+  background: linear-gradient(135deg, #B5A485, #8E7A56);
+  z-index: 5;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.fr-av.l1-1 { top: 24%; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #6B8AAD, #3D5878); }
+.fr-av.l1-2 { top: 50%; right: 35%; background: linear-gradient(135deg, #C8A96A, #8B6F36); }
+.fr-av.l1-3 { bottom: 28%; left: 38%; background: linear-gradient(135deg, #B45249, #8B2F26); }
+.fr-av.l2-1 { top: 18%; left: 30%; background: linear-gradient(135deg, #4A6B3A, #2D4521); }
+.fr-av.l2-2 { top: 22%; right: 28%; background: linear-gradient(135deg, #5B3A52, #3A2538); }
+.fr-av.l2-3 { bottom: 18%; right: 28%; background: linear-gradient(135deg, #6B8AAD, #3D5878); }
+.fr-av.l3-1 { top: 8%; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #B5A485, #6F6045); }
+.fr-av.l3-2 { top: 50%; left: 8%; background: linear-gradient(135deg, #4A6B3A, #2D4521); }
+.fr-av.l3-3 { top: 50%; right: 8%; background: linear-gradient(135deg, #C8A96A, #8B6F36); }
+.fr-av.l3-4 { bottom: 8%; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #6B8AAD, #3D5878); }
+
+.friends-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.fs-cell {
+  text-align: center;
+}
+.fs-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.fs-dot.green { background: var(--green); }
+.fs-dot.amber { background: var(--amber); }
+.fs-dot.ink { background: var(--ink); }
+.fs-dot.muted { background: var(--muted); }
+.fs-num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink);
+}
+.fs-lbl {
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* ─── FOLLOWING SCROLL ─── */
+.follow-scroll {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0 22px 4px;
+}
+.follow-scroll::-webkit-scrollbar { display: none; }
+.follow-item {
+  flex-shrink: 0;
+  text-align: center;
+  width: 64px;
+  cursor: pointer;
+}
+.follow-av {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  margin: 0 auto 6px;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  border: 2px solid var(--card);
+  box-shadow: 0 2px 8px rgba(27,46,74,0.08);
+}
+.follow-av.h1 { background-image: url('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&q=80'); }
+.follow-av.h2 { background-image: url('https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80'); }
+.follow-av.h3 { background-image: url('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80'); }
+.follow-av.v1 {
+  border-radius: 14px;
+  background-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200&q=80');
+}
+.follow-av.v2 {
+  border-radius: 14px;
+  background-image: url('https://images.unsplash.com/photo-1574894709920-11b28e7367e9?w=200&q=80');
+}
+.follow-av.v3 {
+  border-radius: 14px;
+  background-image: url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=200&q=80');
+}
+.pivot-mini-star {
+  position: absolute;
+  bottom: -2px; right: -2px;
+  width: 18px; height: 18px;
+  background: var(--gold);
+  border: 2px solid var(--card);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: var(--ink);
+  font-weight: 700;
+}
+.follow-name {
+  font-size: 10px;
+  color: var(--ink);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+.follow-name .role {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 9px;
+  color: var(--muted);
+  display: block;
+  margin-top: 1px;
+}
+
+/* ─── MEMORIES MASONRY ─── */
+.mem-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 0 22px;
+  margin-bottom: 18px;
+}
+.mt {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+}
+.mt.t1 { background-image: url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=80'); }
+.mt.t2 { background-image: url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80'); }
+.mt.t3 { background-image: url('https://images.unsplash.com/photo-1543269865-cbf427effbad?w=400&q=80'); }
+.mt.t4 { background-image: url('https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=400&q=80'); }
+.mt.t5 { background-image: url('https://images.unsplash.com/photo-1574894709920-11b28e7367e9?w=400&q=80'); }
+.mt.t6 { background-image: url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&q=80'); }
+.mt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.5) 100%);
+}
+.mt-icon {
+  position: absolute;
+  top: 5px; right: 5px;
+  font-size: 9px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 2;
+  letter-spacing: 0.04em;
+}
+.mt-time {
+  position: absolute;
+  bottom: 4px; left: 5px;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 9px;
+  color: rgba(255,255,255,0.95);
+  z-index: 2;
+}
+
+/* ─── TAB BAR ─── */
+.tab-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 92px;
+  background: rgba(245, 242, 235, 0.85);
+  backdrop-filter: blur(24px) saturate(140%);
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-around;
+  padding: 14px 16px 32px;
+  z-index: 60;
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  position: relative;
+}
+.tab svg { width: 22px; height: 22px; }
+.tab.active { color: var(--ink); }
+.tab.active::before {
+  content: "";
+  position: absolute;
+  top: -14px;
+  width: 32px;
+  height: 3px;
+  background: var(--gold);
+  border-radius: 100px;
+}
+
+/* Annotation */
+.annot-wrap {
+  position: fixed;
+  top: 32px;
+  left: 32px;
+  z-index: 200;
+  font-family: 'DM Sans';
+}
+.annot-pill {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  color: var(--ink);
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 11px;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.annot-pill .lbl {
+  font-family: 'Instrument Serif', serif;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--gold-deep);
+  margin-right: 4px;
+}
+.annot-pill .id {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.annot-handwriting {
+  font-family: 'Caveat', cursive;
+  font-size: 16px;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 0.01em;
+  max-width: 280px;
+  margin-left: 14px;
+  line-height: 1.3;
+}
+</style>
+</head>
+<body>
+
+<div class="annot-wrap">
+  <div class="annot-pill">
+    <span class="lbl">Social Passport</span>
+    <span class="id">Tab 4 · Premium ID v2</span>
+  </div>
+  <div class="annot-handwriting">Pasaport metaforu —<br>conic-gradient RS halkası, ritual zaman<br>çizgisi, FL halkalı sosyal grafik.</div>
+</div>
+
+<div class="frame">
+
+  <!-- ─── PASSPORT COVER (HERO) ─── -->
+  <div class="passport-cover">
+    <div class="cover-rings"></div>
+
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="status-icons">
+        <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+        <span style="font-size: 11px; font-weight: 600;">5G</span>
+        <div class="battery"><div class="battery-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="cover-header">
+      <div class="cover-meta-left">
+        <span>Repubblica</span>
+        <span class="gold">·</span>
+        <span>LOCAL</span>
+        <span class="gold">·</span>
+        <span>Milano</span>
+      </div>
+      <div class="cover-icons">
+        <button class="glass-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 11l-9 9-9-9M3 11h18" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="glass-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12c0 .8 0 1.6-.2 2.4l2 1.5-2 3.5-2.4-1c-1.2 1-2.7 1.7-4.4 2L11.5 23h-3l-.5-2.6c-1.7-.3-3.2-1-4.4-2L1.2 19.4l-2-3.5 2-1.5C1 13.6 1 12.8 1 12s0-1.6.2-2.4l-2-1.5 2-3.5 2.4 1c1.2-1 2.7-1.7 4.4-2L8.5 1h3l.5 2.6c1.7.3 3.2 1 4.4 2l2.4-1 2 3.5-2 1.5c.2.8.2 1.6.2 2.4z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="passport-id-strip">
+      <div class="brand-block">
+        <div class="name">L<span class="gold">.</span> Passport</div>
+        <div class="label">Social Identity Document</div>
+      </div>
+      <div class="passport-serial">
+        <div class="label">SERIAL №</div>
+        <div class="serial">LCL · MIL · 087·213</div>
+      </div>
+    </div>
+
+    <div class="identity-area">
+      <div class="av-block">
+        <div class="av-ring-outer">
+          <div class="av-photo">AD</div>
+        </div>
+        <div class="verify-tick">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="rs-rosette">
+          <div class="rs-rosette-inner">
+            <div class="num">7.13</div>
+            <div class="lbl">RS</div>
+          </div>
+        </div>
+      </div>
+
+      <h1 class="identity-name">Arda Demir</h1>
+      <div class="identity-uni">Università Bocconi · Economics</div>
+      <div class="identity-handle">@arda · L1 · since Sept 2025</div>
+    </div>
+  </div>
+
+  <!-- Mood pills floating -->
+  <div class="scroll-area">
+    <div class="mood-strip">
+      <span class="mood-pill">entelektüel</span>
+      <span class="mood-pill">sosyal</span>
+      <span class="mood-pill">felsefi</span>
+      <span class="mood-pill">yavaş tempolu</span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-num">42<span class="delta">↑3</span></div>
+        <div class="stat-label">Arkadaş</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">28</div>
+        <div class="stat-label">Ritual</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">5</div>
+        <div class="stat-label">Host</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num gold">7.13<span class="delta">↑.09</span></div>
+        <div class="stat-label">RS</div>
+      </div>
+    </div>
+
+    <!-- I. DIVERSITY SCORE -->
+    <div class="sec-rule">
+      <span class="roman">I.</span>
+      <span class="label">Diversity Score · DS Dashboard</span>
+      <span class="line"></span>
+      <span class="more">›</span>
+    </div>
+
+    <div class="ds-card">
+      <div class="ds-card-row">
+        <div class="ds-radar">
+          <svg viewBox="0 0 100 100">
+            <!-- Hexagonal radar grid -->
+            <polygon points="50,8 88,30 88,70 50,92 12,70 12,30" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+            <polygon points="50,18 79,33 79,67 50,82 21,67 21,33" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <polygon points="50,28 70,40 70,60 50,72 30,60 30,40" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <polygon points="50,38 61,45 61,55 50,62 39,55 39,45" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <!-- Axis lines -->
+            <line x1="50" y1="50" x2="50" y2="8" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <line x1="50" y1="50" x2="88" y2="30" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <line x1="50" y1="50" x2="88" y2="70" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <line x1="50" y1="50" x2="50" y2="92" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <line x1="50" y1="50" x2="12" y2="70" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <line x1="50" y1="50" x2="12" y2="30" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <!-- Data polygon (DS components) -->
+            <polygon points="50,16 80,33 75,65 50,85 25,62 22,33"
+              fill="rgba(200,169,106,0.25)"
+              stroke="#E8D49A"
+              stroke-width="1.5"
+              stroke-linejoin="round"/>
+            <!-- Vertex dots -->
+            <circle cx="50" cy="16" r="2.5" fill="#E8D49A"/>
+            <circle cx="80" cy="33" r="2.5" fill="#E8D49A"/>
+            <circle cx="75" cy="65" r="2.5" fill="#E8D49A"/>
+            <circle cx="50" cy="85" r="2.5" fill="#E8D49A"/>
+            <circle cx="25" cy="62" r="2.5" fill="#E8D49A"/>
+            <circle cx="22" cy="33" r="2.5" fill="#E8D49A"/>
+            <!-- Axis labels -->
+            <text x="50" y="6" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="6" font-family="DM Sans" font-weight="600" letter-spacing="0.1em">PEOPLE</text>
+            <text x="92" y="32" fill="rgba(255,255,255,0.5)" font-size="6" font-family="DM Sans" font-weight="600">VENUES</text>
+            <text x="92" y="72" fill="rgba(255,255,255,0.5)" font-size="6" font-family="DM Sans" font-weight="600">TYPES</text>
+            <text x="50" y="98" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="6" font-family="DM Sans" font-weight="600" letter-spacing="0.1em">TIMES</text>
+            <text x="2" y="72" fill="rgba(255,255,255,0.5)" font-size="6" font-family="DM Sans" font-weight="600">MOOD</text>
+            <text x="2" y="32" fill="rgba(255,255,255,0.5)" font-size="6" font-family="DM Sans" font-weight="600">AREAS</text>
+          </svg>
+        </div>
+        <div class="ds-info">
+          <div class="ds-tag">◈ DIVERSITY</div>
+          <div class="ds-value">
+            <span class="num">0.72</span>
+            <span class="frac">/1.0</span>
+            <span class="delta">↑0.04</span>
+          </div>
+          <div class="ds-status">"reliable" · son 5 ritualde EMA artıyor</div>
+          <div class="ds-bar"><div class="ds-fill"></div></div>
+        </div>
+      </div>
+      <div class="ds-cta">
+        <div class="ds-cta-text">5 mahalle · 8 venue · <strong>4 farklı ritual tipi</strong></div>
+        <span class="ds-cta-arrow">DS Dashboard ›</span>
+      </div>
+    </div>
+
+    <!-- II. RITUAL TIMELINE -->
+    <div class="sec-rule">
+      <span class="roman">II.</span>
+      <span class="label">Son 12 Ritual · The Ledger</span>
+      <span class="line"></span>
+      <span class="more">›</span>
+    </div>
+
+    <div class="timeline-card">
+      <div class="tc-head">
+        <div class="tc-title">Trust Ledger</div>
+        <div class="tc-meta">son 28 gün</div>
+      </div>
+      <div class="timeline-stamps">
+        <div class="stamp" style="background-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200&q=80');">
+          <span class="stamp-delta pos">+.06</span>
+          <span class="stamp-rs">6.8</span>
+        </div>
+        <div class="stamp" style="background-image: url('https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=200&q=80');">
+          <span class="stamp-delta pos">+.04</span>
+          <span class="stamp-rs">6.84</span>
+        </div>
+        <div class="stamp" style="background-image: url('https://images.unsplash.com/photo-1543269865-cbf427effbad?w=200&q=80');">
+          <span class="stamp-delta pos">+.07</span>
+          <span class="stamp-rs">6.91</span>
+        </div>
+        <div class="stamp" style="background-image: url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=200&q=80');">
+          <span class="stamp-delta zero">·00</span>
+          <span class="stamp-rs">6.91</span>
+        </div>
+        <div class="stamp" style="background-image: url('https://images.unsplash.com/photo-1574894709920-11b28e7367e9?w=200&q=80');">
+          <span class="stamp-delta neg">-.03</span>
+          <span class="stamp-rs">6.88</span>
+        </div>
+        <div class="stamp" style="background-image: url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&q=80');">
+          <span class="stamp-delta pos">+.05</span>
+          <span class="stamp-rs">6.93</span>
+        </div>
+        <div class="stamp" style="background-image: url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=200&q=80');">
+          <span class="stamp-delta pos">+.08</span>
+          <span class="stamp-rs">7.01</span>
+        </div>
+        <div class="stamp" style="background-image: url('https://images.unsplash.com/photo-1518568814500-bf0f8d125f46?w=200&q=80');">
+          <span class="stamp-delta pos">+.03</span>
+          <span class="stamp-rs">7.04</span>
+        </div>
+        <div class="stamp" style="background-image: url('https://images.unsplash.com/photo-1543269865-cbf427effbad?w=200&q=80');">
+          <span class="stamp-delta pos">+.09</span>
+          <span class="stamp-rs">7.13</span>
+        </div>
+      </div>
+      <div class="tc-axis">
+        <span>4 gün önce</span>
+        <span>2 gün önce</span>
+        <span>bugün</span>
+      </div>
+      <div class="tc-summary">
+        <div class="tc-summary-item">
+          <div class="tc-summary-num green">+0.33</div>
+          <div class="tc-summary-lbl">Net Δ</div>
+        </div>
+        <div class="tc-summary-item">
+          <div class="tc-summary-num gold">0.78</div>
+          <div class="tc-summary-lbl">BC5</div>
+        </div>
+        <div class="tc-summary-item">
+          <div class="tc-summary-num">8/9</div>
+          <div class="tc-summary-lbl">+Δ Streak</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- III. BADGES -->
+    <div class="sec-rule">
+      <span class="roman">III.</span>
+      <span class="label">Rozetler · Achievements</span>
+      <span class="line"></span>
+      <span class="more">14/52 ›</span>
+    </div>
+
+    <div class="badge-grid">
+      <div class="badge-tile earned">
+        <span class="badge-rare-tag">RARE</span>
+        <span class="badge-emoji">⭐</span>
+        <span class="badge-tile-name">Reliable Local</span>
+      </div>
+      <div class="badge-tile earned">
+        <span class="badge-emoji">🌈</span>
+        <span class="badge-tile-name">Diversity Champ</span>
+      </div>
+      <div class="badge-tile earned">
+        <span class="badge-emoji">🎯</span>
+        <span class="badge-tile-name">Consistent</span>
+      </div>
+      <div class="badge-tile earned">
+        <span class="badge-emoji">🤝</span>
+        <span class="badge-tile-name">Connector</span>
+      </div>
+      <div class="badge-tile">
+        <span class="badge-emoji">⏰</span>
+        <span class="badge-tile-name">On Time</span>
+      </div>
+      <div class="badge-tile">
+        <span class="badge-emoji">📝</span>
+        <span class="badge-tile-name">Memory<br>Maker</span>
+      </div>
+      <div class="badge-tile">
+        <span class="badge-emoji">🏘</span>
+        <span class="badge-tile-name">Neighbour</span>
+      </div>
+      <div class="badge-tile locked">
+        <span class="badge-emoji">👑</span>
+        <span class="badge-tile-name">Exceptional</span>
+      </div>
+    </div>
+    <p class="rare-hint">"Reliable Local" rozeti — Milano kullanıcılarının yalnızca <strong>%18'i</strong> kazandı.</p>
+
+    <!-- IV. SOCIAL NETWORK -->
+    <div class="sec-rule">
+      <span class="roman">IV.</span>
+      <span class="label">Bağlantılar · Friendship Network</span>
+      <span class="line"></span>
+      <span class="more">›</span>
+    </div>
+
+    <div class="friends-card">
+      <div class="friends-head">
+        <div class="friends-head-title">Sosyal Grafik</div>
+        <div class="tc-meta">L1 · L2 · L3 dağılımı</div>
+      </div>
+      <div class="friends-rings">
+        <div class="fr-ring l3"></div>
+        <div class="fr-ring l2"></div>
+        <div class="fr-ring l1"></div>
+
+        <!-- Center: self -->
+        <div class="fr-av center">AD</div>
+
+        <!-- L1 (1-3 rituals) -->
+        <div class="fr-av l1-1">L</div>
+        <div class="fr-av l1-2">M</div>
+        <div class="fr-av l1-3">S</div>
+
+        <!-- L2 (4-9) -->
+        <div class="fr-av l2-1">G</div>
+        <div class="fr-av l2-2">B</div>
+        <div class="fr-av l2-3">A</div>
+
+        <!-- L3 (10+) -->
+        <div class="fr-av l3-1">F</div>
+        <div class="fr-av l3-2">C</div>
+        <div class="fr-av l3-3">D</div>
+        <div class="fr-av l3-4">M</div>
+      </div>
+      <div class="friends-stats">
+        <div class="fs-cell">
+          <div><span class="fs-dot green"></span><span class="fs-num">18</span></div>
+          <div class="fs-lbl">L1</div>
+        </div>
+        <div class="fs-cell">
+          <div><span class="fs-dot amber"></span><span class="fs-num">15</span></div>
+          <div class="fs-lbl">L2</div>
+        </div>
+        <div class="fs-cell">
+          <div><span class="fs-dot ink"></span><span class="fs-num">9</span></div>
+          <div class="fs-lbl">CORE</div>
+        </div>
+        <div class="fs-cell">
+          <div><span class="fs-dot muted"></span><span class="fs-num">42</span></div>
+          <div class="fs-lbl">TOPLAM</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V. FOLLOWING -->
+    <div class="sec-rule">
+      <span class="roman">V.</span>
+      <span class="label">Takip Ettiklerin</span>
+      <span class="line"></span>
+      <span class="more">12 ›</span>
+    </div>
+
+    <div class="follow-scroll">
+      <div class="follow-item">
+        <div class="follow-av h1">
+          <span class="pivot-mini-star">★</span>
+        </div>
+        <div class="follow-name">Marco R.<span class="role">Pivot Host</span></div>
+      </div>
+      <div class="follow-item">
+        <div class="follow-av h2"></div>
+        <div class="follow-name">Lara C.<span class="role">Host</span></div>
+      </div>
+      <div class="follow-item">
+        <div class="follow-av h3">
+          <span class="pivot-mini-star">★</span>
+        </div>
+        <div class="follow-name">Sofia M.<span class="role">Pivot Host</span></div>
+      </div>
+      <div class="follow-item">
+        <div class="follow-av v1"></div>
+        <div class="follow-name">Bar Magenta<span class="role">venue</span></div>
+      </div>
+      <div class="follow-item">
+        <div class="follow-av v2"></div>
+        <div class="follow-name">Cantina<span class="role">venue</span></div>
+      </div>
+      <div class="follow-item">
+        <div class="follow-av v3"></div>
+        <div class="follow-name">Verso<span class="role">venue</span></div>
+      </div>
+    </div>
+
+    <!-- VI. MEMORIES -->
+    <div class="sec-rule">
+      <span class="roman">VI.</span>
+      <span class="label">Anılar · Personal Archive</span>
+      <span class="line"></span>
+      <span class="more">128 ›</span>
+    </div>
+
+    <div class="mem-grid">
+      <div class="mt t1">
+        <span class="mt-icon">📸</span>
+        <span class="mt-time">bugün</span>
+      </div>
+      <div class="mt t2">
+        <span class="mt-icon">🎵</span>
+        <span class="mt-time">dün</span>
+      </div>
+      <div class="mt t3">
+        <span class="mt-icon">💬</span>
+        <span class="mt-time">dün</span>
+      </div>
+      <div class="mt t4">
+        <span class="mt-icon">📸</span>
+        <span class="mt-time">3g</span>
+      </div>
+      <div class="mt t5">
+        <span class="mt-icon">📍</span>
+        <span class="mt-time">5g</span>
+      </div>
+      <div class="mt t6">
+        <span class="mt-icon">◈ Δ</span>
+        <span class="mt-time">1h</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h3l3-9 6 18 3-9h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Pulse</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+      <span>Local</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M9 3v4M15 3v4" stroke-linecap="round"/></svg>
+      <span>Rhythm</span>
+    </div>
+    <div class="tab active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+      <span>Passport</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

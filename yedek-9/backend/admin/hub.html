@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOCAL — Sistem Haritası</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400&display=swap" rel="stylesheet" />
+  <style>body{font-family:Inter,sans-serif}</style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <header class="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-10 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p class="text-amber-400 font-black text-2xl">L.</p>
+        <h1 class="text-xl font-bold">LOCAL Sistem Haritası</h1>
+        <p class="text-sm text-slate-400">son-part.md v1 — mobil + admin + API tek bakış</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <a href="dashboard.html" class="px-3 py-2 rounded-lg bg-slate-800 text-sm hover:bg-slate-700">Dashboard</a>
+        <button id="healthBtn" class="px-3 py-2 rounded-lg bg-blue-600 text-sm font-medium hover:bg-blue-500">API durumu</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-8 space-y-10">
+    <section id="healthPanel" class="hidden rounded-xl border border-slate-700 bg-slate-900 p-4 text-sm font-mono"></section>
+
+  <!-- Admin -->
+    <section>
+      <h2 class="text-lg font-bold mb-1 flex items-center gap-2">
+        <span class="material-symbols-outlined text-blue-400">admin_panel_settings</span>
+        Admin panelleri
+      </h2>
+      <p class="text-slate-400 text-sm mb-4">Backend yönetim yüzeyleri</p>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3" id="adminGrid"></div>
+    </section>
+
+    <!-- Mobile F1-F6 -->
+    <section>
+      <h2 class="text-lg font-bold mb-1 flex items-center gap-2">
+        <span class="material-symbols-outlined text-amber-400">smartphone</span>
+        Mobil uygulama (§13)
+      </h2>
+      <p class="text-slate-400 text-sm mb-4">Uygulamada: Ayarlar → <strong class="text-white">LOCAL Hub</strong></p>
+      <div id="mobileSections" class="space-y-4"></div>
+    </section>
+
+    <!-- API -->
+    <section>
+      <h2 class="text-lg font-bold mb-1 flex items-center gap-2">
+        <span class="material-symbols-outlined text-emerald-400">api</span>
+        API uçları (özet)
+      </h2>
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-slate-900 text-slate-400 uppercase text-xs">
+            <tr>
+              <th class="px-4 py-3">Alan</th>
+              <th class="px-4 py-3">Prefix</th>
+              <th class="px-4 py-3">Not</th>
+            </tr>
+          </thead>
+          <tbody id="apiTable" class="divide-y divide-slate-800"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Stubs -->
+    <section>
+      <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined text-slate-400">pause_circle</span>
+        Pasif / Stub (§14)
+      </h2>
+      <div id="stubGrid" class="grid sm:grid-cols-2 gap-3"></div>
+    </section>
+  </main>
+
+  <script src="/admin/common.js"></script>
+  <script src="/admin/hub.js"></script>
+</body>
+</html>

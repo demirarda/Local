@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Pulse · Tekrarlanan</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;--gold-pale:rgba(200,169,106,.1);--gold-border:rgba(200,169,106,.3);
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --purple:#7C3AED;--purple-pale:#EDE9FE;
+  --teal:#0F766E;--teal-pale:#CCFBF1;
+  --slate:#475569;--slate-pale:#F1F5F9;
+  --g50:#FAFAFA;--g100:#F5F5F5;--g150:#F0F0F0;
+  --g200:#E5E5E5;--g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:var(--g150);max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;height:44px;background:var(--g150)}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 10px;background:var(--g150)}
+.tb-logo{font-family:'Instrument Serif',serif;font-size:26px;color:#000;letter-spacing:-.5px}
+.tb-logo span{display:inline-block;width:5px;height:5px;background:#000;border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:4px}
+.tb-right{display:flex;gap:8px;align-items:center}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:all .15s}
+.icon-btn:hover{border-color:var(--navy)}
+.notif-dot{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.profile-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4a3728,#C4956A);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:14px;color:#fff;cursor:pointer;border:2px solid var(--gold-border)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:6px;padding:0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px}
+.filter-row::-webkit-scrollbar{display:none}
+.fc{display:flex;align-items:center;gap:4px;padding:6px 13px;border-radius:100px;font-size:10px;font-weight:600;border:1.5px solid var(--g200);color:var(--g500);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.fc:hover{border-color:var(--g300);color:var(--g600)}
+.fc.live{background:var(--red-pale);border-color:rgba(220,38,38,.25);color:var(--red)}
+.fc-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.fc.on-slate{background:var(--slate);color:#fff;border-color:var(--slate)}
+.fc-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px}
+.fc.on-slate .fc-badge{background:rgba(255,255,255,.2);color:#fff}
+.fc:not([class*="on-"]):not(.live) .fc-badge{background:var(--g200);color:var(--g500)}
+
+.scroll-content{padding-bottom:90px}
+
+/* ══════════════════════════════════
+   BANNER
+══════════════════════════════════ */
+.recurring-banner{
+  margin:0 16px 16px;
+  background:#fff;border:1px solid var(--g200);
+  border-radius:20px;overflow:hidden;position:relative;
+}
+/* Calendar grid visual */
+.rb-cal{
+  position:absolute;top:0;right:0;
+  width:120px;height:100%;overflow:hidden;opacity:.06;
+}
+.rb-cal-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  gap:3px;padding:8px;
+}
+.rb-cal-cell{
+  aspect-ratio:1;border-radius:3px;background:var(--slate);
+}
+.rb-cal-cell.active{background:var(--navy)}
+.rb-body{padding:16px 16px 14px;position:relative;z-index:2}
+.rb-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--g400);margin-bottom:7px}
+.rb-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.rb-title{font-family:'Instrument Serif',serif;font-size:22px;color:#000;line-height:1.2;letter-spacing:-.3px}
+.rb-sub{font-size:11px;color:var(--g400);margin-top:3px}
+/* Cycle icon */
+.rb-cycle{
+  flex-shrink:0;width:52px;height:52px;
+  background:var(--navy);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;
+  box-shadow:0 2px 8px rgba(27,46,74,.15);
+}
+.rb-stats{display:flex;gap:6px;flex-wrap:wrap}
+.rb-stat{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--g100);border:1px solid var(--g200);
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:600;color:var(--g600);
+}
+
+/* ══════════════════════════════════
+   FREQUENCY FILTER
+══════════════════════════════════ */
+.freq-filter{
+  display:flex;gap:0;margin:0 16px 14px;
+  background:#fff;border:1px solid var(--g200);border-radius:12px;overflow:hidden;
+}
+.ff-btn{
+  flex:1;padding:9px 4px;text-align:center;
+  font-size:10px;font-weight:600;color:var(--g500);
+  cursor:pointer;transition:all .15s;
+  border-right:1px solid var(--g200);position:relative;
+}
+.ff-btn:last-child{border-right:none}
+.ff-btn:hover{background:var(--g50);color:var(--g600)}
+.ff-btn.on{background:var(--slate);color:#fff}
+.ff-btn.on + .ff-btn{border-left:none}
+.ff-icon{font-size:12px;display:block;margin-bottom:2px}
+.ff-label{font-size:9px;font-weight:700;display:block}
+.ff-count{font-size:8px;opacity:.6;display:block}
+.ff-btn.on .ff-count{opacity:.5;color:#fff}
+
+/* ══════════════════════════════════
+   WEEK STRIP — hangi gün nevar
+══════════════════════════════════ */
+.week-strip{
+  display:flex;gap:4px;padding:0 16px 14px;
+  overflow-x:auto;scrollbar-width:none;
+}
+.week-strip::-webkit-scrollbar{display:none}
+.ws-day{
+  flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  cursor:pointer;
+}
+.ws-day-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--g400)}
+.ws-day.today .ws-day-label{color:var(--slate)}
+.ws-bubbles{display:flex;flex-direction:column;gap:2px;min-width:32px;align-items:center}
+.ws-bubble{
+  width:30px;height:22px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;font-weight:700;cursor:pointer;
+  transition:all .15s;
+  white-space:nowrap;overflow:hidden;
+}
+.ws-bubble:hover{opacity:.8;transform:scale(1.05)}
+.wsb-navy{background:var(--navy-pale);color:var(--navy)}
+.wsb-amber{background:var(--amber-pale);color:var(--amber)}
+.wsb-green{background:var(--green-pale);color:var(--green)}
+.wsb-teal{background:var(--teal-pale);color:var(--teal)}
+.wsb-gold{background:var(--gold-pale);color:#92400E;border:1px solid var(--gold-border)}
+.wsb-purple{background:var(--purple-pale);color:var(--purple)}
+.wsb-live{background:var(--red-pale);color:var(--red)}
+.wsb-empty{background:var(--g100);color:var(--g300)}
+.ws-today-dot{width:5px;height:5px;border-radius:50%;background:var(--slate)}
+
+/* ══════════════════════════════════
+   SECTION LABEL
+══════════════════════════════════ */
+.sec-label{display:flex;align-items:center;gap:8px;padding:8px 18px 6px}
+.sl-line{flex:1;height:1px;background:var(--g200)}
+.sl-text{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+.sl-count{font-size:9px;color:var(--g300);background:var(--g100);padding:2px 7px;border-radius:100px;font-weight:600}
+
+/* ══════════════════════════════════
+   RECURRING CARD
+══════════════════════════════════ */
+.rec-card{
+  margin:0 16px 8px;background:#fff;
+  border:1px solid var(--g200);border-radius:16px;
+  overflow:hidden;cursor:pointer;transition:all .2s;position:relative;
+}
+.rec-card:hover{box-shadow:0 3px 14px rgba(0,0,0,.08);transform:translateY(-1px)}
+.rec-card.rc-weekly{border-color:rgba(71,85,105,.2)}
+.rec-card.rc-weekly::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--slate)}
+.rec-card.rc-daily{border-color:rgba(22,163,74,.2)}
+.rec-card.rc-daily::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--green)}
+.rec-card.rc-monthly{border-color:rgba(200,169,106,.3)}
+.rec-card.rc-monthly::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold)}
+.rec-card.rc-live{border-color:rgba(220,38,38,.2)}
+.rec-card.rc-live::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red)}
+
+/* HERO */
+.rc-hero{width:100%;height:148px;position:relative;overflow:hidden}
+.rc-hero-img{width:100%;height:100%}
+.rc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.06) 0%,rgba(0,0,0,.5) 60%,rgba(0,0,0,.88) 100%)}
+.rc-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between;align-items:flex-start}
+.rc-bot{position:absolute;bottom:0;left:0;right:0;padding:9px 13px;z-index:2}
+.rc-name{font-family:'Instrument Serif',serif;font-size:17px;color:#fff;line-height:1.25;margin-bottom:2px}
+.rc-venue{font-size:10px;color:rgba(255,255,255,.55)}
+
+/* Frequency badge */
+.freq-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:100px;
+  font-size:9px;font-weight:700;
+}
+.fb-daily{background:rgba(22,163,74,.88);color:#fff}
+.fb-weekly{background:rgba(71,85,105,.85);color:#fff}
+.fb-biweekly{background:rgba(15,118,110,.85);color:#fff}
+.fb-monthly{background:rgba(200,169,106,.92);color:#000}
+.fb-live{background:var(--red);color:#fff}
+.fb-icon{font-size:9px}
+
+/* next occurrence chip */
+.next-chip{
+  background:rgba(0,0,0,.5);backdrop-filter:blur(5px);
+  border:1px solid rgba(255,255,255,.18);
+  color:rgba(255,255,255,.85);font-size:9px;font-weight:600;
+  padding:3px 9px;border-radius:100px;
+}
+
+/* BODY */
+.rc-body{padding:10px 13px 6px}
+.rc-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.rc-left{flex:1;min-width:0}
+.rc-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc-venue-body{font-size:10px;color:var(--g400);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.rt{font-size:8px;font-weight:600;padding:2px 7px;border-radius:4px}
+.rt-navy{background:var(--navy-pale);color:var(--navy)}
+.rt-green{background:var(--green-pale);color:var(--green)}
+.rt-amber{background:var(--amber-pale);color:#92400E}
+.rt-red{background:var(--red-pale);color:var(--red)}
+.rt-dark{background:#000;color:#fff}
+.rt-gold{background:var(--gold-pale);color:#92400E;border:1px solid var(--gold-border)}
+.rt-grey{background:var(--g100);color:var(--g500)}
+.rt-blue{background:#DBEAFE;color:#1D4ED8}
+.rt-teal{background:var(--teal-pale);color:var(--teal)}
+.rt-slate{background:var(--slate-pale);color:var(--slate)}
+.rt-live{background:var(--red-pale);color:var(--red)}
+
+/* Streak meter */
+.streak-row{
+  display:flex;align-items:center;gap:8px;margin:6px 0 4px;
+  padding:6px 9px;background:var(--slate-pale);border-radius:9px;
+}
+.sr-icon{font-size:14px;flex-shrink:0}
+.sr-info{flex:1;min-width:0}
+.sr-label{font-size:9px;font-weight:700;color:var(--slate)}
+.sr-sub{font-size:8px;color:var(--g400);margin-top:1px}
+.sr-dots{display:flex;gap:2px;margin-top:4px}
+.sr-dot{width:12px;height:5px;border-radius:3px;background:var(--g200)}
+.sr-dot.on{background:var(--slate)}
+.sr-dot.today{background:var(--navy)}
+.sr-num{font-family:'Instrument Serif',serif;font-size:18px;color:var(--slate);flex-shrink:0}
+
+.rc-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.rc-btn{padding:9px 15px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;white-space:nowrap}
+.rc-btn:hover{opacity:.85}
+.rcb-slate{background:var(--slate);color:#fff}
+.rcb-r{background:var(--red);color:#fff}
+.rcb-n{background:var(--navy);color:#fff}
+.rcb-gold{background:var(--gold);color:#000}
+.rcb-green{background:var(--green);color:#fff}
+
+/* Subscribe toggle */
+.subscribe-btn{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 12px;border-radius:100px;
+  font-size:10px;font-weight:700;border:1.5px solid var(--g200);
+  color:var(--g500);background:#fff;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all .15s;
+}
+.subscribe-btn:hover{border-color:var(--slate);color:var(--slate)}
+.subscribe-btn.subbed{background:var(--slate);color:#fff;border-color:var(--slate)}
+.sb-icon{font-size:11px}
+
+/* FOOTER */
+.rc-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 13px 10px;border-top:1px solid var(--g100);margin-top:6px}
+.rf-left{display:flex;align-items:center;flex:1;min-width:0}
+.rf-avs{display:flex}
+.rf-av{width:20px;height:20px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:8px}
+.rf-av:not(:first-child){margin-left:-7px}
+.rf-text{font-size:10px;color:var(--g500);margin-left:6px}
+.rf-right{display:flex;gap:5px;flex-shrink:0}
+.rf-btn{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .15s}
+.rf-btn:hover{border-color:var(--navy)}
+.rf-btn.saved{background:var(--navy-pale);border-color:var(--navy)}
+.rf-react{display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:7px;background:var(--g100);border:1px solid var(--g200);font-size:11px;cursor:pointer;transition:all .15s}
+.rf-react:hover{background:var(--g200)}
+.rf-react.on{background:var(--slate-pale);border-color:rgba(71,85,105,.2)}
+.rf-react-count{font-size:10px;color:var(--g400);font-weight:600}
+.rf-react.on .rf-react-count{color:var(--slate)}
+
+/* ══════════════════════════════════
+   COMPACT ROW
+══════════════════════════════════ */
+.compact-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;background:#fff;border-radius:13px;
+  margin:0 16px 6px;border:1px solid var(--g200);
+  cursor:pointer;transition:all .15s;position:relative;overflow:hidden;
+}
+.compact-row:hover{box-shadow:0 2px 8px rgba(0,0,0,.07);transform:translateY(-1px)}
+.cr-weekly::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--slate)}
+.cr-daily::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green)}
+.cr-monthly::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gold)}
+.cr-thumb{width:44px;height:44px;border-radius:10px;flex-shrink:0;position:relative;overflow:hidden}
+.cr-ov{position:absolute;inset:0;background:rgba(0,0,0,.1)}
+.cr-info{flex:1;min-width:0}
+.cr-freq{font-size:9px;font-weight:600;color:var(--slate);margin-bottom:2px;display:flex;align-items:center;gap:5px}
+.cr-name{font-size:13px;font-weight:600;color:#000;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-schedule{font-size:10px;color:var(--g400);display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.cr-sch-dot{width:3px;height:3px;border-radius:50%;background:var(--g300)}
+.cr-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.cr-next{font-size:9px;font-weight:700;text-align:right}
+.cr-next.cn-today{color:var(--slate)}
+.cr-next.cn-tomorrow{color:var(--amber)}
+.cr-next.cn-live{color:var(--red)}
+.cr-btn{padding:6px 13px;border-radius:8px;font-size:10px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s}
+.cr-btn:hover{opacity:.85}
+.crb-slate{background:var(--slate);color:#fff}
+.crb-r{background:var(--red);color:#fff}
+.crb-gold{background:var(--gold);color:#000}
+.crb-green{background:var(--green);color:#fff}
+.crb-subbed{background:var(--slate-pale);color:var(--slate);border:1.5px solid rgba(71,85,105,.2)}
+
+/* ══════════════════════════════════
+   HORIZONTAL SCROLL
+══════════════════════════════════ */
+.h-scroll{display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;margin-bottom:8px}
+.h-scroll::-webkit-scrollbar{display:none}
+.h-card{
+  flex-shrink:0;width:155px;background:#fff;border-radius:14px;
+  border:1px solid var(--g200);overflow:hidden;cursor:pointer;transition:all .2s;
+}
+.h-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);transform:translateY(-1px)}
+.h-card.hc-weekly{border-color:rgba(71,85,105,.18)}
+.h-card.hc-weekly::before{content:'';display:block;height:2px;background:var(--slate)}
+.h-card.hc-monthly::before{content:'';display:block;height:2px;background:var(--gold)}
+.h-card.hc-biweekly::before{content:'';display:block;height:2px;background:var(--teal)}
+.hc-img{width:100%;height:84px;position:relative;overflow:hidden}
+.hc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.04) 0%,rgba(0,0,0,.5) 100%)}
+.hc-top{position:absolute;top:6px;left:7px;z-index:2}
+.hc-bot{position:absolute;bottom:6px;left:7px;right:7px;z-index:2}
+.hc-name{font-family:'Instrument Serif',serif;font-size:12px;color:#fff;line-height:1.2}
+.hc-venue{font-size:8px;color:rgba(255,255,255,.55)}
+.hc-body{padding:7px 9px 9px}
+.hc-sched{font-size:9px;color:var(--g500);margin-bottom:5px;font-weight:600}
+.hcf-row{display:flex;align-items:center;justify-content:space-between}
+.hcf-next{font-size:9px;font-weight:700}
+.hcf-btn{padding:4px 10px;border-radius:7px;font-size:9px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.hcfb-slate{background:var(--slate);color:#fff}
+.hcfb-gold{background:var(--gold);color:#000}
+.hcfb-n{background:var(--navy);color:#fff}
+.hcfb-sub{background:var(--slate-pale);color:var(--slate);border:1px solid rgba(71,85,105,.2)}
+
+/* ══════════════════════════════════
+   MY RECURRING — katıldıklarım
+══════════════════════════════════ */
+.my-rec-card{
+  margin:0 16px 8px;
+  background:linear-gradient(135deg,var(--slate-pale) 0%,#fff 100%);
+  border:1.5px solid rgba(71,85,105,.18);
+  border-radius:14px;padding:12px 14px;
+  cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+}
+.my-rec-card:hover{box-shadow:0 2px 10px rgba(71,85,105,.12);transform:translateY(-1px)}
+.my-rec-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--slate)}
+.mrc-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.mrc-thumb{width:42px;height:42px;border-radius:10px;flex-shrink:0;position:relative;overflow:hidden}
+.mrc-ov{position:absolute;inset:0;background:rgba(0,0,0,.1)}
+.mrc-info{flex:1;min-width:0}
+.mrc-freq{font-size:9px;font-weight:700;color:var(--slate);margin-bottom:1px;display:flex;align-items:center;gap:4px}
+.mrc-name{font-size:13px;font-weight:600;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrc-sched{font-size:10px;color:var(--g400)}
+.mrc-right{flex-shrink:0;text-align:right}
+.mrc-streak{font-family:'Instrument Serif',serif;font-size:22px;color:var(--slate);line-height:1}
+.mrc-streak-label{font-size:8px;color:var(--g400);font-weight:600}
+/* Mini streak dots */
+.streak-dots{display:flex;gap:3px;margin-top:6px}
+.sd{width:14px;height:6px;border-radius:3px;background:var(--g200)}
+.sd.on{background:var(--slate)}
+.sd.today{background:var(--navy);position:relative}
+.sd.today::after{content:'';position:absolute;top:-3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--navy)}
+.mrc-next{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:100px;
+  font-size:9px;font-weight:700;margin-top:4px;
+}
+.mn-today{background:var(--slate-pale);color:var(--slate)}
+.mn-live{background:var(--red-pale);color:var(--red)}
+.mn-soon{background:var(--amber-pale);color:var(--amber)}
+
+/* ══════════════════════════════════
+   TOAST
+══════════════════════════════════ */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.82);color:#fff;padding:9px 18px;border-radius:100px;font-size:12px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:76px;border-top:1.5px solid var(--g200);background:rgba(255,255,255,.98);backdrop-filter:blur(10px);display:flex;align-items:flex-start;padding-top:10px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-iw{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-iw.on{background:#000}
+.nav-ic{font-size:16px}
+.nav-ic.inv{filter:invert(1)}
+.nav-l{font-size:8px;font-weight:700;color:#000}
+.nav-lo{font-size:8px;font-weight:500;color:var(--g400)}
+
+/* IMG */
+.i-jazz{background:radial-gradient(circle at 45% 35%,rgba(255,180,80,.45) 0%,transparent 45%),linear-gradient(145deg,#1A1A2E 0%,#2A2040 30%,#3A2850 55%,#1A1520 100%)}
+.i-coffee{background:radial-gradient(circle at 40% 50%,rgba(180,130,80,.5) 0%,transparent 40%),linear-gradient(145deg,#2C1810 0%,#5C3D2E 30%,#8B6B4A 55%,#3A2418 100%)}
+.i-run{background:radial-gradient(circle at 50% 25%,rgba(255,200,100,.5) 0%,transparent 45%),linear-gradient(180deg,#87CEEB 0%,#98D1A8 30%,#6B8E4E 60%,#3A5028 100%)}
+.i-phil{background:linear-gradient(135deg,#4a3728 0%,#8B6345 40%,#C4956A 70%,#5D3A2A 100%)}
+.i-chess{background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 40%,#444 70%,#111 100%)}
+.i-yoga{background:linear-gradient(135deg,#2d6a2d 0%,#4CAF50 50%,#8BC34A 80%,#1B5E20 100%)}
+.i-art{background:linear-gradient(135deg,#2a1040 0%,#6B21A8 40%,#A855F7 70%,#1a0830 100%)}
+.i-teal{background:linear-gradient(145deg,#0F766E,#14B8A6)}
+.i-wine{background:linear-gradient(135deg,#4a0a20 0%,#9C1A3A 40%,#E91E63 70%,#2a0512 100%)}
+.i-book{background:radial-gradient(circle at 40% 45%,rgba(200,150,80,.4) 0%,transparent 45%),linear-gradient(145deg,#180A00 0%,#3A1F00 40%,#6B4020 70%,#2A1000 100%)}
+.i-lang{background:linear-gradient(145deg,#0F766E,#0D9488,#14B8A6)}
+.i-sunset{background:radial-gradient(circle at 50% 30%,rgba(255,150,50,.5) 0%,rgba(255,100,50,.3) 30%,transparent 60%),linear-gradient(180deg,#FF8C42 0%,#C4453A 40%,#2A1B3D 100%)}
+.i-photo{background:linear-gradient(135deg,#0c1a2e 0%,#1e3a5f 40%,#2e5d9e 70%,#0c1a2e 100%)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="status-bar">
+  <span class="sb-time">19:47</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<div class="top-bar">
+  <div class="tb-logo">L<span></span></div>
+  <div class="tb-right">
+    <div class="icon-btn" onclick="t('Bildirimler')">🔔<div class="notif-dot"></div></div>
+    <div class="profile-av" onclick="t('Profil')">T</div>
+  </div>
+</div>
+
+<!-- FILTER ROW -->
+<div class="filter-row">
+  <div class="fc live" onclick="t('Canlı')"><div class="fc-live-dot"></div>Canlı<span class="fc-badge">4</span></div>
+  <div class="fc" onclick="t('Bu Hafta')">📅 Bu Hafta<span class="fc-badge">34</span></div>
+  <div class="fc" onclick="t('Arkadaşlar')">👥 Arkadaşlar<span class="fc-badge">18</span></div>
+  <div class="fc on-slate" onclick="t('Tekrarlanan aktif')">🔄 Tekrarlanan<span class="fc-badge">22</span></div>
+  <div class="fc" onclick="t('Ücretsiz')">🆓 Ücretsiz<span class="fc-badge">16</span></div>
+  <div class="fc" onclick="t('Pivot Hostlar')">★ Pivot<span class="fc-badge">8</span></div>
+</div>
+
+<div class="scroll-content">
+
+  <!-- ── BANNER ── -->
+  <div class="recurring-banner">
+    <div class="rb-cal">
+      <div class="rb-cal-grid" id="cal-grid"></div>
+    </div>
+    <div class="rb-body">
+      <div class="rb-label">🔄 Tekrarlanan Ritüeller</div>
+      <div class="rb-row">
+        <div>
+          <div class="rb-title">Alışkanlık haline<br>gelen buluşmalar.</div>
+          <div class="rb-sub">Her hafta, her ay — aynı yerde, yeni yüzler</div>
+        </div>
+        <div class="rb-cycle">🔄</div>
+      </div>
+      <div class="rb-stats">
+        <div class="rb-stat">🔄 22 aktif ritüel</div>
+        <div class="rb-stat">📅 9 bu hafta</div>
+        <div class="rb-stat">✓ 4'üne kayıtlısın</div>
+        <div class="rb-stat">🆕 1 yeni seri</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HAFTALIK TAKVİM ŞERİDİ ── -->
+  <div style="padding:0 18px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--g400)">Bu Hafta Tekrarlananlar</div>
+  <div class="week-strip">
+
+    <div class="ws-day">
+      <div class="ws-day-label" style="opacity:.35">Pzt</div>
+      <div class="ws-bubbles">
+        <div class="ws-bubble wsb-empty" style="opacity:.35">—</div>
+      </div>
+    </div>
+
+    <div class="ws-day">
+      <div class="ws-day-label" style="opacity:.35">Sal</div>
+      <div class="ws-bubbles">
+        <div class="ws-bubble wsb-green" onclick="t('Koşu · Salı 07:00')">Koşu</div>
+        <div class="ws-bubble wsb-amber" onclick="t('Satranç · Salı 19:00')">Satranç</div>
+      </div>
+    </div>
+
+    <div class="ws-day">
+      <div class="ws-day-label" style="opacity:.35">Çar</div>
+      <div class="ws-bubbles">
+        <div class="ws-bubble wsb-navy" onclick="t('Kahve · Çarşamba 09:00')">Kahve</div>
+        <div class="ws-bubble wsb-teal" onclick="t('Dil · Çarşamba 18:30')">Dil</div>
+      </div>
+    </div>
+
+    <div class="ws-day">
+      <div class="ws-day-label" style="opacity:.35">Per</div>
+      <div class="ws-bubbles">
+        <div class="ws-bubble wsb-green" onclick="t('Koşu · Perşembe 07:00')">Koşu</div>
+        <div class="ws-bubble wsb-purple" onclick="t('Kitap · Perşembe 19:00')">Kitap</div>
+      </div>
+    </div>
+
+    <!-- BUGÜN — Cuma -->
+    <div class="ws-day today">
+      <div class="ws-day-label" style="color:var(--slate);font-weight:800">Bugün</div>
+      <div class="ws-bubbles">
+        <div class="ws-bubble wsb-live" onclick="t('Jazz · ŞU AN CANLI')">Jazz●</div>
+        <div class="ws-bubble wsb-navy" onclick="t('Kahve · Cuma 09:00')">Kahve</div>
+        <div class="ws-bubble wsb-green" onclick="t('Yoga · 20:30')">Yoga</div>
+      </div>
+      <div class="ws-today-dot"></div>
+    </div>
+
+    <div class="ws-day">
+      <div class="ws-day-label">Cmt</div>
+      <div class="ws-bubbles">
+        <div class="ws-bubble wsb-green" onclick="t('Koşu · Cumartesi 07:00')">Koşu</div>
+        <div class="ws-bubble wsb-gold" onclick="t('Brunch · Cmt 11:00')">Brunch</div>
+      </div>
+    </div>
+
+    <div class="ws-day">
+      <div class="ws-day-label">Paz</div>
+      <div class="ws-bubbles">
+        <div class="ws-bubble wsb-gold" onclick="t('Brunch · Pazar 11:00')">Brunch</div>
+        <div class="ws-bubble wsb-navy" onclick="t('Felsefe · Pazar 17:00')">Fels.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── FREQUENCY FILTER ── -->
+  <div class="freq-filter">
+    <div class="ff-btn on" id="ff-all" onclick="setFreq(this,'all')">
+      <span class="ff-icon">🔄</span>
+      <span class="ff-label">Tümü</span>
+      <span class="ff-count">22</span>
+    </div>
+    <div class="ff-btn" id="ff-daily" onclick="setFreq(this,'daily')">
+      <span class="ff-icon">☀️</span>
+      <span class="ff-label">Her Gün</span>
+      <span class="ff-count">3</span>
+    </div>
+    <div class="ff-btn" id="ff-weekly" onclick="setFreq(this,'weekly')">
+      <span class="ff-icon">📅</span>
+      <span class="ff-label">Haftalık</span>
+      <span class="ff-count">14</span>
+    </div>
+    <div class="ff-btn" id="ff-biweekly" onclick="setFreq(this,'biweekly')">
+      <span class="ff-icon">🗓</span>
+      <span class="ff-label">2 Haftada</span>
+      <span class="ff-count">3</span>
+    </div>
+    <div class="ff-btn" id="ff-monthly" onclick="setFreq(this,'monthly')">
+      <span class="ff-icon">🌙</span>
+      <span class="ff-label">Aylık</span>
+      <span class="ff-count">2</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════════
+       KAYITLI OLDUKLARIM
+  ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:var(--slate)">🔄 Kayıtlı Olduklarım</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">4</span>
+  </div>
+
+  <!-- Jazz Night — canlı, streak 8 -->
+  <div class="my-rec-card" onclick="t('Jazz Night → Live Ritual')">
+    <div class="mrc-row">
+      <div class="mrc-thumb i-jazz"><div class="mrc-ov"></div></div>
+      <div class="mrc-info">
+        <div class="mrc-freq"><span style="font-size:9px">🔄</span> Her Cuma</div>
+        <div class="mrc-name">Jazz Night at Blue Note</div>
+        <div class="mrc-sched">📍 Navigli · Her Cuma 20:30</div>
+      </div>
+      <div class="mrc-right">
+        <div class="mrc-streak">8</div>
+        <div class="mrc-streak-label">hafta üst üste</div>
+      </div>
+    </div>
+    <div class="streak-dots">
+      <div class="sd on"></div>
+      <div class="sd on"></div>
+      <div class="sd on"></div>
+      <div class="sd on"></div>
+      <div class="sd on"></div>
+      <div class="sd on"></div>
+      <div class="sd on"></div>
+      <div class="sd today"></div>
+    </div>
+    <div style="margin-top:7px;display:flex;justify-content:space-between;align-items:center">
+      <div class="mrc-next mn-live">● Şu an canlı · Katıl →</div>
+      <button class="rc-btn rcb-r" style="padding:7px 14px;font-size:10px" onclick="event.stopPropagation();t('Jazz → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <!-- Morning Run — streak 5 -->
+  <div class="my-rec-card" onclick="t('Morning Run → Ritual Detail')">
+    <div class="mrc-row">
+      <div class="mrc-thumb i-run"><div class="mrc-ov"></div></div>
+      <div class="mrc-info">
+        <div class="mrc-freq"><span style="font-size:9px">🔄</span> Sal · Per · Cmt</div>
+        <div class="mrc-name">Morning Run Club</div>
+        <div class="mrc-sched">📍 Sempione · 07:00</div>
+      </div>
+      <div class="mrc-right">
+        <div class="mrc-streak">5</div>
+        <div class="mrc-streak-label">ardışık</div>
+      </div>
+    </div>
+    <div class="streak-dots">
+      <div class="sd on"></div>
+      <div class="sd on"></div>
+      <div class="sd on"></div>
+      <div class="sd on"></div>
+      <div class="sd today"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+    </div>
+    <div style="margin-top:7px;display:flex;justify-content:space-between;align-items:center">
+      <div class="mrc-next mn-soon">⏱ Cmt 07:00 · Yarın sabah</div>
+      <button class="subscribe-btn subbed" style="font-size:10px;padding:5px 12px" onclick="event.stopPropagation();toggleSub(this)">
+        <span class="sb-icon">✓</span> Kayıtlı
+      </button>
+    </div>
+  </div>
+
+  <!-- Coffee Circle — streak 3 -->
+  <div class="my-rec-card" onclick="t('Morning Coffee → Ritual Detail')">
+    <div class="mrc-row">
+      <div class="mrc-thumb i-coffee"><div class="mrc-ov"></div></div>
+      <div class="mrc-info">
+        <div class="mrc-freq"><span style="font-size:9px">🔄</span> Pzt · Çar · Cum</div>
+        <div class="mrc-name">Morning Coffee Circle</div>
+        <div class="mrc-sched">📍 Brera · 09:00</div>
+      </div>
+      <div class="mrc-right">
+        <div class="mrc-streak">3</div>
+        <div class="mrc-streak-label">ardışık</div>
+      </div>
+    </div>
+    <div class="streak-dots">
+      <div class="sd on"></div>
+      <div class="sd on"></div>
+      <div class="sd today"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+    </div>
+    <div style="margin-top:7px;display:flex;justify-content:space-between;align-items:center">
+      <div class="mrc-next mn-today">Bugün 09:00 · Geçti</div>
+      <button class="subscribe-btn subbed" style="font-size:10px;padding:5px 12px" onclick="event.stopPropagation();toggleSub(this)">
+        <span class="sb-icon">✓</span> Kayıtlı
+      </button>
+    </div>
+  </div>
+
+  <!-- Philosophy — streak 2 -->
+  <div class="my-rec-card" onclick="t('Philosophy → Ritual Detail')">
+    <div class="mrc-row">
+      <div class="mrc-thumb i-phil"><div class="mrc-ov"></div></div>
+      <div class="mrc-info">
+        <div class="mrc-freq"><span style="font-size:9px">🔄</span> Her Pazar</div>
+        <div class="mrc-name">Philosophy Reading Club</div>
+        <div class="mrc-sched">📍 Caffe Letterario · 17:00</div>
+      </div>
+      <div class="mrc-right">
+        <div class="mrc-streak">2</div>
+        <div class="mrc-streak-label">ardışık</div>
+      </div>
+    </div>
+    <div class="streak-dots">
+      <div class="sd on"></div>
+      <div class="sd today"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+      <div class="sd"></div>
+    </div>
+    <div style="margin-top:7px;display:flex;justify-content:space-between;align-items:center">
+      <div class="mrc-next mn-soon">⏱ Pazar 17:00 · 2 gün sonra</div>
+      <button class="subscribe-btn subbed" style="font-size:10px;padding:5px 12px" onclick="event.stopPropagation();toggleSub(this)">
+        <span class="sb-icon">✓</span> Kayıtlı
+      </button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════
+       HAFTALIK — KEŞFEDİLEBİLİR
+  ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text">📅 Haftalık · Keşfet</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">14</span>
+  </div>
+
+  <!-- HERO: Sunset Yoga — haftalık -->
+  <div class="rec-card rc-weekly" onclick="t('Sunset Yoga → Ritual Detail')">
+    <div class="rc-hero">
+      <div class="rc-hero-img i-yoga"></div>
+      <div class="rc-ov"></div>
+      <div class="rc-top">
+        <div class="freq-badge fb-weekly"><span class="fb-icon">🔄</span>Her Cuma &amp; Pazartesi</div>
+        <div class="next-chip">⏱ Bugün 20:30</div>
+      </div>
+      <div class="rc-bot">
+        <div class="rc-name">Sunset Yoga · Sempione</div>
+        <div class="rc-venue">📍 Parco Sempione · Lena K. Verified Host</div>
+      </div>
+    </div>
+    <div class="rc-body">
+      <div class="streak-row">
+        <div class="sr-icon">🔥</div>
+        <div class="sr-info">
+          <div class="sr-label">Bu ritüelde ortalama katılım</div>
+          <div class="sr-sub">Son 8 haftada 11 / 16 kişi ortalama</div>
+        </div>
+        <div class="sr-num">11</div>
+      </div>
+      <div class="rc-row" style="align-items:center">
+        <div class="rc-left">
+          <div class="rc-tags">
+            <span class="rt rt-slate">🔄 Haftalık</span>
+            <span class="rt rt-green">Bilet gerekmez</span>
+            <span class="rt rt-navy">✓ Verified Host</span>
+          </div>
+        </div>
+        <button class="rc-btn rcb-slate" onclick="event.stopPropagation();t('Yoga → Katıl')">Katıl</button>
+      </div>
+    </div>
+    <div class="rc-footer">
+      <div class="rf-left">
+        <span class="rf-text" style="color:var(--g300)">Bağlantın yok · Bilet gerekmez</span>
+      </div>
+      <div class="rf-right">
+        <div class="subscribe-btn" onclick="event.stopPropagation();toggleSub(this)">
+          <span class="sb-icon">🔔</span>Abone Ol
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compact rows: haftalık -->
+  <div class="compact-row cr-weekly" onclick="t('Dil Buluşması → Ritual Detail')">
+    <div class="cr-thumb i-lang"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-freq"><span>🔄</span> Her Çarşamba</div>
+      <div class="cr-name">Dil Buluşması · İtalyanca</div>
+      <div class="cr-schedule">
+        Çarşamba 18:30 <div class="cr-sch-dot"></div>
+        Caffe Letterario <div class="cr-sch-dot"></div>
+        2 / 10 kişi
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-next cn-tomorrow">Yarın 18:30</span>
+      <button class="cr-btn crb-slate" onclick="event.stopPropagation();t('Dil → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-weekly" onclick="t('Kitap Okuma → Ritual Detail')">
+    <div class="cr-thumb i-book"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-freq"><span>🔄</span> Her Perşembe</div>
+      <div class="cr-name">Kitap Okuma Kulübü</div>
+      <div class="cr-schedule">
+        Perşembe 19:00 <div class="cr-sch-dot"></div>
+        Isola Cafe <div class="cr-sch-dot"></div>
+        4 / 8 kişi
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-next cn-tomorrow">Per 19:00</span>
+      <button class="cr-btn crb-slate" onclick="event.stopPropagation();t('Kitap → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-weekly" onclick="t('Satranç → Ritual Detail')">
+    <div class="cr-thumb i-chess"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-freq"><span>🔄</span> Her Salı & Perşembe</div>
+      <div class="cr-name">Chess Evening · Isola</div>
+      <div class="cr-schedule">
+        Sal + Per 21:00 <div class="cr-sch-dot"></div>
+        Isola Cafe <div class="cr-sch-dot"></div>
+        RS 50+
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-next cn-tomorrow">Salı 21:00</span>
+      <button class="cr-btn crb-slate" onclick="event.stopPropagation();t('Satranç → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <!-- Yatay: daha fazla haftalık -->
+  <div class="h-scroll">
+
+    <div class="h-card hc-weekly" onclick="t('Fotoğraf Yürüyüşü')">
+      <div class="hc-img i-photo"><div class="hc-ov"></div><div class="hc-top"><div class="freq-badge fb-weekly" style="font-size:7px;padding:2px 7px">🔄 Haftalık</div></div><div class="hc-bot"><div class="hc-name">Fotoğraf Yürüyüşü</div><div class="hc-venue">Navigli · Cuma 17:00</div></div></div>
+      <div class="hc-body"><div class="hc-sched">Her Cuma 17:00</div><div class="hcf-row"><span class="hcf-next" style="color:var(--slate)">Bugün</span><button class="hcf-btn hcfb-slate" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div></div>
+    </div>
+
+    <div class="h-card hc-weekly" onclick="t('Tiyatro Okuma')">
+      <div class="hc-img i-book"><div class="hc-ov"></div><div class="hc-top"><div class="freq-badge fb-weekly" style="font-size:7px;padding:2px 7px">🔄 Haftalık</div></div><div class="hc-bot"><div class="hc-name">Tiyatro Okuma</div><div class="hc-venue">Porta Romana · Per</div></div></div>
+      <div class="hc-body"><div class="hc-sched">Her Perşembe 19:30</div><div class="hcf-row"><span class="hcf-next" style="color:var(--amber)">Per 19:30</span><button class="hcf-btn hcfb-slate" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div></div>
+    </div>
+
+    <div class="h-card hc-biweekly" onclick="t('Şarap Tadımı')">
+      <div class="hc-img i-wine"><div class="hc-ov"></div><div class="hc-top"><div class="freq-badge fb-biweekly" style="font-size:7px;padding:2px 7px">🔄 2 Haftada</div></div><div class="hc-bot"><div class="hc-name">Şarap Tadımı</div><div class="hc-venue">Navigli · Çar</div></div></div>
+      <div class="hc-body"><div class="hc-sched">2 haftada Çarşamba</div><div class="hcf-row"><span class="hcf-next" style="color:var(--g400)">Çar 30 Nis</span><button class="hcf-btn hcfb-n" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div></div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════
+       AYLIK
+  ════════════════════════ -->
+  <div class="sec-label">
+    <div class="sl-line"></div>
+    <span class="sl-text" style="color:#92400E">🌙 Aylık</span>
+    <div class="sl-line"></div>
+    <span class="sl-count">2</span>
+  </div>
+
+  <div class="compact-row cr-monthly" onclick="t('Philosophers Club')">
+    <div class="cr-thumb i-phil"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-freq" style="color:#92400E"><span>🌙</span> Her Ayın 1. Cuması</div>
+      <div class="cr-name">Philosophers Club</div>
+      <div class="cr-schedule">
+        Her ay 1. Cuma <div class="cr-sch-dot"></div>
+        Özel Mekan · Brera <div class="cr-sch-dot"></div>
+        RS 70+
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-next" style="color:#92400E">2 Mayıs</span>
+      <button class="cr-btn crb-gold" onclick="event.stopPropagation();t('Philosophers → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div class="compact-row cr-monthly" onclick="t('Sunday Brunch Özel Seri')">
+    <div class="cr-thumb i-coffee"><div class="cr-ov"></div></div>
+    <div class="cr-info">
+      <div class="cr-freq" style="color:#92400E"><span>🌙</span> Her Ayın Son Pazarı</div>
+      <div class="cr-name">Grand Sunday Brunch</div>
+      <div class="cr-schedule">
+        Özel format <div class="cr-sch-dot"></div>
+        Navigli Villa <div class="cr-sch-dot"></div>
+        Max 12 kişi
+      </div>
+    </div>
+    <div class="cr-right">
+      <span class="cr-next" style="color:#92400E">27 Nisan</span>
+      <button class="cr-btn crb-gold" onclick="event.stopPropagation();t('Grand Brunch → Katıl')">Katıl</button>
+    </div>
+  </div>
+
+  <div style="height:8px"></div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-iw on"><span class="nav-ic inv">〰</span></div><span class="nav-l">Pulse</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">📅</span></div><span class="nav-lo">City Rhythm</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">◉</span></div><span class="nav-lo">Passport</span></div>
+</div>
+
+<script>
+/* Calendar grid bg */
+(function(){
+  const g = document.getElementById('cal-grid');
+  const active = [2,5,7,9,12,14,16,19,21,23,26,28];
+  for(let i=0;i<35;i++){
+    const el = document.createElement('div');
+    el.className = 'rb-cal-cell' + (active.includes(i) ? ' active' : '');
+    g.appendChild(el);
+  }
+})();
+
+/* Frequency filter */
+function setFreq(el, key) {
+  document.querySelectorAll('.ff-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  const labels = {
+    all:'Tüm tekrarlanan ritüeller · 22',
+    daily:'Her gün · 3 ritüel',
+    weekly:'Haftalık ritüeller · 14',
+    biweekly:'2 haftada bir · 3 ritüel',
+    monthly:'Aylık ritüeller · 2'
+  };
+  t(labels[key]);
+}
+
+/* Subscribe toggle */
+function toggleSub(btn) {
+  const subbed = btn.classList.contains('subbed');
+  if (subbed) {
+    btn.innerHTML = '<span class="sb-icon">🔔</span>Abone Ol';
+    btn.classList.remove('subbed');
+    t('Abonelik iptal edildi');
+  } else {
+    btn.innerHTML = '<span class="sb-icon">✓</span>Kayıtlı';
+    btn.classList.add('subbed');
+    t('Abonelik oluşturuldu · Bildirimler açık');
+  }
+}
+
+/* Toast */
+function t(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 2300);
+}
+</script>
+</body>
+</html>

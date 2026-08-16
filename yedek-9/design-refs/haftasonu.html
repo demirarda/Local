@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCAL — Pulse · Hafta Sonu</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E4A;--navy-l:#2A4470;
+  --navy-pale:#E8EDF4;--navy-mist:#F2F5F9;
+  --gold:#C8A96A;
+  --green:#16A34A;--green-pale:#EAF3DE;
+  --amber:#D97706;--amber-pale:#FEF3C7;
+  --red:#DC2626;--red-pale:#FEE2E2;
+  --purple:#7C3AED;--purple-pale:#EDE9FE;
+  --teal:#0F766E;--teal-pale:#CCFBF1;
+  --rose:#E11D48;--rose-pale:#FFE4E6;
+  --orange:#EA580C;--orange-pale:#FFEDD5;
+  --g50:#FAFAFA;--g100:#F5F5F5;--g150:#F0F0F0;
+  --g200:#E5E5E5;--g300:#D4D4D4;--g400:#A3A3A3;
+  --g500:#737373;--g600:#525252;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;background:var(--g150);max-width:390px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;height:44px;background:var(--g150)}
+.sb-time{font-size:15px;font-weight:600;color:#000}
+.sb-icons{font-size:12px;color:#000}
+
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 10px;background:var(--g150)}
+.tb-logo{font-family:'Instrument Serif',serif;font-size:26px;color:#000;letter-spacing:-.5px}
+.tb-logo span{display:inline-block;width:5px;height:5px;background:#000;border-radius:50%;vertical-align:baseline;margin-left:1px;margin-bottom:4px}
+.tb-right{display:flex;gap:8px;align-items:center}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:all .15s}
+.icon-btn:hover{border-color:var(--navy)}
+.notif-dot{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.profile-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4a3728,#C4956A);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:14px;color:#fff;cursor:pointer;border:2px solid var(--gold)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:6px;padding:0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px}
+.filter-row::-webkit-scrollbar{display:none}
+.fc{display:flex;align-items:center;gap:4px;padding:6px 13px;border-radius:100px;font-size:10px;font-weight:600;border:1.5px solid var(--g200);color:var(--g500);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;user-select:none}
+.fc:hover{border-color:var(--g300);color:var(--g600)}
+.fc.live{background:var(--red-pale);border-color:rgba(220,38,38,.25);color:var(--red)}
+.fc-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.fc.on-orange{background:var(--orange);color:#fff;border-color:var(--orange)}
+.fc.on-amber{background:var(--amber);color:#fff;border-color:var(--amber)}
+.fc.on-green{background:var(--green);color:#fff;border-color:var(--green)}
+.fc.on-navy{background:var(--navy);color:#fff;border-color:var(--navy)}
+.fc.on-purple{background:var(--purple);color:#fff;border-color:var(--purple)}
+.fc.on-teal{background:var(--teal);color:#fff;border-color:var(--teal)}
+.fc-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px}
+.fc.on-orange .fc-badge{background:rgba(255,255,255,.25);color:#fff}
+.fc:not([class*="on-"]):not(.live) .fc-badge{background:var(--g200);color:var(--g500)}
+
+.scroll-content{padding-bottom:90px}
+
+/* ── WEEKEND HERO BANNER ── */
+.weekend-banner{
+  margin:0 16px 14px;
+  border-radius:20px;overflow:hidden;
+  position:relative;min-height:130px;
+  cursor:pointer;transition:all .2s;
+}
+.weekend-banner:hover{box-shadow:0 5px 24px rgba(234,88,12,.2)}
+.wb-img{
+  position:absolute;inset:0;
+  background:linear-gradient(145deg,
+    #7C2D12 0%,
+    #C2410C 25%,
+    #EA580C 50%,
+    #F97316 70%,
+    #FDBA74 90%,
+    #FED7AA 100%
+  );
+}
+.wb-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to bottom,rgba(0,0,0,.08) 0%,rgba(0,0,0,.4) 60%,rgba(0,0,0,.78) 100%);
+}
+.wb-pattern{
+  position:absolute;inset:0;opacity:.07;
+  background-image:radial-gradient(circle at 15% 50%,#fff 1px,transparent 1px),
+    radial-gradient(circle at 85% 20%,#fff 1px,transparent 1px),
+    radial-gradient(circle at 55% 85%,#fff 1px,transparent 1px);
+  background-size:22px 22px;
+}
+.wb-body{position:relative;z-index:2;padding:16px 16px 14px}
+.wb-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.55);margin-bottom:6px}
+.wb-title{font-family:'Instrument Serif',serif;font-size:26px;color:#fff;line-height:1.2;letter-spacing:-.4px;margin-bottom:3px}
+.wb-sub{font-size:11px;color:rgba(255,255,255,.6);margin-bottom:12px}
+.wb-stats{display:flex;gap:6px;flex-wrap:wrap}
+.wb-stat{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);
+  padding:4px 11px;border-radius:100px;
+  font-size:10px;font-weight:600;color:rgba(255,255,255,.85);
+}
+
+/* ── WEEKEND DAY TABS ── */
+.day-tabs{
+  display:flex;gap:0;margin:0 16px 14px;
+  background:#fff;border-radius:14px;overflow:hidden;
+  border:1px solid var(--g200);
+}
+.day-tab{
+  flex:1;padding:11px 6px;text-align:center;
+  cursor:pointer;transition:background .15s;position:relative;
+}
+.day-tab:hover{background:var(--g50)}
+.day-tab.active{background:var(--orange)}
+.day-tab:not(:last-child)::after{content:'';position:absolute;right:0;top:8px;bottom:8px;width:1px;background:var(--g200)}
+.day-tab.active::after{display:none}
+.dt-day{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g400);margin-bottom:2px}
+.day-tab.active .dt-day{color:rgba(255,255,255,.7)}
+.dt-num{font-family:'Instrument Serif',serif;font-size:22px;color:#000;line-height:1;margin-bottom:2px}
+.day-tab.active .dt-num{color:#fff}
+.dt-count{font-size:9px;color:var(--g300);font-weight:600}
+.day-tab.active .dt-count{color:rgba(255,255,255,.6)}
+.dt-dot{width:5px;height:5px;border-radius:50%;background:var(--orange);margin:2px auto 0}
+.day-tab.active .dt-dot{background:rgba(255,255,255,.6)}
+.day-tab.has-se .dt-dot{background:var(--gold)}
+.day-tab.active.has-se .dt-dot{background:var(--gold)}
+
+/* ── CONTEXT STRIP ── */
+.ctx-strip{
+  display:flex;gap:6px;padding:0 16px 14px;
+  overflow-x:auto;scrollbar-width:none;
+}
+.ctx-strip::-webkit-scrollbar{display:none}
+.ctx-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 13px;border-radius:100px;
+  font-size:10px;font-weight:600;border:1.5px solid;
+  white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;
+}
+.cp-orange{background:var(--orange-pale);border-color:rgba(234,88,12,.25);color:var(--orange)}
+.cp-green{background:var(--green-pale);border-color:rgba(22,163,74,.25);color:var(--green)}
+.cp-purple{background:var(--purple-pale);border-color:rgba(124,58,237,.2);color:var(--purple)}
+.cp-gold{background:rgba(200,169,106,.12);border-color:rgba(200,169,106,.3);color:#92400E}
+.cp-navy{background:var(--navy-pale);border-color:rgba(27,46,74,.2);color:var(--navy)}
+.cp-grey{background:var(--g100);border-color:var(--g200);color:var(--g500)}
+
+/* ── SECTION LABEL ── */
+.sec-label{display:flex;align-items:center;gap:8px;padding:8px 18px 6px}
+.sl-line{flex:1;height:1px;background:var(--g200)}
+.sl-text{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+.sl-count{font-size:9px;color:var(--g300);background:var(--g100);padding:2px 7px;border-radius:100px;font-weight:600}
+
+/* ── FEATURE CARD (hero) ── */
+.feature-card{
+  margin:0 16px 10px;background:#fff;
+  border:1px solid var(--g200);border-radius:18px;overflow:hidden;
+  cursor:pointer;transition:all .2s;position:relative;
+}
+.feature-card:hover{box-shadow:0 4px 18px rgba(0,0,0,.1);transform:translateY(-1px)}
+.feature-card.is-se{border-color:rgba(200,169,106,.35)}
+.feature-card.is-se::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),rgba(200,169,106,.5))}
+.feature-card.is-friends{border-color:rgba(124,58,237,.2)}
+.feature-card.is-friends::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--purple)}
+.feature-card.is-orange{border-color:rgba(234,88,12,.2)}
+.feature-card.is-orange::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--orange)}
+.feature-card.is-live{border-color:rgba(220,38,38,.2)}
+.feature-card.is-live::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red)}
+
+/* HERO IMAGE */
+.fc-hero{width:100%;height:160px;position:relative;overflow:hidden}
+.fc-hero-img{width:100%;height:100%}
+.fc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.06) 0%,rgba(0,0,0,.5) 60%,rgba(0,0,0,.9) 100%)}
+.fc-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between;align-items:flex-start}
+.fc-bot{position:absolute;bottom:0;left:0;right:0;padding:10px 13px;z-index:2}
+.fc-name{font-family:'Instrument Serif',serif;font-size:19px;color:#fff;line-height:1.25;margin-bottom:2px}
+.fc-venue{font-size:10px;color:rgba(255,255,255,.55)}
+
+/* badges */
+.b-live{display:inline-flex;align-items:center;gap:4px;background:var(--red);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#fff}
+.b-live-dot{width:5px;height:5px;border-radius:50%;background:#fff;animation:blink 1.3s ease-in-out infinite}
+.b-se{background:rgba(200,169,106,.9);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#000;display:inline-flex;align-items:center;gap:3px}
+.b-friends{background:rgba(124,58,237,.88);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#fff;display:inline-block}
+.b-time{background:rgba(0,0,0,.5);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);font-size:9px;font-weight:600;padding:3px 9px;border-radius:100px}
+.b-orange{background:var(--orange);padding:3px 9px;border-radius:100px;font-size:8px;font-weight:700;color:#fff;display:inline-block}
+.b-seats{background:rgba(0,0,0,.5);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8);font-size:8px;font-weight:600;padding:3px 8px;border-radius:5px}
+
+/* BODY */
+.fc-body{padding:10px 13px 6px}
+.fc-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.fc-left{flex:1;min-width:0}
+.fc-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc-venue-body{font-size:10px;color:var(--g400);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Occupancy */
+.occ-row{display:flex;align-items:center;gap:8px;margin:4px 0 6px}
+.occ-bg{flex:1;height:4px;background:var(--g100);border-radius:2px;overflow:hidden}
+.occ-fill{height:100%;border-radius:2px}
+.of-green{background:var(--green)}
+.of-amber{background:var(--amber)}
+.of-red{background:var(--red)}
+.of-orange{background:var(--orange)}
+.occ-lbl{font-size:9px;font-weight:600;white-space:nowrap}
+
+.fc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.ft{font-size:8px;font-weight:600;padding:2px 7px;border-radius:4px}
+.ft-navy{background:var(--navy-pale);color:var(--navy)}
+.ft-green{background:var(--green-pale);color:var(--green)}
+.ft-amber{background:var(--amber-pale);color:#92400E}
+.ft-red{background:var(--red-pale);color:var(--red)}
+.ft-dark{background:#000;color:#fff}
+.ft-gold{background:rgba(200,169,106,.15);color:#92400E}
+.ft-purple{background:var(--purple-pale);color:var(--purple)}
+.ft-blue{background:#DBEAFE;color:#1D4ED8}
+.ft-grey{background:var(--g100);color:var(--g500)}
+.ft-orange{background:var(--orange-pale);color:var(--orange)}
+.ft-live{background:var(--red-pale);color:var(--red)}
+
+.fc-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.fc-btn{padding:9px 16px;border-radius:11px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;white-space:nowrap}
+.fc-btn:hover{opacity:.85}
+.fcb-orange{background:var(--orange);color:#fff}
+.fcb-r{background:var(--red);color:#fff}
+.fcb-n{background:var(--navy);color:#fff}
+.fcb-g{background:var(--gold);color:#000}
+.fcb-p{background:var(--purple);color:#fff}
+.fcb-a{background:var(--amber);color:#fff}
+.fcb-o{background:var(--g100);color:var(--g400);border:1.5px solid var(--g200);cursor:not-allowed;opacity:.5}
+
+/* FOOTER */
+.fc-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 13px 10px;border-top:1px solid var(--g100);margin-top:6px}
+.ff-avs{display:flex}
+.ff-av{width:20px;height:20px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:8px}
+.ff-av:not(:first-child){margin-left:-7px}
+.ff-text{font-size:10px;color:var(--g500);margin-left:6px}
+.ff-right{display:flex;gap:5px}
+.ff-btn{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .15s}
+.ff-btn:hover{border-color:var(--navy)}
+.ff-btn.saved{background:var(--navy-pale);border-color:var(--navy)}
+.ff-react{display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:7px;background:var(--g100);border:1px solid var(--g200);font-size:11px;cursor:pointer;transition:all .15s}
+.ff-react:hover{background:var(--g200)}
+.ff-react.on{background:var(--navy-pale);border-color:var(--navy-pale)}
+.ff-react-count{font-size:10px;color:var(--g400);font-weight:600}
+.ff-react.on .ff-react-count{color:var(--navy)}
+
+/* ── HORIZONTAL SCROLL ── */
+.h-scroll{display:flex;gap:10px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;margin-bottom:8px}
+.h-scroll::-webkit-scrollbar{display:none}
+.h-card{flex-shrink:0;width:165px;background:#fff;border-radius:14px;border:1px solid var(--g200);overflow:hidden;cursor:pointer;transition:all .2s;position:relative}
+.h-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);transform:translateY(-1px)}
+.h-card.hc-orange{border-color:rgba(234,88,12,.22)}
+.h-card.hc-orange::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--orange)}
+.h-card.hc-se{border-color:rgba(200,169,106,.3)}
+.h-card.hc-se::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold)}
+.hc-img{width:100%;height:90px;position:relative;overflow:hidden}
+.hc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 0%,rgba(0,0,0,.5) 100%)}
+.hc-top{position:absolute;top:6px;left:7px;z-index:2}
+.hc-bot{position:absolute;bottom:6px;left:7px;right:7px;z-index:2}
+.hc-name{font-family:'Instrument Serif',serif;font-size:12px;color:#fff;line-height:1.2}
+.hc-venue{font-size:8px;color:rgba(255,255,255,.55)}
+.hc-body{padding:8px 10px 10px}
+.hc-time{font-size:10px;font-weight:700;color:#000;margin-bottom:4px}
+.hc-tags{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px}
+.hc-tag{font-size:7px;font-weight:600;padding:2px 6px;border-radius:3px}
+.hcf-row{display:flex;align-items:center;justify-content:space-between}
+.hcf-seats{font-size:9px;font-weight:600}
+.hcf-btn{padding:5px 11px;border-radius:7px;font-size:9px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.hcfb-o{background:var(--orange);color:#fff}
+.hcfb-n{background:var(--navy);color:#fff}
+.hcfb-g{background:var(--gold);color:#000}
+.hcfb-p{background:var(--purple);color:#fff}
+.hcfb-a{background:var(--amber);color:#fff}
+
+/* ── COMPACT ROW ── */
+.compact-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;background:#fff;border-radius:12px;
+  margin:0 16px 5px;border:1px solid var(--g200);
+  cursor:pointer;transition:all .15s;position:relative;overflow:hidden;
+}
+.compact-row:hover{box-shadow:0 2px 8px rgba(0,0,0,.06);transform:translateY(-1px)}
+.compact-row.cr-friends{border-color:rgba(124,58,237,.18)}
+.compact-row.cr-friends::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--purple)}
+.compact-row.cr-orange{border-color:rgba(234,88,12,.2)}
+.compact-row.cr-orange::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--orange)}
+.compact-row.cr-gold{border-color:rgba(200,169,106,.3)}
+.compact-row.cr-gold::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gold)}
+.compact-row.cr-locked{opacity:.5;cursor:default}
+.compact-row.cr-locked:hover{box-shadow:none;transform:none}
+.cr-thumb{width:42px;height:42px;border-radius:9px;flex-shrink:0;position:relative;overflow:hidden}
+.cr-ov{position:absolute;inset:0;background:rgba(0,0,0,.12)}
+.cr-info{flex:1;min-width:0}
+.cr-time{font-size:9px;font-weight:600;color:var(--g400);margin-bottom:2px;display:flex;align-items:center;gap:5px}
+.cr-name{font-size:13px;font-weight:600;color:#000;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-tags{display:flex;gap:3px;flex-wrap:wrap}
+.cr-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.cr-seats{font-size:9px;font-weight:600;color:var(--g400)}
+.cr-btn{padding:6px 13px;border-radius:8px;font-size:10px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s}
+.cr-btn:hover{opacity:.85}
+.crb-o{background:var(--orange);color:#fff}
+.crb-n{background:var(--navy);color:#fff}
+.crb-p{background:var(--purple);color:#fff}
+.crb-g{background:var(--gold);color:#000}
+.crb-a{background:var(--amber);color:#fff}
+.crb-dis{background:var(--g100);color:var(--g400);cursor:not-allowed}
+
+/* ── SUPER EVENT CARD ── */
+.se-card{
+  margin:0 16px 10px;border-radius:18px;overflow:hidden;
+  cursor:pointer;position:relative;transition:all .2s;
+}
+.se-card:hover{box-shadow:0 5px 24px rgba(200,169,106,.25);transform:translateY(-1px)}
+.se-img{width:100%;height:130px;position:relative;overflow:hidden}
+.se-ov{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.1) 0%,rgba(0,0,0,.6) 65%,rgba(0,0,0,.95) 100%)}
+.se-top{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;justify-content:space-between}
+.se-bot{position:absolute;bottom:0;left:0;right:0;padding:10px 12px;z-index:2;display:flex;justify-content:space-between;align-items:flex-end}
+.se-name{font-family:'Instrument Serif',serif;font-size:20px;color:#fff;line-height:1.2}
+.se-meta{font-size:9px;color:rgba(255,255,255,.5);margin-top:2px}
+.se-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.se-sub-pill{display:flex;align-items:center;gap:3px;background:rgba(0,0,0,.5);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.12);border-radius:100px;padding:3px 10px}
+.se-sub-dot{width:5px;height:5px;border-radius:50%;background:var(--gold)}
+.se-sub-num{font-size:9px;font-weight:700;color:#fff}
+.se-sub-lbl{font-size:8px;color:rgba(255,255,255,.45)}
+.se-btn{padding:7px 14px;border-radius:9px;background:var(--gold);color:#000;font-size:10px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* ── ENERGY CARD (mood card) ── */
+.mood-card{
+  margin:0 16px 10px;
+  border-radius:14px;overflow:hidden;
+  border:1px solid var(--g200);background:#fff;
+}
+.mood-header{
+  background:linear-gradient(135deg,#7C3AED 0%,#A855F7 60%,#C084FC 100%);
+  padding:11px 14px;display:flex;align-items:center;justify-content:space-between;
+}
+.mood-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.6)}
+.mood-title{font-family:'Instrument Serif',serif;font-size:16px;color:#fff;margin-top:2px}
+.mood-icon{font-size:22px}
+.mood-body{padding:10px 14px}
+.mood-text{font-size:12px;color:var(--g600);line-height:1.6;margin-bottom:8px}
+.mood-chips{display:flex;gap:6px;flex-wrap:wrap}
+.mood-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:5px 12px;border-radius:100px;
+  font-size:10px;font-weight:600;border:1.5px solid;
+  cursor:pointer;transition:all .15s;
+}
+.mc-1{background:var(--orange-pale);border-color:rgba(234,88,12,.25);color:var(--orange)}
+.mc-2{background:var(--purple-pale);border-color:rgba(124,58,237,.2);color:var(--purple)}
+.mc-3{background:var(--green-pale);border-color:rgba(22,163,74,.2);color:var(--green)}
+.mc-4{background:var(--navy-pale);border-color:rgba(27,46,74,.2);color:var(--navy)}
+.mc-5{background:var(--gold-pale,#FEF3C7);border-color:rgba(200,169,106,.3);color:#92400E}
+
+/* ── PAZAR SABAH BAŞLANGICI ── */
+.sunday-morning{
+  margin:0 16px 12px;
+  background:linear-gradient(135deg,#F0FDF4 0%,#DCFCE7 100%);
+  border:1.5px solid rgba(22,163,74,.18);
+  border-radius:16px;padding:12px 14px;
+  display:flex;align-items:center;gap:12px;
+}
+.sm-icon{font-size:28px;flex-shrink:0}
+.sm-info{flex:1}
+.sm-label{font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.sm-title{font-family:'Instrument Serif',serif;font-size:15px;color:#000;margin-bottom:2px}
+.sm-sub{font-size:10px;color:var(--g500)}
+.sm-btn{
+  padding:8px 14px;border-radius:10px;
+  background:var(--green);color:#fff;
+  font-size:11px;font-weight:700;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;flex-shrink:0;
+}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.82);color:#fff;padding:9px 18px;border-radius:100px;font-size:12px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:76px;border-top:1.5px solid var(--g200);background:rgba(255,255,255,.98);backdrop-filter:blur(10px);display:flex;align-items:flex-start;padding-top:10px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-iw{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.nav-iw.on{background:#000}
+.nav-ic{font-size:16px}
+.nav-ic.inv{filter:invert(1)}
+.nav-l{font-size:8px;font-weight:700;color:#000}
+.nav-lo{font-size:8px;font-weight:500;color:var(--g400)}
+
+/* IMG */
+.i-jazz{background:radial-gradient(circle at 45% 35%,rgba(255,180,80,.45) 0%,transparent 45%),linear-gradient(145deg,#1A1A2E 0%,#2A2040 30%,#3A2850 55%,#1A1520 100%)}
+.i-coffee{background:radial-gradient(circle at 40% 50%,rgba(180,130,80,.5) 0%,transparent 40%),linear-gradient(145deg,#2C1810 0%,#5C3D2E 30%,#8B6B4A 55%,#3A2418 100%)}
+.i-run{background:radial-gradient(circle at 50% 25%,rgba(255,200,100,.5) 0%,transparent 45%),linear-gradient(180deg,#87CEEB 0%,#98D1A8 30%,#6B8E4E 60%,#3A5028 100%)}
+.i-phil{background:linear-gradient(135deg,#4a3728 0%,#8B6345 40%,#C4956A 70%,#5D3A2A 100%)}
+.i-chess{background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 40%,#444 70%,#111 100%)}
+.i-wine{background:linear-gradient(135deg,#4a0a20 0%,#9C1A3A 40%,#E91E63 70%,#2a0512 100%)}
+.i-yoga{background:linear-gradient(135deg,#2d6a2d 0%,#4CAF50 50%,#8BC34A 80%,#1B5E20 100%)}
+.i-art{background:linear-gradient(135deg,#2a1040 0%,#6B21A8 40%,#A855F7 70%,#1a0830 100%)}
+.i-kanye{background:radial-gradient(circle at 55% 35%,rgba(255,220,50,.1) 0%,transparent 50%),linear-gradient(160deg,#050505 0%,#111 35%,#222 55%,#050505 100%)}
+.i-sunset{background:radial-gradient(circle at 50% 30%,rgba(255,150,50,.5) 0%,rgba(255,100,50,.3) 30%,transparent 60%),linear-gradient(180deg,#FF8C42 0%,#C4453A 40%,#2A1B3D 100%)}
+.i-teal{background:linear-gradient(145deg,#0F766E,#14B8A6)}
+.i-brunch{background:radial-gradient(circle at 40% 40%,rgba(255,220,100,.5) 0%,transparent 45%),linear-gradient(145deg,#7C2D12 0%,#C2410C 40%,#FDBA74 100%)}
+.i-galeri{background:linear-gradient(135deg,#1e3a5f 0%,#2e5d9e 50%,#4a7bc8 100%)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="status-bar">
+  <span class="sb-time">19:47</span>
+  <span class="sb-icons">▲▲▲</span>
+</div>
+
+<div class="top-bar">
+  <div class="tb-logo">L<span></span></div>
+  <div class="tb-right">
+    <div class="icon-btn" onclick="t('Bildirimler')">🔔<div class="notif-dot"></div></div>
+    <div class="profile-av" onclick="t('Profil')">T</div>
+  </div>
+</div>
+
+<!-- FILTER ROW -->
+<div class="filter-row">
+  <div class="fc live" onclick="t('Canlı')"><div class="fc-live-dot"></div>Canlı<span class="fc-badge">4</span></div>
+  <div class="fc on-amber" onclick="t('Başlamak Üzere')">⏱ Başlamak Üzere<span class="fc-badge">7</span></div>
+  <div class="fc on-green" onclick="t('Yer Var')">◎ Yer Var<span class="fc-badge">14</span></div>
+  <div class="fc on-navy" onclick="t('Yakınımda')">📍 Yakınımda<span class="fc-badge">9</span></div>
+  <div class="fc on-purple" onclick="t('Bu Gece')">🌙 Bu Gece<span class="fc-badge">11</span></div>
+  <div class="fc on-teal" onclick="t('Bu Hafta')">📅 Bu Hafta<span class="fc-badge">34</span></div>
+  <div class="fc on-orange" onclick="t('Hafta Sonu aktif')">☀ Hafta Sonu<span class="fc-badge">11</span></div>
+</div>
+
+<div class="scroll-content">
+
+  <!-- ── WEEKEND HERO BANNER ── -->
+  <div class="weekend-banner" onclick="t('Hafta sonu planı')">
+    <div class="wb-img"></div>
+    <div class="wb-overlay"></div>
+    <div class="wb-pattern"></div>
+    <div class="wb-body">
+      <div class="wb-label">☀ Hafta Sonu · Milano</div>
+      <div class="wb-title">Cumartesi &<br>Pazar</div>
+      <div class="wb-sub">19–20 Nisan · 11 ritüel · Özgür ol</div>
+      <div class="wb-stats">
+        <div class="wb-stat">★ 1 Super Event</div>
+        <div class="wb-stat">👥 9 arkadaşın planı var</div>
+        <div class="wb-stat">🌅 3 sabah ritüeli</div>
+        <div class="wb-stat">🌙 5 gece ritüeli</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GÜN SEKMELERİ ── -->
+  <div class="day-tabs">
+    <div class="day-tab active has-se" id="tab-sat" onclick="switchDay('sat')">
+      <div class="dt-day">Cmt</div>
+      <div class="dt-num">19</div>
+      <div class="dt-count">7 ritüel</div>
+      <div class="dt-dot"></div>
+    </div>
+    <div class="day-tab" id="tab-sun" onclick="switchDay('sun')">
+      <div class="dt-day">Paz</div>
+      <div class="dt-num">20</div>
+      <div class="dt-count">4 ritüel</div>
+      <div class="dt-dot"></div>
+    </div>
+  </div>
+
+  <!-- ── CONTEXT PILLS ── -->
+  <div class="ctx-strip" id="ctx-strip">
+    <!-- Filled by JS -->
+  </div>
+
+  <!-- ═══════════════════ -->
+  <!-- CUMARTESİ İÇERİĞİ -->
+  <!-- ═══════════════════ -->
+  <div id="day-sat">
+
+    <div class="sec-label">
+      <div class="sl-line"></div>
+      <span class="sl-text" style="color:var(--orange)">☀ Cumartesi 19 Nisan</span>
+      <div class="sl-line"></div>
+      <span class="sl-count">7 ritüel</span>
+    </div>
+
+    <!-- SUPER EVENT FIRST -->
+    <div class="se-card" onclick="t('Kanye West → Super Event')">
+      <div class="se-img i-kanye">
+        <div class="se-ov"></div>
+        <div class="se-top">
+          <div class="b-se">★ SUPER EVENT · Bu Hafta Sonu</div>
+          <div class="b-seats" style="background:rgba(0,0,0,.5)">30.000 kişi</div>
+        </div>
+        <div class="se-bot">
+          <div>
+            <div class="se-name">Kanye West<br>Kadıköy Konseri</div>
+            <div class="se-meta">📍 Şükrü Saraçoğlu · Cumartesi 20:00</div>
+          </div>
+          <div class="se-right">
+            <div class="se-sub-pill"><div class="se-sub-dot"></div><span class="se-sub-num">247</span><span class="se-sub-lbl">sub-ritual</span></div>
+            <button class="se-btn" onclick="event.stopPropagation();t('Bilet Al')">🎟 Bilet Al</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HERO: Sabah koşusu -->
+    <div class="feature-card is-orange" onclick="t('Morning Run → Ritual Detail')">
+      <div class="fc-hero">
+        <div class="fc-hero-img i-run"></div>
+        <div class="fc-ov"></div>
+        <div class="fc-top">
+          <div class="b-orange">🌅 Sabah</div>
+          <div class="b-seats">07:00 · 4/12</div>
+        </div>
+        <div class="fc-bot">
+          <div class="fc-name">Morning Run Club</div>
+          <div class="fc-venue">📍 Parco Sempione · 8 km rotası</div>
+        </div>
+      </div>
+      <div class="fc-body">
+        <div class="occ-row">
+          <div class="occ-bg"><div class="occ-fill of-orange" style="width:33%"></div></div>
+          <span class="occ-lbl" style="color:var(--green)">8 yer var</span>
+        </div>
+        <div class="fc-row" style="align-items:center">
+          <div class="fc-left">
+            <div class="fc-tags">
+              <span class="ft ft-green">RS 0+ · Herkese Açık</span>
+              <span class="ft ft-green">✓ Verified Host</span>
+            </div>
+          </div>
+          <button class="fc-btn fcb-orange" onclick="event.stopPropagation();t('Koşu → Katıl')">Katıl</button>
+        </div>
+      </div>
+      <div class="fc-footer">
+        <span class="ff-text" style="color:var(--g300)">Bağlantın yok · Herkese açık</span>
+        <div class="ff-right"><div class="ff-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div></div>
+      </div>
+    </div>
+
+    <!-- HERO: Kanye öncesi — arkadaşlar -->
+    <div class="feature-card is-friends" onclick="t('Brunch → Ritual Detail')">
+      <div class="fc-hero">
+        <div class="fc-hero-img i-brunch"></div>
+        <div class="fc-ov"></div>
+        <div class="fc-top">
+          <div class="b-friends">👥 5 Arkadaş</div>
+          <div class="b-seats">11:00 · 8/14</div>
+        </div>
+        <div class="fc-bot">
+          <div class="fc-name">Weekend Brunch Circle</div>
+          <div class="fc-venue">📍 Navigli Bar · Kanye öncesi buluşma</div>
+        </div>
+      </div>
+      <div class="fc-body">
+        <div class="occ-row">
+          <div class="occ-bg"><div class="occ-fill of-amber" style="width:57%"></div></div>
+          <span class="occ-lbl" style="color:var(--amber)">6 yer kaldı</span>
+        </div>
+        <div class="fc-row" style="align-items:center">
+          <div class="fc-left">
+            <div class="fc-tags">
+              <span class="ft ft-amber">Min RS 60 · 7.4 ✓</span>
+              <span class="ft ft-purple">👥 5 Arkadaş</span>
+            </div>
+          </div>
+          <button class="fc-btn fcb-p" onclick="event.stopPropagation();t('Brunch → Katıl')">Katıl</button>
+        </div>
+      </div>
+      <div class="fc-footer">
+        <div style="display:flex;align-items:center">
+          <div class="ff-avs">
+            <div class="ff-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">M</div>
+            <div class="ff-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">E</div>
+            <div class="ff-av" style="background:linear-gradient(145deg,#1A1A2E,#3A2850);color:rgba(255,255,255,.8)">L</div>
+            <div class="ff-av" style="background:var(--g100);color:var(--g400);font-size:7px;font-weight:700">+2</div>
+          </div>
+          <span class="ff-text">Marco, Elena, Luca ve 2 kişi daha</span>
+        </div>
+        <div class="ff-right">
+          <div class="ff-react" onclick="event.stopPropagation();toggleReact(this)">🥳<span class="ff-react-count">8</span></div>
+          <div class="ff-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPACT: Öğleden sonra + akşam -->
+    <div class="compact-row cr-gold" onclick="t('Kanye Öncesi Sub')">
+      <div class="cr-thumb i-coffee"><div class="cr-ov"></div></div>
+      <div class="cr-info">
+        <div class="cr-time"><span style="color:#92400E;font-weight:700;font-size:9px">★ Sub-Ritual</span><span>· 17:00</span></div>
+        <div class="cr-name">Kanye Öncesi Aperitivo</div>
+        <div class="cr-tags">
+          <span class="ft ft-gold" style="font-size:7px">★ Kanye WE</span>
+          <span class="ft ft-amber" style="font-size:7px">18/24 kişi</span>
+        </div>
+      </div>
+      <div class="cr-right">
+        <span class="cr-seats" style="color:var(--amber)">6 yer</span>
+        <button class="cr-btn crb-a" onclick="event.stopPropagation();t('Sub → Katıl')">Katıl</button>
+      </div>
+    </div>
+
+    <div class="compact-row cr-orange" onclick="t('Art Opening → Ritual Detail')">
+      <div class="cr-thumb i-art"><div class="cr-ov"></div></div>
+      <div class="cr-info">
+        <div class="cr-time">14:00 · Öğleden Sonra</div>
+        <div class="cr-name">Sanat Galerisi Açılışı</div>
+        <div class="cr-tags">
+          <span class="ft ft-green" style="font-size:7px">RS 0+</span>
+          <span class="ft ft-green" style="font-size:7px">✓ Verified Venue</span>
+          <span class="ft ft-grey" style="font-size:7px">8/20</span>
+        </div>
+      </div>
+      <div class="cr-right">
+        <span class="cr-seats" style="color:var(--green)">12 yer var</span>
+        <button class="cr-btn crb-n" onclick="event.stopPropagation();t('Galeri → Katıl')">Katıl</button>
+      </div>
+    </div>
+
+    <div class="compact-row cr-friends" onclick="t('Kanye Sonrası')">
+      <div class="cr-thumb i-art"><div class="cr-ov"></div></div>
+      <div class="cr-info">
+        <div class="cr-time"><span style="color:var(--purple);font-weight:700;font-size:9px">👥 5 Arkadaş</span><span>· 23:00</span></div>
+        <div class="cr-name">Kanye Sonrası Karaoke</div>
+        <div class="cr-tags">
+          <span class="ft ft-gold" style="font-size:7px">★ Kanye WE</span>
+          <span class="ft ft-red" style="font-size:7px">DOLU</span>
+        </div>
+      </div>
+      <div class="cr-right">
+        <span class="cr-seats" style="color:var(--red)">20/20</span>
+        <button class="cr-btn crb-dis">Bekleme →</button>
+      </div>
+    </div>
+
+    <!-- HORIZONTAL: Cumartesi gece -->
+    <div style="padding:6px 0">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--g400);padding:0 18px 6px">🌙 Cumartesi Gece</div>
+      <div class="h-scroll">
+        <div class="h-card hc-orange" onclick="t('Late Night Jazz')">
+          <div class="hc-img i-jazz"><div class="hc-ov"></div><div class="hc-top"><div class="b-time" style="font-size:7px">22:00</div></div><div class="hc-bot"><div class="hc-name">Late Night Jazz</div><div class="hc-venue">Blue Note · Navigli</div></div></div>
+          <div class="hc-body">
+            <div class="hc-time">22:00 sonrası</div>
+            <div class="hc-tags"><span class="hc-tag" style="background:var(--navy-pale);color:var(--navy)">RS 0+</span></div>
+            <div class="hcf-row"><span class="hcf-seats" style="color:var(--green)">Açık</span><button class="hcf-btn hcfb-n" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div>
+          </div>
+        </div>
+        <div class="h-card" onclick="t('Blues Bar')">
+          <div class="hc-img i-wine"><div class="hc-ov"></div><div class="hc-top"><div class="b-time" style="font-size:7px">23:00</div></div><div class="hc-bot"><div class="hc-name">Blues Bar Night</div><div class="hc-venue">Brera · Özel Mekan</div></div></div>
+          <div class="hc-body">
+            <div class="hc-time">23:00 · Geç</div>
+            <div class="hc-tags"><span class="hc-tag" style="background:var(--amber-pale);color:#92400E">Min RS 65</span></div>
+            <div class="hcf-row"><span class="hcf-seats">6/10</span><button class="hcf-btn hcfb-n" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOOD CARD -->
+    <div class="mood-card">
+      <div class="mood-header">
+        <div>
+          <div class="mood-label">Bu Cumartesi için</div>
+          <div class="mood-title">Nasıl hissediyorsun?</div>
+        </div>
+        <div class="mood-icon">✨</div>
+      </div>
+      <div class="mood-body">
+        <div class="mood-text">Ruh haline göre önerimiz olsun. Bugün ne tür bir ritüel seni mutlu eder?</div>
+        <div class="mood-chips">
+          <div class="mood-chip mc-1" onclick="t('Enerjik öneriler → koşu, dans')">⚡ Enerjik</div>
+          <div class="mood-chip mc-2" onclick="t('Sakin öneriler → kitap, felsefe')">🧘 Sakin</div>
+          <div class="mood-chip mc-3" onclick="t('Sosyal öneriler → brunch, kahve')">🥂 Sosyal</div>
+          <div class="mood-chip mc-4" onclick="t('Kültürel öneriler → sanat, müzik')">🎨 Kültürel</div>
+          <div class="mood-chip mc-5" onclick="t('Macera öneriler → yeni ritüeller')">🌍 Macera</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /day-sat -->
+
+  <!-- ═══════════════════ -->
+  <!-- PAZAR İÇERİĞİ     -->
+  <!-- ═══════════════════ -->
+  <div id="day-sun" style="display:none">
+
+    <!-- PAZAR SABAH KARTI -->
+    <div class="sunday-morning">
+      <div class="sm-icon">🌿</div>
+      <div class="sm-info">
+        <div class="sm-label">Pazar Sabahı</div>
+        <div class="sm-title">Yavaş Bir Başlangıç</div>
+        <div class="sm-sub">20 Nisan · 4 ritüel · Huzurlu bir gün</div>
+      </div>
+      <button class="sm-btn" onclick="t('Pazar sabahı ritüelleri')">Keşfet</button>
+    </div>
+
+    <div class="sec-label">
+      <div class="sl-line"></div>
+      <span class="sl-text" style="color:var(--green)">🌿 Pazar 20 Nisan</span>
+      <div class="sl-line"></div>
+      <span class="sl-count">4 ritüel</span>
+    </div>
+
+    <!-- HERO: Pazar brunch -->
+    <div class="feature-card is-orange" onclick="t('Sunday Brunch → Ritual Detail')">
+      <div class="fc-hero">
+        <div class="fc-hero-img i-coffee"></div>
+        <div class="fc-ov"></div>
+        <div class="fc-top">
+          <div class="b-orange">🥞 Pazar Sabahı</div>
+          <div class="b-seats">11:00 · 3/8</div>
+        </div>
+        <div class="fc-bot">
+          <div class="fc-name">Sunday Brunch Circle</div>
+          <div class="fc-venue">📍 Caffe Letterario · Brera</div>
+        </div>
+      </div>
+      <div class="fc-body">
+        <div class="occ-row">
+          <div class="occ-bg"><div class="occ-fill of-orange" style="width:37%"></div></div>
+          <span class="occ-lbl" style="color:var(--green)">5 yer var · Her Pazar</span>
+        </div>
+        <div class="fc-row" style="align-items:center">
+          <div class="fc-left">
+            <div class="fc-tags">
+              <span class="ft ft-navy">Min RS 60 ✓</span>
+              <span class="ft ft-teal">★ LOCAL HQ</span>
+              <span class="ft ft-blue">👥 2 Arkadaş</span>
+            </div>
+          </div>
+          <button class="fc-btn fcb-orange" onclick="event.stopPropagation();t('Brunch → Katıl')">Katıl</button>
+        </div>
+      </div>
+      <div class="fc-footer">
+        <div style="display:flex;align-items:center">
+          <div class="ff-avs">
+            <div class="ff-av" style="background:linear-gradient(145deg,#2d6a2d,#4CAF50);color:#fff">E</div>
+            <div class="ff-av" style="background:linear-gradient(145deg,#4a3728,#C4956A);color:#fff">M</div>
+          </div>
+          <span class="ff-text">Elena ve Marco gidiyor</span>
+        </div>
+        <div class="ff-right">
+          <div class="ff-react" onclick="event.stopPropagation();toggleReact(this)">☕<span class="ff-react-count">6</span></div>
+          <div class="ff-btn" onclick="event.stopPropagation();toggleSave(this)">🔖</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pazar compact rows -->
+    <div class="compact-row cr-orange" onclick="t('Galeri Turu → Ritual Detail')">
+      <div class="cr-thumb i-galeri"><div class="cr-ov"></div></div>
+      <div class="cr-info">
+        <div class="cr-time">14:00 · Öğleden Sonra</div>
+        <div class="cr-name">Galeri Turu · Brera</div>
+        <div class="cr-tags">
+          <span class="ft ft-green" style="font-size:7px">RS 0+</span>
+          <span class="ft ft-grey" style="font-size:7px">4/12 kişi</span>
+        </div>
+      </div>
+      <div class="cr-right">
+        <span class="cr-seats" style="color:var(--green)">8 yer var</span>
+        <button class="cr-btn crb-n" onclick="event.stopPropagation();t('Galeri → Katıl')">Katıl</button>
+      </div>
+    </div>
+
+    <div class="compact-row cr-friends" onclick="t('Felsefe Grubu → Ritual Detail')">
+      <div class="cr-thumb i-phil"><div class="cr-ov"></div></div>
+      <div class="cr-info">
+        <div class="cr-time"><span style="color:var(--purple);font-weight:700;font-size:9px">👥 3 Arkadaş</span><span>· 17:00</span></div>
+        <div class="cr-name">Felsefe Okuma Grubu</div>
+        <div class="cr-tags">
+          <span class="ft ft-amber" style="font-size:7px">Min RS 65 ✓</span>
+          <span class="ft ft-grey" style="font-size:7px">3/8 kişi</span>
+        </div>
+      </div>
+      <div class="cr-right">
+        <span class="cr-seats">5 yer</span>
+        <button class="cr-btn crb-p" onclick="event.stopPropagation();t('Felsefe → Katıl')">Katıl</button>
+      </div>
+    </div>
+
+    <div class="compact-row" onclick="t('Chess → Ritual Detail')">
+      <div class="cr-thumb i-chess"><div class="cr-ov"></div></div>
+      <div class="cr-info">
+        <div class="cr-time">17:00 · Öğleden Sonra</div>
+        <div class="cr-name">Chess Evening · Isola</div>
+        <div class="cr-tags">
+          <span class="ft ft-amber" style="font-size:7px">Min RS 50 ✓</span>
+          <span class="ft ft-red" style="font-size:7px">2 yer kaldı!</span>
+        </div>
+      </div>
+      <div class="cr-right">
+        <span class="cr-seats" style="color:var(--red)">6/8</span>
+        <button class="cr-btn crb-n" onclick="event.stopPropagation();t('Satranç → Katıl')">Katıl</button>
+      </div>
+    </div>
+
+    <!-- Pazar akşamı -->
+    <div style="padding:8px 0 4px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--g400);padding:0 18px 6px">🌆 Pazar Akşamı</div>
+      <div class="h-scroll">
+        <div class="h-card hc-orange" onclick="t('Sunday Jazz')">
+          <div class="hc-img i-jazz"><div class="hc-ov"></div><div class="hc-top"><div class="b-time" style="font-size:7px">20:00</div></div><div class="hc-bot"><div class="hc-name">Sunday Jazz</div><div class="hc-venue">Blue Note · Navigli</div></div></div>
+          <div class="hc-body">
+            <div class="hc-time">20:00 · Erken Akşam</div>
+            <div class="hc-tags"><span class="hc-tag" style="background:var(--green-pale);color:var(--green)">RS 0+</span></div>
+            <div class="hcf-row"><span class="hcf-seats" style="color:var(--green)">7 yer var</span><button class="hcf-btn hcfb-n" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div>
+          </div>
+        </div>
+        <div class="h-card" onclick="t('Meditation')">
+          <div class="hc-img i-yoga"><div class="hc-ov"></div><div class="hc-top"><div class="b-time" style="font-size:7px">19:00</div></div><div class="hc-bot"><div class="hc-name">Meditasyon & Yoga</div><div class="hc-venue">Sempione · Açık Hava</div></div></div>
+          <div class="hc-body">
+            <div class="hc-time">19:00 · Gün Batımı</div>
+            <div class="hc-tags"><span class="hc-tag" style="background:var(--green-pale);color:var(--green)">RS 0+</span></div>
+            <div class="hcf-row"><span class="hcf-seats" style="color:var(--amber)">3 yer kaldı</span><button class="hcf-btn hcfb-a" onclick="event.stopPropagation();t('Katıl')">Katıl</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /day-sun -->
+
+  <div style="height:6px"></div>
+
+</div><!-- /scroll-content -->
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-iw on"><span class="nav-ic inv">〰</span></div><span class="nav-l">Pulse</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">📅</span></div><span class="nav-lo">City Rhythm</span></div>
+  <div class="nav-item"><div class="nav-iw"><span class="nav-ic">◉</span></div><span class="nav-lo">Passport</span></div>
+</div>
+
+<script>
+let activeDay = 'sat';
+
+const CTX = {
+  sat: [
+    {cls:'cp-gold', label:'★ Kanye WE · Super Event'},
+    {cls:'cp-purple', label:'👥 9 Arkadaş Gidiyor'},
+    {cls:'cp-orange', label:'🌅 Sabah Koşusu 07:00'},
+    {cls:'cp-green', label:'◎ 5 yer var'},
+    {cls:'cp-grey', label:'🌙 Gece 3 ritüel'},
+  ],
+  sun: [
+    {cls:'cp-green', label:'🥞 Pazar Brunch 11:00'},
+    {cls:'cp-purple', label:'👥 3 Arkadaş Gidiyor'},
+    {cls:'cp-orange', label:'🌆 Gün Batımı Yoga'},
+    {cls:'cp-navy', label:'♟ Satranç · Son 2 Yer'},
+    {cls:'cp-grey', label:'4 sakin ritüel'},
+  ]
+};
+
+function buildCtx(day) {
+  const strip = document.getElementById('ctx-strip');
+  strip.innerHTML = '';
+  CTX[day].forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'ctx-pill ' + p.cls;
+    el.textContent = p.label;
+    el.onclick = () => t(p.label);
+    strip.appendChild(el);
+  });
+}
+
+function switchDay(day) {
+  activeDay = day;
+  document.getElementById('tab-sat').classList.toggle('active', day==='sat');
+  document.getElementById('tab-sun').classList.toggle('active', day==='sun');
+  document.getElementById('day-sat').style.display = day==='sat' ? 'block' : 'none';
+  document.getElementById('day-sun').style.display = day==='sun' ? 'block' : 'none';
+  buildCtx(day);
+  t(day==='sat' ? 'Cumartesi · 7 ritüel' : 'Pazar · 4 ritüel');
+}
+
+/* Save */
+function toggleSave(btn) {
+  const saved = btn.dataset.saved;
+  if (saved) { btn.textContent='🔖'; btn.classList.remove('saved'); delete btn.dataset.saved; }
+  else { btn.textContent='❤️'; btn.classList.add('saved'); btn.dataset.saved='1'; t('Kaydedildi'); }
+}
+
+/* React */
+function toggleReact(el) {
+  const on = el.classList.contains('on');
+  const c = el.querySelector('.ff-react-count');
+  const n = parseInt(c.textContent);
+  el.classList.toggle('on', !on);
+  c.textContent = on ? n-1 : n+1;
+}
+
+/* Toast */
+function t(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 2100);
+}
+
+/* Init */
+buildCtx('sat');
+</script>
+</body>
+</html>
