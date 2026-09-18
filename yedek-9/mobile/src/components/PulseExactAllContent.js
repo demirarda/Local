@@ -28,6 +28,7 @@ import MemoryActionRow from './MemoryActionRow';
 import { PULSE_SOCIAL_TAGS } from '../constants/pulseSocialTags';
 import { PULSE, FONT_SERIF } from '../constants/pulseTheme';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 
 const { width } = Dimensions.get('window');
 const PAD = 16;
@@ -189,6 +190,7 @@ export default function PulseExactAllContent({
   emptyActionLabel,
   emptyActionRoute,
 }) {
+  useLanguageStore((s) => s.lang);
   const shuffle = (arr) => {
     const next = [...arr];
     for (let i = next.length - 1; i > 0; i -= 1) {
@@ -938,7 +940,7 @@ export default function PulseExactAllContent({
         <Text style={styles.spotifyTrackTitle} numberOfLines={1}>{clampText(cleanRitualTitle(memory?.ritual_title || 'Late Night Jazz'), 34)}</Text>
         <Text style={styles.spotifyTrackArtist} numberOfLines={1}>{cleanFeedText(memory?.user_name || 'Arkadas')} paylasti</Text>
         <Text style={styles.spotifyTrackAttr} numberOfLines={2}>
-          {t('music_attr_spotify', 'tr')}
+          {t('music_attr_spotify')}
         </Text>
       </View>
     </TouchableOpacity>
@@ -1393,11 +1395,10 @@ export default function PulseExactAllContent({
       {empty && (
           <View style={styles.emptyWrap}>
             <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
-              {emptyTitle || 'Pulse bos'}
+              {emptyTitle || t('pulse_empty_all_title')}
             </Text>
             <Text style={[styles.emptySub, isDark && styles.emptySubDark]}>
-              {emptyMessage ||
-                'Son 24 saatte bu kapsamda memory veya Ritual gorunmuyor.'}
+              {emptyMessage || t('pulse_empty_all_msg')}
             </Text>
             {emptyActionLabel && emptyActionRoute ? (
               <TouchableOpacity

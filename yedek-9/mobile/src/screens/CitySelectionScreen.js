@@ -20,8 +20,10 @@ const SUGGESTED_ISO = {
   Milano: 'IT',
   Milan: 'IT',
   Istanbul: 'TR',
+  İstanbul: 'TR',
   Ankara: 'TR',
   Izmir: 'TR',
+  İzmir: 'TR',
   Eskisehir: 'TR',
   London: 'GB',
   Paris: 'FR',
@@ -162,6 +164,18 @@ export default function CitySelectionScreen({ route, navigation }) {
 
   const onSelectActive = useCallback(
     async (city) => {
+      if (mode === 'profile') {
+        navigation.navigate({
+          name: 'EditProfile',
+          params: {
+            selectedCity: city.name,
+            selectedCityId: city.id || null,
+            selectedCountry: city.country || country?.name || null,
+          },
+          merge: true,
+        });
+        return;
+      }
       if (mode === 'switch' && city.id) {
         setBusyId(city.id);
         try {
@@ -176,7 +190,7 @@ export default function CitySelectionScreen({ route, navigation }) {
       }
       continueOnboarding(city.name, city.country);
     },
-    [mode, navigation, continueOnboarding]
+    [mode, navigation, continueOnboarding, country]
   );
 
   const onNotifyComing = useCallback(async (city) => {
@@ -205,6 +219,10 @@ export default function CitySelectionScreen({ route, navigation }) {
 
   const onPickCity = useCallback(
     (city) => {
+      if (mode === 'profile') {
+        onSelectActive(city);
+        return;
+      }
       const isComing = city.is_coming || city.status === 'COMING';
       if (isComing) {
         Alert.alert(
@@ -227,14 +245,14 @@ export default function CitySelectionScreen({ route, navigation }) {
       }
       onSelectActive(city);
     },
-    [onNotifyComing, onSelectActive]
+    [mode, onNotifyComing, onSelectActive]
   );
 
   if (phase === 'country') {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>
-          {mode === 'switch' ? 'Ülke seç' : 'OB-07 · Ülke Seçimi'}
+          {mode === 'switch' || mode === 'profile' ? 'Ülke seç' : 'OB-07 · Ülke Seçimi'}
         </Text>
         <Text style={styles.suggestion}>
           Dünya kataloğu · 250 ülke · öneri: {suggestedCity}
@@ -282,7 +300,7 @@ export default function CitySelectionScreen({ route, navigation }) {
         <Text style={styles.backText}>← Ülkeler</Text>
       </TouchableOpacity>
       <Text style={styles.title}>
-        {mode === 'switch' ? 'Aktif şehir' : 'OB-08 · Şehir Seçimi'}
+        {mode === 'switch' ? 'Aktif şehir' : mode === 'profile' ? 'Şehir seç' : 'OB-08 · Şehir Seçimi'}
       </Text>
       <Text style={styles.suggestion}>
         {country?.emoji ? `${country.emoji} ` : ''}

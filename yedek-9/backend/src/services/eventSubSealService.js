@@ -12,9 +12,18 @@ async function canManageVenue(venueId, userId) {
 /**
  * VEN_EVENT sub'a gir — çoklu mühürlü eşzamanlı varlık (FB zaman-kesişimi).
  */
-export async function enterEventSubSeal({ ritualId, userId, subId }) {
+export async function enterEventSubSeal({
+  ritualId,
+  userId,
+  subId,
+  channel,
+  seatPrice = null,
+  seatCap = null,
+  roofTicketed = null,
+} = {}) {
   const sid = String(subId || '').trim();
   if (!sid) return { ok: false, status: 400, body: { success: false, error: 'sub_id required' } };
+  const seatingChannel = typeof channel === 'string' ? channel : channel?.channel;
 
   const ritualR = await pool.query(
     `SELECT id, origin, host_id, venue_id, event_group_id
@@ -36,6 +45,29 @@ export async function enterEventSubSeal({ ritualId, userId, subId }) {
   );
   const venueManager = await canManageVenue(ritual.venue_id, userId);
   const host = String(ritual.host_id || '') === String(userId || '');
+  const roofSealed = Boolean(sealedR.rows.length || venueManager || host);
+  const { assertE1Seating } = await import('./megaLockFlows.js');
+  const { assertE2SeatSale } = await import('./megaLaunchLocks.js');
+  const e1 = assertE1Seating({
+    origin: ritual.origin,
+    roofSealed,
+    channel: seatingChannel || (venueManager || host ? 'staff_tap' : 'table_nfc'),
+  });
+  if (!e1.ok) {
+    return { ok: false, status: 403, body: { success: false, error: e1.error, code: e1.code } };
+  }
+  const price = seatPrice != null ? seatPrice : channel?.price;
+  const seats = seatCap != null ? seatCap : channel?.seats;
+  const e2 = assertE2SeatSale({
+    origin: ritual.origin,
+    roofTicketed: roofTicketed != null ? Boolean(roofTicketed) : roofSealed,
+    subPaid: Number(price || 0) > 0,
+    seats,
+    price,
+  });
+  if (!e2.ok) {
+    return { ok: false, status: 403, body: { success: false, error: e2.error, code: e2.code } };
+  }
   if (!sealedR.rows.length && !venueManager && !host) {
     return { ok: false, status: 403, body: { success: false, error: 'Not authorized for sub-seal' } };
   }
@@ -63,12 +95,33 @@ export async function enterEventSubSeal({ ritualId, userId, subId }) {
       return { ok: true, data: existing.rows[0], already: true };
     }
 
-    const ins = await pool.query(
-      `INSERT INTO ritual_event_sub_seals (ritual_id, sub_id, actor_user_id)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
-      [ritualId, sid, userId]
-    );
+    let ins;
+    try {
+      ins = await pool.query(
+        `INSERT INTO ritual_event_sub_seals (
+           ritual_id, sub_id, actor_user_id, seating_channel, seat_price, seat_cap, roof_ticketed
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          ritualId,
+          sid,
+          userId,
+          e1.channel || 'staff_tap',
+          price != null ? Number(price) : null,
+          seats != null ? Number(seats) : null,
+          Boolean(roofTicketed != null ? roofTicketed : roofSealed),
+        ]
+      );
+    } catch (e) {
+      if (String(e.code) !== '42703') throw e;
+      ins = await pool.query(
+        `INSERT INTO ritual_event_sub_seals (ritual_id, sub_id, actor_user_id)
+         VALUES ($1, $2, $3)
+         RETURNING *`,
+        [ritualId, sid, userId]
+      );
+    }
     // sonMD §4: köşenin ilk oturanı açar (fraktal first-arriver)
     const prior = await pool.query(
       `SELECT COUNT(*)::int AS c FROM ritual_event_sub_seals

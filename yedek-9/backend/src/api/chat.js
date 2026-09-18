@@ -17,6 +17,7 @@ import { RITUAL_STATUS, getLifecyclePhase } from '../services/ritualState.js';
 import LOCAL_CONFIG, { freeCancelThresholdMinutes } from '../config/localConfig.js';
 import { assertCameraCaptureSource } from '../services/memoryStamp.js';
 import { excludeBlockedUsersSql } from '../services/blockVisibility.js';
+import { maskRsScoreList } from '../services/rsVisibility.js';
 
 const router = express.Router();
 const MB = 1024 * 1024;
@@ -116,7 +117,8 @@ async function getRitualMessagesHandler(req, res) {
     const result = await pool.query(query, params);
 
     // Reverse to show oldest first
-    const messages = result.rows.reverse().map(msg => ({
+    const messages = await maskRsScoreList(
+      result.rows.reverse().map(msg => ({
       id: msg.id,
       ritual_id: msg.ritual_id,
       user_id: msg.user_id,
@@ -129,7 +131,9 @@ async function getRitualMessagesHandler(req, res) {
       external_url: msg.external_url || null,
       message_type: msg.message_type,
       created_at: msg.created_at,
-    }));
+    })),
+      authUserId
+    );
 
     res.json({
       success: true,
@@ -368,6 +372,22 @@ router.post('/:ritualId/messages', authenticateToken, async (req, res) => {
 
     // Insert message
     const chatType = req.body.type || (message_type === 'host_announcement' || message_type === 'system' ? 'quote' : 'text');
+    const { windowToolAllowed } = await import('../services/megaSpec.js');
+    const ritualRow = await pool.query(
+      `SELECT origin, event_group_id FROM rituals WHERE id = $1`,
+      [ritualId]
+    ).catch(() => ({ rows: [] }));
+    const isVenEvent =
+      String(ritualRow.rows[0]?.origin || '').toUpperCase() === 'VEN_EVENT' ||
+      Boolean(ritualRow.rows[0]?.event_group_id);
+    const toolGate = windowToolAllowed(chatType, { isVenEvent });
+    if (!toolGate.ok) {
+      return res.status(400).json({
+        success: false,
+        error: toolGate.error,
+        code: toolGate.code,
+      });
+    }
     const externalUrl = req.body.external_url || null;
     const mediaUrl = req.body.media_url || null;
     const result = await pool.query(
@@ -411,7 +431,7 @@ router.post('/:ritualId/messages', authenticateToken, async (req, res) => {
       ritual_id: newMessage.ritual_id,
       user_id: newMessage.user_id,
       user_name: userResult.rows[0].name,
-      user_rs_score: parseFloat(userResult.rows[0].rs_score) || 6.0,
+      user_rs_score: null,
       message: newMessage.message,
       content: newMessage.content || newMessage.message,
       type: newMessage.type || chatType,

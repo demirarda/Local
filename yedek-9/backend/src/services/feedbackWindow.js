@@ -1,9 +1,10 @@
 /**
- * Feedback window — son-part.md §4.4
- * opens = duration end; closes = max(window_end, duration_end + FEEDBACK_FLOOR)
+ * Feedback window — 24 Ağu v-final §11
+ * opens = duration_end; closes = duration_end + FEEDBACK_FLOOR (12h SABİT 🔒)
+ * Live-window uzunluğu deadline'ı uzatmaz.
  */
 import LOCAL_CONFIG from '../config/localConfig.js';
-import { getDurationEndDate, getWindowEndDate } from './ritualState.js';
+import { getDurationEndDate } from './ritualState.js';
 
 export function getFeedbackOpensAt(ritual) {
   return getDurationEndDate(ritual);
@@ -12,9 +13,7 @@ export function getFeedbackOpensAt(ritual) {
 export function getFeedbackClosesAt(ritual) {
   const durationEnd = getDurationEndDate(ritual);
   const floorMs = LOCAL_CONFIG.ritual.FEEDBACK_FLOOR_HOURS * 3600000;
-  const floorEnd = new Date(durationEnd.getTime() + floorMs);
-  const windowEnd = getWindowEndDate(ritual);
-  return floorEnd > windowEnd ? floorEnd : windowEnd;
+  return new Date(durationEnd.getTime() + floorMs);
 }
 
 export function getFeedbackWindowInfo(ritual, now = new Date()) {

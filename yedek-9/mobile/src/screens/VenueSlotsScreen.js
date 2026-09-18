@@ -47,9 +47,9 @@ const STATUS_LABELS = {
 function FlowBanner() {
   return (
     <View style={styles.flowBanner}>
-      <Text style={styles.flowTitle}>Bilateral slot akisi</Text>
-      <Text style={styles.flowLine}>Yon A: Mekan slot acar → kullanici kapar</Text>
-      <Text style={styles.flowLine}>Yon B: Kullanici oneri gonderir → oneri kutusu → onay/red → slot dogar</Text>
+      <Text style={styles.flowTitle}>Çift-yön raf akışı</Text>
+      <Text style={styles.flowLine}>Yön A: Mekan raf açar → kullanıcı üstlenir</Text>
+      <Text style={styles.flowLine}>Yön B: Kullanıcı raf-isteği gönderir (Create a Ritual Request) → onay/red → raf doğar</Text>
     </View>
   );
 }
@@ -85,6 +85,8 @@ export default function VenueSlotsScreen({ route }) {
   const [audienceTag, setAudienceTag] = useState('');
   const [brandPriority, setBrandPriority] = useState(false);
   const [isHakim, setIsHakim] = useState(false);
+  const [isOperatorPlus, setIsOperatorPlus] = useState(false);
+  const [selfRezMode, setSelfRezMode] = useState('');
   const [saving, setSaving] = useState(false);
 
   const [suggestTitle, setSuggestTitle] = useState('');
@@ -108,6 +110,9 @@ export default function VenueSlotsScreen({ route }) {
       setCanManage(manage);
       const tier = String(venue?.subscription_tier || '').toLowerCase();
       setIsHakim(tier === 'hakim' || Boolean(venue?.city_partner_enabled));
+      setIsOperatorPlus(
+        ['operator', 'hakim', 'landmark', 'pro'].includes(tier) || Boolean(venue?.pro_enabled)
+      );
       setSlots(slotList || []);
       setSlotConfig(config);
       if (config?.max_table_seats) {
@@ -159,7 +164,8 @@ export default function VenueSlotsScreen({ route }) {
         min_badge_level: requiredBadgeSlug ? minBadgeLevel : undefined,
         audience_tag: audienceTag || undefined,
         brand_priority: isHakim ? brandPriority : undefined,
-        economy_stub: slotConfig?.economy_enabled
+        self_rez_mode: isOperatorPlus && selfRezMode ? selfRezMode : undefined,
+        economy_stub: slotConfig?.economy_enabled && isOperatorPlus
           ? { claim_fee_cents: Math.round(Number(claimFee || 0) * 100) }
           : undefined,
       });
@@ -269,7 +275,7 @@ export default function VenueSlotsScreen({ route }) {
             style={styles.primaryBtn}
             onPress={() => setApproveModal({ visible: true, id: sug.id, note: '' })}
           >
-            <Text style={styles.primaryBtnText}>Onayla → Slot</Text>
+            <Text style={styles.primaryBtnText}>Onayla → Raf</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.secondaryBtn}
@@ -299,7 +305,7 @@ export default function VenueSlotsScreen({ route }) {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[PRIMARY]} />}
       >
-        <Text style={styles.heading}>Slot & Oneri Kutusu</Text>
+        <Text style={styles.heading}>Raf & Oneri Kutusu</Text>
         <FlowBanner />
 
         {canManage ? (
@@ -312,7 +318,7 @@ export default function VenueSlotsScreen({ route }) {
                   onPress={() => setTab(key)}
                 >
                   <Text style={[styles.tabText, tab === key && styles.tabTextOn]}>
-                    {key === 'slots' && 'Acik Slotlar'}
+                    {key === 'slots' && 'Acik Raflar'}
                     {key === 'inbox' && `Oneri (${inbox.length})`}
                     {key === 'history' && 'Gecmis'}
                     {key === 'create' && 'Yeni Slot'}
@@ -432,15 +438,41 @@ export default function VenueSlotsScreen({ route }) {
                 </TouchableOpacity>
               ))}
             </View>
-            {slotConfig?.economy_enabled ? (
+            {slotConfig?.economy_enabled && isOperatorPlus ? (
               <TextInput
                 style={styles.input}
-                placeholder="Claim ucreti (EUR)"
+                placeholder="Claim ucreti (EUR) — OPEN’da ticaret yok"
                 keyboardType="decimal-pad"
                 value={claimFee}
                 onChangeText={setClaimFee}
               />
+            ) : slotConfig?.economy_enabled ? (
+              <Text style={styles.muted}>Fiyatlı raf OPERATOR+ — OPEN’da para akmaz</Text>
             ) : null}
+            {isOperatorPlus ? (
+              <>
+                <Text style={styles.fieldLabel}>Self-rez ince ayar (raf-başına)</Text>
+                <View style={styles.chips}>
+                  {[
+                    { key: '', label: 'Varsayılan' },
+                    { key: 'INSTANT', label: '⚡ Anında' },
+                    { key: 'APPROVAL', label: '⏳ Onay' },
+                  ].map((opt) => (
+                    <TouchableOpacity
+                      key={opt.key || 'default'}
+                      style={[styles.chip, selfRezMode === opt.key && styles.chipOn]}
+                      onPress={() => setSelfRezMode(opt.key)}
+                    >
+                      <Text style={[styles.chipText, selfRezMode === opt.key && styles.chipTextOn]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <Text style={styles.muted}>Raf-başına ⚡/⏳ ince ayar OPERATOR+ konforu</Text>
+            )}
             <Text style={styles.fieldLabel}>Host rozet kosulu (opsiyonel)</Text>
             <View style={styles.chips}>
               <TouchableOpacity
@@ -533,7 +565,7 @@ export default function VenueSlotsScreen({ route }) {
 
         {!canManage && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Oneri Gonder (Yon B)</Text>
+            <Text style={styles.sectionTitle}>Create a Ritual Request (Yon B)</Text>
             <TextInput
               style={styles.input}
               placeholder="Oneri basligi (or. Cuma aksam jazz)"
@@ -574,7 +606,9 @@ export default function VenueSlotsScreen({ route }) {
               onChangeText={setSuggestNote}
             />
             <TouchableOpacity style={styles.primaryBtn} onPress={handleSuggest} disabled={saving}>
-              <Text style={styles.primaryBtnText}>{saving ? 'Gonderiliyor…' : 'Oneri Gonder'}</Text>
+              <Text style={styles.primaryBtnText}>
+                {saving ? 'Gonderiliyor…' : 'Create a Ritual Request'}
+              </Text>
             </TouchableOpacity>
           </View>
         )}

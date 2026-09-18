@@ -6,6 +6,8 @@ import { fetchUserProfile, fetchUserSettings, updateUserSettings, fetchMyRegular
 import useThemeStore from '../store/themeStore';
 import useConfigStore from '../store/configStore';
 import QRBumpSheet from '../components/QRBumpSheet';
+import LanguageToggle from '../components/LanguageToggle';
+import useT from '../i18n/useT';
 
 const NAVY = '#1B2E4A';
 const NAVY_LIGHT = '#E8EDF4';
@@ -24,6 +26,7 @@ const BORDER = '#E5E5E5';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
+  const t = useT();
   const logout = useAuthStore(state => state.logout);
   const { user } = useAuthStore();
   const [locationServices, setLocationServices] = useState(true);
@@ -122,10 +125,13 @@ export default function SettingsScreen() {
     await setThemeMode(value ? 'dark' : 'light');
   };
 
-  const renderSettingRow = ({ icon, iconStyle, label, sub, right, onPress, last = false }) => (
-    <TouchableOpacity
-      activeOpacity={onPress ? 0.75 : 1}
-      onPress={onPress}
+  const renderSettingRow = ({ icon, iconStyle, label, sub, right, onPress, last = false, rowKey }) => {
+    const Row = onPress ? TouchableOpacity : View;
+    const rowProps = onPress ? { activeOpacity: 0.75, onPress } : {};
+    return (
+    <Row
+      key={rowKey || label}
+      {...rowProps}
       style={[styles.settingRow, !last && styles.settingRowBorder, !last && { borderBottomColor: isDark ? '#202020' : '#F5F5F5' }]}
     >
       <View style={[styles.srIcon, iconStyle, isDark && { backgroundColor: '#1A1A1A' }]}><Text style={styles.srIconText}>{icon}</Text></View>
@@ -134,16 +140,17 @@ export default function SettingsScreen() {
         {!!sub && <Text style={[styles.srSub, { color: palette.textSoft }]}>{sub}</Text>}
       </View>
       <View style={styles.srRight}>{right || <Text style={[styles.srArrow, { color: isDark ? '#3A3A3A' : '#D4D4D4' }]}>›</Text>}</View>
-    </TouchableOpacity>
-  );
+    </Row>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: palette.bg }]}>
       <View style={[styles.header, { backgroundColor: palette.bg }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtnText}>← Passport</Text>
+          <Text style={styles.backBtnText}>{t('settings_back_passport')}</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: palette.text }]}>Ayarlar</Text>
+        <Text style={[styles.headerTitle, { color: palette.text }]}>{t('settings_title')}</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -169,15 +176,15 @@ export default function SettingsScreen() {
                   <Text style={styles.pcAvatarFallback}>{initials}</Text>
                 )}
               </View>
-              <View style={styles.pcEditBtn}><Text style={styles.pcEditBtnText}>Profili Duzenle</Text></View>
+              <View style={styles.pcEditBtn}><Text style={styles.pcEditBtnText}>{t('settings_edit_profile')}</Text></View>
             </View>
-            <Text style={[styles.pcName, { color: palette.text }]}>{profile?.name || 'Kullanici'}</Text>
+            <Text style={[styles.pcName, { color: palette.text }]}>{profile?.name || t('settings_user_fallback')}</Text>
             <Text style={[styles.pcMeta, { color: palette.textSoft }]}>
-              {[profile?.university, profile?.city].filter(Boolean).join(' · ') || 'Universite · Sehir'}
+              {[profile?.university, profile?.city].filter(Boolean).join(' · ') || t('settings_uni_city_fallback')}
             </Text>
             <View style={styles.badgeRow}>
-              <Text style={[styles.badgeChip, styles.badgeGold]}>Pivot Host</Text>
-              <Text style={[styles.badgeChip, styles.badgeNavy]}>Verified</Text>
+              <Text style={[styles.badgeChip, styles.badgeGold]}>{t('settings_badge_pivot')}</Text>
+              <Text style={[styles.badgeChip, styles.badgeNavy]}>{t('settings_badge_verified')}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -190,9 +197,9 @@ export default function SettingsScreen() {
           <View style={styles.hubCardLeft}>
             <Text style={styles.hubLogo}>⚙</Text>
             <View>
-              <Text style={[styles.hubTitle, { color: palette.text }]}>Profil ayarlari</Text>
+              <Text style={[styles.hubTitle, { color: palette.text }]}>{t('settings_profile_hub')}</Text>
               <Text style={[styles.hubSub, { color: palette.textSoft }]}>
-                Uni-etiket · hosted sayı · gizlilik
+                {t('settings_profile_hub_sub')}
               </Text>
             </View>
           </View>
@@ -208,80 +215,80 @@ export default function SettingsScreen() {
             </View>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.rsLabel}>Guvenilirlik</Text>
-            <Text style={styles.rsStatus}>Monokrom bant · ham sayı gizli</Text>
-            <Text style={styles.rsSub}>Detay için RS şeffaflık ekranı</Text>
+            <Text style={styles.rsLabel}>{t('settings_trust_label')}</Text>
+            <Text style={styles.rsStatus}>{t('settings_trust_status')}</Text>
+            <Text style={styles.rsSub}>{t('settings_trust_sub')}</Text>
           </View>
           <Text style={styles.rsArrow}>›</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>Hesap</Text>
+        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>{t('settings_group_account')}</Text>
         <View style={[styles.groupCard, { backgroundColor: palette.card }]}>
           {renderSettingRow({
             icon: '👤',
             iconStyle: styles.sriNavy,
-            label: 'Profil Bilgileri',
-            sub: 'Ad, universite, biyografi',
+            label: t('settings_profile_info'),
+            sub: t('settings_profile_info_sub'),
             onPress: () => navigation.navigate('EditProfile'),
           })}
           {renderSettingRow({
             icon: '👁️',
             iconStyle: styles.sriNavy,
-            label: 'RS Gorunurlugu',
-            sub: 'Kim RS skorunu gorebilir?',
+            label: t('settings_rs_visibility'),
+            sub: t('settings_rs_visibility_sub'),
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: () => navigation.navigate('PrivacySettings'),
           })}
           {renderSettingRow({
             icon: '🏙️',
             iconStyle: styles.sriNavy,
-            label: 'Sehir',
-            sub: profile?.city ? `${profile.city} aktif` : 'Sehir secimi',
+            label: t('settings_city'),
+            sub: profile?.city ? t('settings_city_active', { city: profile.city }) : t('settings_city_pick'),
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: () => navigation.navigate('PrivacySettings'),
           })}
           {renderSettingRow({
             icon: '🏪',
             iconStyle: styles.sriNavy,
-            label: 'LOCAL Venue Basvurusu',
-            sub: 'Mekan olarak LOCAL\'e basvur',
+            label: t('settings_venue_apply'),
+            sub: t('settings_venue_apply_sub'),
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: () => navigation.navigate('VenueApply'),
           })}
           {renderSettingRow({
             icon: '📘',
             iconStyle: styles.sriBlue,
-            label: '10. Sozluk',
-            sub: 'Sozluk ve terimler',
+            label: t('settings_glossary'),
+            sub: t('settings_glossary_sub'),
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: () => navigation.navigate('Glossary'),
           })}
           {renderSettingRow({
             icon: '⚙️',
             iconStyle: styles.sriDark,
-            label: 'LTE-3 Trust Engine',
-            sub: 'RS motoru sabitleri ve boru hatti',
+            label: t('settings_lte3'),
+            sub: t('settings_lte3_sub'),
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: () => navigation.navigate('LTE3Engine'),
           })}
           {renderSettingRow({
             icon: '🛡',
             iconStyle: styles.sriDark,
-            label: 'Moderasyon Paneli',
-            sub: 'Sikayet ve guvenlik islemleri',
+            label: t('settings_moderation'),
+            sub: t('settings_moderation_sub'),
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: () => navigation.navigate('Moderation'),
             last: true,
           })}
         </View>
 
-        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>Gizlilik</Text>
+        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>{t('settings_group_privacy')}</Text>
         <View style={[styles.groupCard, { backgroundColor: palette.card }]}>
           {renderSettingRow({
             icon: '🔍',
             iconStyle: styles.sriDark,
-            label: 'Aramada Gorun',
-            sub: 'Kullanicilar seni aramada gorebilir',
+            label: t('settings_search_visible'),
+            sub: t('settings_search_visible_sub'),
             right: (
               <Switch
                 value={searchVisible}
@@ -294,8 +301,8 @@ export default function SettingsScreen() {
           {renderSettingRow({
             icon: '📍',
             iconStyle: styles.sriDark,
-            label: 'Konum Paylasimi',
-            sub: 'Sadece check-in sirasinda kullanilir',
+            label: t('settings_location_share'),
+            sub: t('settings_location_share_sub'),
             right: (
               <Switch
                 value={locationServices}
@@ -308,8 +315,8 @@ export default function SettingsScreen() {
           {renderSettingRow({
             icon: '👀',
             iconStyle: styles.sriDark,
-            label: 'Aktif Durumu',
-            sub: 'Baglantilarin cevrimici durumunu gorebilir',
+            label: t('settings_active_status'),
+            sub: t('settings_active_status_sub'),
             right: (
               <Switch
                 value={activeVisible}
@@ -322,20 +329,20 @@ export default function SettingsScreen() {
           })}
         </View>
 
-        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>Bildirimler</Text>
+        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>{t('settings_group_notifications')}</Text>
         <View style={[styles.groupCard, { backgroundColor: palette.card }]}>
           {renderSettingRow({
             icon: '⚙️',
             iconStyle: styles.sriAmber,
-            label: 'Bildirim Tercihleri',
-            sub: 'Kategori bazli kontrol (§11)',
+            label: t('settings_notif_prefs'),
+            sub: t('settings_notif_prefs_sub'),
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: () => navigation.navigate('NotificationPreferences'),
           })}
           {renderSettingRow({
             icon: '🔔',
             iconStyle: styles.sriAmber,
-            label: 'Canli Ritual basladi',
+            label: t('settings_notif_live'),
             right: (
               <Switch
                 value={notifLive}
@@ -351,7 +358,7 @@ export default function SettingsScreen() {
           {renderSettingRow({
             icon: '👥',
             iconStyle: styles.sriNavy,
-            label: 'Rituale arkadasin katildi',
+            label: t('settings_notif_friends'),
             right: (
               <Switch
                 value={notifFriends}
@@ -367,7 +374,7 @@ export default function SettingsScreen() {
           {renderSettingRow({
             icon: '◈',
             iconStyle: styles.sriGold,
-            label: 'RS skoru degisti',
+            label: t('settings_notif_rs'),
             right: (
               <Switch
                 value={notifRs}
@@ -383,7 +390,7 @@ export default function SettingsScreen() {
           {renderSettingRow({
             icon: '🏅',
             iconStyle: styles.sriGreen,
-            label: 'Yeni rozet kazanildi',
+            label: t('settings_notif_badge'),
             right: (
               <Switch
                 value={notifBadges}
@@ -399,38 +406,46 @@ export default function SettingsScreen() {
           })}
         </View>
 
-        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>Sosyal</Text>
+        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>{t('settings_group_social')}</Text>
         <View style={[styles.groupCard, { backgroundColor: palette.card }]}>
           {renderSettingRow({
             icon: '📱',
             iconStyle: styles.sriNavy,
-            label: 'QR-Bump',
-            sub: 'Yakin arkadas ekle',
+            label: t('settings_qr_bump'),
+            sub: t('settings_qr_bump_sub'),
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: () => setShowQrBump(true),
           })}
           {renderSettingRow({
             icon: '🔗',
             iconStyle: styles.sriGold,
-            label: 'Regular Durumu',
+            label: t('settings_regular'),
             sub: regularStatus?.is_regular
-              ? `${regularStatus.pair_count || regularStatus.count || 0} mekân · gizli etiket`
-              : 'Henuz regular degil (ozel, paylasilmaz)',
+              ? t('settings_regular_sub', { n: regularStatus.pair_count || regularStatus.count || 0 })
+              : t('settings_regular_none'),
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: () => navigation.navigate('MyRegulars'),
           })}
           {renderSettingRow({
+            icon: '🧾',
+            iconStyle: styles.sriNavy,
+            label: 'Satışlarım',
+            sub: 'Plan · sicil · chip · müşteri · kuyruk · payout · vitrin',
+            right: <Text style={styles.srArrow}>›</Text>,
+            onPress: () => navigation.navigate('SalesPocket'),
+          })}
+          {renderSettingRow({
             icon: '📷',
             iconStyle: styles.sriGreen,
-            label: 'Anilarim',
-            sub: 'Ritual anilarin',
+            label: t('settings_memories'),
+            sub: t('settings_memories_sub'),
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: () => navigation.navigate('YourMemories'),
             last: true,
           })}
         </View>
 
-        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>Yakinda (§14)</Text>
+        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>{t('settings_group_coming')}</Text>
         <View style={[styles.groupCard, { backgroundColor: palette.card }]}>
           {[
             featureStubs.music_sync,
@@ -443,22 +458,30 @@ export default function SettingsScreen() {
             .filter(Boolean)
             .map((item, idx, arr) =>
               renderSettingRow({
+                rowKey: item.key || item.label || `stub-${idx}`,
                 icon: item.enabled ? '✓' : '⏸',
                 iconStyle: item.enabled ? styles.sriGreen : styles.sriNavy,
-                label: item.label || 'Ozellik',
-                sub: item.enabled ? 'Aktif' : (item.phase || 'Pasif'),
+                label: item.label || t('settings_stub_feature'),
+                sub: item.enabled ? t('settings_stub_on') : (item.phase || t('settings_stub_off')),
                 right: null,
                 last: idx === arr.length - 1,
               })
             )}
         </View>
 
-        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>Gorunum</Text>
+        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>{t('settings_group_appearance')}</Text>
         <View style={[styles.groupCard, { backgroundColor: palette.card }]}>
+          {renderSettingRow({
+            icon: '🌐',
+            iconStyle: styles.sriNavy,
+            label: t('settings_language'),
+            sub: t('settings_language_sub'),
+            right: <LanguageToggle compact />,
+          })}
           {renderSettingRow({
             icon: '🌓',
             iconStyle: styles.sriDark,
-            label: 'Gorunum (Koyu Tema)',
+            label: t('settings_dark_mode'),
             right: (
               <Switch
                 value={darkMode}
@@ -471,12 +494,12 @@ export default function SettingsScreen() {
           })}
         </View>
 
-        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>Oturum</Text>
+        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>{t('settings_group_session')}</Text>
         <View style={[styles.groupCard, { backgroundColor: palette.card }]}>
           {renderSettingRow({
             icon: '↩',
             iconStyle: styles.sriDark,
-            label: 'Cikis Yap',
+            label: t('settings_logout'),
             sub: profile?.name || user?.email || '',
             right: <Text style={styles.srArrow}>›</Text>,
             onPress: handleLogOut,
@@ -484,20 +507,20 @@ export default function SettingsScreen() {
           })}
         </View>
 
-        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>Tehlikeli Bolge</Text>
+        <Text style={[styles.groupLabel, { color: palette.textSoft }]}>{t('settings_group_danger')}</Text>
         <View style={[styles.groupCard, { backgroundColor: palette.card }]}>
           {renderSettingRow({
             icon: '⏸',
             iconStyle: styles.sriRed,
-            label: 'Hesabi Dondur',
-            sub: 'Gecici devre disi · RS korunur',
+            label: t('settings_freeze'),
+            sub: t('settings_freeze_sub'),
             right: <Text style={styles.srArrow}>›</Text>,
           })}
           {renderSettingRow({
             icon: '🗑',
             iconStyle: styles.sriRed,
-            label: 'Hesabi Sil',
-            sub: 'Kalici silme · geri alinamaz',
+            label: t('settings_delete'),
+            sub: t('settings_delete_sub'),
             right: <Text style={styles.srArrow}>›</Text>,
             last: true,
           })}
@@ -507,10 +530,10 @@ export default function SettingsScreen() {
           <Text style={styles.appLogo}>L.</Text>
           <Text style={[styles.appVer, { color: palette.textSoft }]}>v1.0.0 · Milano 2026 · LOCAL Technologies</Text>
           <View style={styles.linkRow}>
-            <Text style={styles.infoLink}>Gizlilik</Text>
-            <Text style={styles.infoLink}>Kosullar</Text>
-            <Text style={styles.infoLink}>Cerezler</Text>
-            <Text style={styles.infoLink}>Iletisim</Text>
+            <Text style={styles.infoLink}>{t('settings_privacy')}</Text>
+            <Text style={styles.infoLink}>{t('settings_terms')}</Text>
+            <Text style={styles.infoLink}>{t('settings_cookies')}</Text>
+            <Text style={styles.infoLink}>{t('settings_contact')}</Text>
           </View>
         </View>
 
@@ -519,15 +542,15 @@ export default function SettingsScreen() {
       <View style={[styles.bottomNav, { backgroundColor: palette.navBg, borderTopColor: palette.border }]}>
         <TouchableOpacity style={styles.navItem} activeOpacity={0.75} onPress={() => navigation.navigate('Pulse')}>
           <Text style={[styles.navIconOff, { color: palette.textSoft }]}>〰</Text>
-          <Text style={[styles.navLabelOff, { color: palette.textSoft }]}>Pulse</Text>
+          <Text style={[styles.navLabelOff, { color: palette.textSoft }]}>{t('pulse')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} activeOpacity={0.75} onPress={() => navigation.navigate('CityRhythm')}>
           <Text style={[styles.navIconOff, { color: palette.textSoft }]}>📅</Text>
-          <Text style={[styles.navLabelOff, { color: palette.textSoft }]}>City Rhythm</Text>
+          <Text style={[styles.navLabelOff, { color: palette.textSoft }]}>{t('nav_city_rhythm')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} activeOpacity={0.85} onPress={() => navigation.navigate('SocialPassport')}>
           <View style={styles.activeNavCircle}><Text style={styles.activeNavCircleText}>◉</Text></View>
-          <Text style={[styles.navLabelOn, { color: palette.text }]}>Passport</Text>
+          <Text style={[styles.navLabelOn, { color: palette.text }]}>{t('nav_passport')}</Text>
         </TouchableOpacity>
       </View>
       <QRBumpSheet visible={showQrBump} onClose={() => setShowQrBump(false)} />

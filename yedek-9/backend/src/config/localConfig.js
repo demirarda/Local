@@ -12,19 +12,22 @@ export const LOCAL_CONFIG = {
 
   rs: {
     INIT: 5.0,
-    MIN: 1.0,
+    MIN: 0,
     MAX: 10.0,
     THRESHOLD: 0.5,
     K_UP: 0.15,
     K_DOWN: 0.3,
     CAP_POS: 0.12,
     CAP_NEG: 0.15,
+    CAP_DAY_POS: 0.12,
     BYPASS_CAP_NEG: 0.2,
     RAW_CAP_POS: 0.075,
     RAW_CAP_NEG: 0.3,
-    W_A: 0.25,
-    W_IQ: 0.3,
-    W_CF: 0.15,
+    /** 24 Ağu v-final: W_AIS .30 · W_IQ .40 · CF uyku (W_CF=0) · MB .05 */
+    W_A: 0.3,
+    W_AIS: 0.3,
+    W_IQ: 0.4,
+    W_CF: 0,
     W_MB: 0.05,
     W_IF: 0.2,
     CF_PEER: 0.65,
@@ -38,12 +41,18 @@ export const LOCAL_CONFIG = {
       NO_PEER_CEILING: 7.5,
       CF_SELF_NO_PEER_W: 0.5,
     },
+    /** FAR: 0=log-only (launch) · 1=zayıf My-RS · 2=My-RS+halka · 3=ayrı karar */
+    far: {
+      PHASE: 0,
+      WEAK_MULT: 0.5,
+    },
     /** RS opt-in halka — ham sayı public değil (E3.5) */
     visibility: {
       DEFAULT_PUBLIC: false,
       MIN_RITUALS_FOR_RING: 10,
       TOGGLE_DAYS: 30,
       PUBLIC_RAW_SCORE: false,
+      PLACEMENT_SEALS: 5,
     },
     S_POS_MAX: 0.75,
     /** Legacy index — otorite IQ_BLEND_* (Anayasa A2 CONF: n1 %60 nötr / n2 %25 / n≥3 ham) */
@@ -56,8 +65,14 @@ export const LOCAL_CONFIG = {
     IQ_BLEND_N2_NEUTRAL: 0.25,
     /** IF feedback friction */
     IF_FEEDBACK_MISSING: 0.3, // EMPTY_FB_IF — Master Parametre §4
+    /** Normal pipeline only — no-peer'de sosyal-eksi yok (§4). */
     IF_FEEDBACK_RED_HEAVY: 0.1,
+    /** §1 MOD-L3 → IF=1.0 (pipeline). Bypass delta ayrı: ham-rapor istisnası. */
+    IF_MOD_L3: 1.0,
     IF_LATE_SLICE: 0.25,
+    /** 30g kayan: 1–2.geç 0.25 · 3–4.geç 0.35 · 5.+ 0.50 */
+    IF_LATE_WINDOW_DAYS: 30,
+    IF_LATE_LADDER: [0.25, 0.25, 0.35, 0.35, 0.5],
     BC: {
       MIN_RITUALS: 4,
       POS_TREND_HIGH: 0.65,
@@ -66,7 +81,7 @@ export const LOCAL_CONFIG = {
       NEG_TREND_MID: 0.55,
       POS_AMP: 1.25,
       POS_DAMP: 0.75,
-      NEG_AMP: 1.35,
+      NEG_AMP: 1.2,
       NEG_DAMP: 0.7,
     },
     /** Ritual indeksi 1-based → MD çarpanı (ilk 12 Ritual) */
@@ -81,6 +96,8 @@ export const LOCAL_CONFIG = {
     BR_LOWER: 3.0,
     BR_MIN: 0.4,
     BC5_WEIGHTS: [0.1, 0.15, 0.2, 0.25, 0.3],
+    /** §2 — DS her ritüel-sonucunda çarpar (eski eşik 6 kilit-ihlaliydi). */
+    DS_APPLY_FROM: 1,
   },
 
   ds: {
@@ -102,6 +119,8 @@ export const LOCAL_CONFIG = {
     /** DS_full tier eşikleri — launch kalibrasyonu (son-part.md §6) */
     TIER_THRESHOLDS: [0.35, 0.5, 0.65, 0.8],
     TIER_NAMES: ['homebody', 'familiar', 'explorer', 'wanderer', 'voyager'],
+    /** §13 agregat MIN-N ⭐ — altında eğri/rapor yok */
+    AGGREGATE_MIN_N: 20,
     /** Window bubble üst sınırı — launch: 12 (son-part.md §6) */
     MAX_WINDOW_CAPACITY: 12,
   },
@@ -109,7 +128,13 @@ export const LOCAL_CONFIG = {
   fl: {
     THRESHOLDS: [1, 4, 8],
     FRESHNESS_MONTHS: 12,
-    FB_WEIGHTS: [1.0, 0.5, 0.0],
+    METRIC: 'co_seal',
+    TAM_SES_SEALS: 2,
+    /** l1 doğum (1 mühür) · l2 · l3 — tam-ses FL1 ayrı FL1_FULL_WEIGHT */
+    FB_WEIGHTS: [0.5, 0.5, 0.0],
+    FL1_FULL_WEIGHT: 1.0,
+    RATER_PATTERN_N: 4,
+    RATER_PATTERN_RED_RATIO: 0.8,
   },
 
   ritual: {
@@ -126,7 +151,9 @@ export const LOCAL_CONFIG = {
     CANCEL_FREE_THRESHOLD_PCT: 0.25,
     CANCEL_FREE_MIN_MINUTES: 15,
     CANCEL_FREE_MAX_MINUTES: 180,
+    /** EK-27: 02-08 donma iptal → D-sonu + 12h düz */
     FEEDBACK_FLOOR_HOURS: 12,
+    FEEDBACK_FREEZE_0208: false,
     /** v2 §2 — prelobby chat kilit anında açılır (join'de değil) */
     PRELOBBY_CHAT_OPEN_ON_JOIN: false,
     MAX_CONCURRENT_WINDOW_BUBBLES: 10,
@@ -145,14 +172,32 @@ export const LOCAL_CONFIG = {
     ORIGIN_ENUM: ['SLOT_PLANNED', 'WALK_IN', 'VEN_EVENT'],
     /** 0 = sınırsız (sonMD WALK-IN SINIRSIZ 🔒) */
     WALK_IN_DAILY_CAP: 0,
-    /** şahıs tek-seferlik ufuk (gün) ⭐ */
-    PLANNED_MAX_AHEAD_D: 21,
+    /** EK-11: custom/zone MAX_CREATE_HORIZON=30g 🔒 */
+    PLANNED_MAX_AHEAD_D: 30,
+    MAX_CREATE_HORIZON_D: 30,
+    /** L-venue raf ufku sınırsız 🔒 */
+    VENUE_RAF_HORIZON_UNLIMITED: true,
     /** VEN_EVENT + brand-imzalı ufuk (gün) ⭐ */
     EVENT_MAX_AHEAD_D: 60,
     BIRTH_CANCEL_MIN: 10,
     SELF_REZ_MODES: ['INSTANT', 'APPROVAL'],
     /** Self-rez kişi limiti — 1/gün/mekan ⭐ */
     SELF_REZ_PER_DAY_PER_VENUE: 1,
+    /** EK-3: kapanıştan ~30dk önce son istek */
+    SELF_REZ_BUFFER_MIN: 30,
+    SELF_REZ_USES_WORKING_DAY: true,
+    /** EK-15b kapı seti */
+    DOOR_SET_USER: ['PUBLIC', 'APPROVAL', 'FRIENDS', 'SOLO'],
+    DOOR_SET_BUSINESS: ['PUBLIC', 'APPROVAL'],
+    DOOR_DEFAULT: 'PUBLIC',
+    FORUM_DEFAULT_ON: true,
+    WHOLE_WINDOW_VISIBILITY_DEFAULT: 'OFF',
+    /** E4 EK-16: gecede maks-3 sub-RQ */
+    SUB_FB_MAX: 3,
+    PAID_R_MIN_TIER: 'operator',
+    WALK_IN_NEVER_PAID: true,
+    WAITLIST_OFFER_TTL_MIN: 15,
+    RAF_REQUEST_EN: 'Create a Ritual Request',
     /** §2C discovery audience — PUBLIC|FRIENDS (ayrı: visibility) */
     AUDIENCE_DEFAULT: 'PUBLIC',
     AUDIENCE_VALUES: ['PUBLIC', 'FRIENDS'],
@@ -376,34 +421,76 @@ export const LOCAL_CONFIG = {
     },
   },
 
-  /** v2 §10 / E2.8 chips — RQ tam 3/renk · P2V tam 5/renk · copy 🔓 stringTable */
+  /**
+   * §11 kategori-semantiği — UI'ya green/yellow/red sızmaz.
+   * Pipeline değerleri 1.0 / 0.5 / 0.0; iç legacy feeling kodları kalır.
+   */
+  feedback: {
+    CATEGORY: {
+      POSITIVE: 'POSITIVE',
+      OBSERVATION: 'OBSERVATION',
+      NEGATIVE: 'NEGATIVE',
+    },
+    LEGACY_TO_CATEGORY: {
+      green: 'POSITIVE',
+      yellow: 'OBSERVATION',
+      red: 'NEGATIVE',
+    },
+    CATEGORY_TO_LEGACY: {
+      POSITIVE: 'green',
+      OBSERVATION: 'yellow',
+      NEGATIVE: 'red',
+    },
+    PIPELINE_VALUE: {
+      POSITIVE: 1.0,
+      OBSERVATION: 0.5,
+      NEGATIVE: 0.0,
+    },
+  },
+
+  /** FB-soru-ağacı v3: min-4 chip/dal · RQ/P2V 5 · copy 🔒 fiil */
   chip: {
-    SINGLE_SELECT: true,
+    SINGLE_SELECT: false,
     PUBLIC_MIN_N: 10,
     TOP_CHIP_RITUAL_MIN_DISTINCT: 3,
     TOP_CHIP_VENUE_MIN: 10,
-    RQ_OPTIONS_PER_COLOR: 3,
+    RQ_OPTIONS_PER_COLOR: 5,
     P2V_OPTIONS_PER_COLOR: 5,
+    MIN_CHIPS_PER_BRANCH: 4,
     /** EVENT sub'lı masada FB'ye ek "gece geneli nasıldı" 🔒 */
     EVENT_GENERAL_RQ_ENABLED: true,
-    MAX_CHIP_SELECT: 1,
+    MAX_CHIP_SELECT: 2,
+    P2P_ENABLED: true,
+    P2P_MAX_PEOPLE: 2,
     ROTATE: true,
     SETS: {
-      // 🟢 sohbet aktı · masa dengeliydi · tekrar isterim
-      RQ_GREEN: ['rq_g_1', 'rq_g_2', 'rq_g_3'],
-      // 🟡 geç ısındı · küçük gruplara bölündük · tanımdan biraz farklıydı
-      RQ_YELLOW: ['rq_y_1', 'rq_y_2', 'rq_y_3'],
-      // 🔴 tanım yanılttı · tek ses baskındı · kadro uyumsuzdu
-      RQ_RED: ['rq_r_1', 'rq_r_2', 'rq_r_3'],
-      // 🟢 mekan sahiplendi · servis akıcıydı · fiyatına değdi · ortam tam masalıktı · personel sıcaktı
+      RQ_GREEN: ['rq_g_1', 'rq_g_2', 'rq_g_3', 'rq_g_4', 'rq_g_5'],
+      RQ_YELLOW: ['rq_y_1', 'rq_y_2', 'rq_y_3', 'rq_y_4', 'rq_y_5'],
+      RQ_RED: ['rq_r_1', 'rq_r_2', 'rq_r_3', 'rq_r_4', 'rq_r_5'],
       P2V_GREEN: ['p2v_g_1', 'p2v_g_2', 'p2v_g_3', 'p2v_g_4', 'p2v_g_5'],
-      // 🟡 servis yavaştı · yer dardı · biraz gürültülüydü · fiyat yüksekti · masa geç hazırlandı
       P2V_YELLOW: ['p2v_y_1', 'p2v_y_2', 'p2v_y_3', 'p2v_y_4', 'p2v_y_5'],
-      // 🔴 servis sorunluydu · gürültüden konuşamadık · temizlik zayıftı · ücret sürpriziydi · masa hazır değildi
       P2V_RED: ['p2v_r_servis', 'p2v_r_gurultu', 'p2v_r_temizlik', 'p2v_r_ucret', 'p2v_r_masa'],
-      P2Z_GREEN: ['p2z_g_1', 'p2z_g_2'],
-      P2Z_YELLOW: ['p2z_y_1', 'p2z_y_2'],
-      P2Z_RED: ['p2z_r_1', 'p2z_r_marker'],
+      P2Z_GREEN: ['p2z_g_1', 'p2z_g_2', 'p2z_g_3', 'p2z_g_4', 'p2z_g_5'],
+      P2Z_YELLOW: ['p2z_y_1', 'p2z_y_2', 'p2z_y_3', 'p2z_y_4', 'p2z_y_5'],
+      P2Z_RED: ['p2z_r_totem', 'p2z_r_1', 'p2z_r_guvenlik', 'p2z_r_temizlik', 'p2z_r_erisim'],
+      P2C_GREEN: ['p2c_g_1', 'p2c_g_2', 'p2c_g_3', 'p2c_g_4', 'p2c_g_5'],
+      P2C_YELLOW: ['p2c_y_1', 'p2c_y_2', 'p2c_y_3', 'p2c_y_4', 'p2c_y_5'],
+      P2C_RED: ['p2c_r_1', 'p2c_r_2', 'p2c_r_3', 'p2c_r_4', 'p2c_r_5'],
+      P2P_GREEN: ['p2p_g_1', 'p2p_g_2', 'p2p_g_3', 'p2p_g_4', 'p2p_g_5'],
+      P2P_YELLOW: ['p2p_y_1', 'p2p_y_2', 'p2p_y_3', 'p2p_y_4', 'p2p_y_5'],
+      P2P_RED: ['p2p_r_1', 'p2p_r_2', 'p2p_r_3', 'p2p_r_4', 'p2p_r_5'],
+      K2_GREEN: ['k2_g_1', 'k2_g_2', 'k2_g_3', 'k2_g_4', 'k2_g_5'],
+      K2_YELLOW: ['k2_y_1', 'k2_y_2', 'k2_y_3', 'k2_y_4', 'k2_y_5'],
+      K2_RED: ['k2_r_1', 'k2_r_2', 'k2_r_3', 'k2_r_4', 'k2_r_5'],
+      E_GREEN: ['e_g_1', 'e_g_2', 'e_g_3', 'e_g_4', 'e_g_5'],
+      E_YELLOW: ['e_y_1', 'e_y_2', 'e_y_3', 'e_y_4'],
+      E_RED: ['e_r_1', 'e_r_2', 'e_r_3', 'e_r_4', 'e_r_5'],
+      S_GREEN: ['s_g_1', 's_g_2', 's_g_3', 's_g_4', 's_g_5'],
+      S_YELLOW: ['s_y_1', 's_y_2', 's_y_3', 's_y_4', 's_y_5'],
+      S_RED: ['s_r_1', 's_r_2', 's_r_3', 's_r_4', 's_r_5'],
+      VR_GREEN: ['vr_g_1', 'vr_g_2', 'vr_g_3', 'vr_g_4', 'vr_g_5'],
+      VR_YELLOW: ['vr_y_1', 'vr_y_2', 'vr_y_3', 'vr_y_4', 'vr_y_5'],
+      VR_RED: ['vr_r_1', 'vr_r_2', 'vr_r_3', 'vr_r_4', 'vr_r_5'],
     },
     ROUTES: {
       p2v_g_1: 'venue_itibar',
@@ -421,17 +508,78 @@ export const LOCAL_CONFIG = {
       p2v_r_temizlik: 'venue_itibar',
       p2v_r_ucret: 'venue_itibar',
       p2v_r_masa: 'venue_itibar',
+      p2z_r_1: 'ops',
       p2z_r_marker: 'ops',
+      p2z_r_totem: 'ops',
+      p2z_r_temizlik: 'ops',
+      p2z_r_oturma: 'ops',
+      p2z_r_guvenlik: 'ops',
+      p2z_r_erisim: 'ops',
+      p2p_g_1: 'host_private',
+      p2p_g_2: 'host_private',
+      p2p_g_3: 'host_private',
+      p2p_g_4: 'host_private',
+      p2p_g_5: 'host_private',
+      p2p_y_1: 'host_private',
+      p2p_y_2: 'host_private',
+      p2p_y_3: 'host_private',
+      p2p_y_4: 'host_private',
+      p2p_y_5: 'host_private',
+      p2p_r_1: 'host_private',
+      p2p_r_2: 'host_private',
+      p2p_r_3: 'host_private',
+      p2p_r_4: 'host_private',
+      p2p_r_5: 'host_private',
       default: 'host_private',
     },
   },
 
-  /** v2 §11 zone / spark */
+  /** §14 totem — NFC ∨ dönen-kod; statik QR yasak */
+  totem: {
+    STATIC_QR_FORBIDDEN: true,
+    MODES: ['NFC', 'ROTATING_CODE'],
+    ROTATING_CODE_TTL_S: 30,
+    PATH_C: ['STAFF_DEVICE', 'TAP_POINT', 'FIGUR'],
+    PATH_DEFAULT: 'STAFF_DEVICE',
+  },
+
+  p2c: {
+    ZONE_MIN_PEOPLE: 4,
+    ZONE_MIN_RITUALS: 2,
+    HOME_NEVER_ZONE: true,
+    PUBLIC_COORD_EXACT: false,
+  },
+
+  /** EK-27 window araçları: FOTO/VİDEO · QUOTE · MÜZİK; çekim önce rulo */
+  window_tools: {
+    TYPES: ['photo', 'video', 'quote', 'music'],
+    REJECT_OUTSIDE_EVENT: ['poll', 'quiz', 'file', 'survey', 'event_card'],
+    CAMERA_ROLL_FIRST: true,
+  },
+
+  /** v2 §11 + Zone_Vizyonu / EK-24 */
   zone: {
     BADGE_RITUAL_P: 3,
     MARKER_P: 1,
     SPARK_ENABLED: false,
     DEFAULT_RADIUS_M: 75,
+    TRUST_NUMBER: false,
+    LEAGUE_LAUNCH: true,
+    DOOR_PUBLIC_ONLY: true,
+    FIRST_SEAL: ['GPS', 'ZONE_TOTEM_TAP'],
+    TAKE_RATE_Z: 0.08,
+    CHARACTER_WINDOW_D: 90,
+    LEAGUE_PRIZE: 'badge_fame',
+    NAMING_SHELF: true,
+    P2Z_OPS_CHIPS: [
+      'p2z_r_1',
+      'p2z_r_marker',
+      'p2z_r_totem',
+      'p2z_r_temizlik',
+      'p2z_r_oturma',
+      'p2z_r_guvenlik',
+      'p2z_r_erisim',
+    ],
   },
 
   follow: {
@@ -481,8 +629,10 @@ export const LOCAL_CONFIG = {
     KAPI_MIN_MINUTES: 10,
     KAPI_MAX_MINUTES: 60,
     AIS_FULL_THRESHOLD_PCT: 0.6,
+    AIS_DEEP_LATE_THRESHOLD_PCT: 0.85,
     AIS_REDUCED: 1.0,
-    AIS_LATE: 0.85,
+    AIS_LATE: 0.8,
+    AIS_DEEP_LATE: 0.6,
     /** sonMD 30 Tem: AIS_MANUAL KALDIRILDI — host mühürleyemez; yalnız PENDING_WITNESS */
     AIS_MANUAL_ENABLED: false,
     GPS_RADIUS_METERS: {
@@ -563,6 +713,17 @@ export const LOCAL_CONFIG = {
     LATE_CANCEL_RS: [null, 0.06, 0.1, 0.15],
     NOSHOW_RS: [0.08, 0.15, 0.2],
     NOSHOW_SUSPENSION_HOURS: [null, null, 3, 6, 12, 24],
+    PROMISE_COOL: {
+      LOCK_NEAR_HOURS: 2,
+      N: 3,
+      COOL_HOURS: 24,
+    },
+    /** AT-39: 90g'de 1 kilit-sonrası cezasız-çöz */
+    LIFE_JOKER: {
+      PER_DAYS: 90,
+      COUNT: 1,
+      POST_LOCK_ONLY: true,
+    },
     HOST_BAN: [
       { warning: true, hours: 3 },
       { hours: 24 },
@@ -572,7 +733,10 @@ export const LOCAL_CONFIG = {
   },
 
   venue: {
-    K: 3,
+    /** EK-11 kapı-politikası rozeti */
+    DOOR_POLICY: ['WALKIN_OPEN', 'SHELF_ONLY'],
+    DOOR_POLICY_DEFAULT: 'WALKIN_OPEN',
+    K: 5,
     /**
      * VEN-4 — hesap 0–1 uzayında (prior_internal:0.50); gösterim ×10
      * PRIOR display-alias = PRIOR_INTERNAL * DISPLAY_SCALE (=5.0)
@@ -580,14 +744,31 @@ export const LOCAL_CONFIG = {
     PRIOR_INTERNAL: 0.5,
     DISPLAY_SCALE: 10,
     PRIOR: 5.0,
-    WINDOW_DAYS: 90,
+    WINDOW_DAYS: 120,
+    REPEAT_RATER_WINDOW_DAYS: 90,
+    REPEAT_RATER_K: 1,
+    MAX_OBS_PER_PERSON_PER_NIGHT: 2,
+    CLUSTER_RED_MIN: 3,
     OTURMA: [2, 10],
     DIST_MIN_RITUAL: 5,
     KATEGORI_TENTATIVE: 3,
     /** Public vitrin: sayı ≥5. gözlemde; öncesi etiket. Panel gün-1'den görür */
     MIN_DISPLAY_N: 5,
-    /** Soru tipi başına min ham cevap — altı gözlem üretmez (chip kaydı ayrı) */
-    MIN_ANSWERS_PER_OBS: 2,
+    /** §12 — eligible P2V geceyi doğurur; 1 cevap = 1 gece gözlemi */
+    MIN_ANSWERS_PER_OBS: 1,
+    /** Aura kelime eşiği ⭐ ~5 chip + MIN_DISPLAY */
+    AURA_WORD_MIN: 5,
+    AURA_TOP_N: 3,
+    /** Hayat-satırı: Geçmiş<5 → yumuşak/gizli ⭐ */
+    LIFE_LINE_MIN: 5,
+    /** §12 üyelik vitrini — default açık, mekan kapatabilir 🔒 */
+    MEMBERSHIP_VITRINE_DEFAULT: true,
+    SELLER_AT_VENUE: true,
+    ORG_TO_ORG: true,
+    CHAIN_FREN_COOLDOWN_D: 90,
+    LIFECYCLE_SILENT_H: 4,
+    LIFECYCLE_ASLEEP_H: 8,
+    LIFECYCLE_ARCHIVE_H: 16,
     /** Aynı kullanıcı→aynı mekan 90g'de kaçıncı cevap ağırlığı */
     REPEAT_RATER_W: [1.0, 0.5, 0.5, 0.25],
     /** §18 prior geçişi: kategori/şehir örneklem ≥35 → empirik prior; altı → PRIOR 5.0 */
@@ -619,6 +800,25 @@ export const LOCAL_CONFIG = {
     CATEGORY_PRIOR_ENABLED: true,
     PACKAGES_STUB: {
       design_pending: false,
+      /** EK-2 Pozisyon-B: slot-limit koddan çıktı; sayılar yetki-koltuğu */
+      SLOT_LIMIT_REMOVED: true,
+      CANONICAL_TIERS: ['OPEN', 'OPERATOR', 'LANDMARK'],
+      SEATS: {
+        OPEN: { manager: 1, staff_door: 2 },
+        OPERATOR: { manager: 3, staff_door: 5 },
+        LANDMARK: { manager: null, staff_door: 12 },
+      },
+      TAKE_RATE: { OPERATOR: 0.08, LANDMARK: 0.05, ORG_FLOOR: 0.04, ZONE: 0.08 },
+      ANNOUNCE_QUOTA_MO: { OPEN: 0, OPERATOR: 4, LANDMARK: 12 },
+      BADGE_STUDIO: {
+        OPEN: { max: 0, kinds: [] },
+        OPERATOR: { max: 2, kinds: ['A'] },
+        LANDMARK: { max: 5, kinds: ['A', 'B'] },
+      },
+      SERIES_EMPTY_SLEEP_W: 3,
+      PRICE_EUR: { OPEN: 0, OPERATOR: 300, LANDMARK: 500 },
+      MULTI_BRANCH_DISCOUNT_VISIBLE: true,
+      CUSTOM_TOTEM_ORDER_OPEN: true,
       FREE_SLOTS_MO: 1,
       OP_SLOTS: 3,
       HAKIM_SLOTS: 5,
@@ -646,30 +846,35 @@ export const LOCAL_CONFIG = {
       tiers: [
         {
           id: 'free',
-          label: 'FREE',
+          canonical: 'OPEN',
+          label: 'OPEN',
           price_try: 0,
           billing: 'none',
           concurrent_slots: 1,
           active: true,
-          features: ['profil', 'arsiv', 'skorlar', 'oneri_kutusu', '1_slot_ay', 'mini_rapor'],
+          features: ['profil', 'arsiv', 'skorlar', 'oneri_kutusu', 'gece_ozet', 'series_unlimited', 'totem_order', 'recurring', 'instant'],
         },
         {
           id: 'operator',
-          label: 'OPERATÖR',
+          canonical: 'OPERATOR',
+          label: 'OPERATOR',
           price_try: 7900,
+          price_eur: 300,
           billing: 'monthly',
           concurrent_slots: 3,
           active: true,
-          features: ['recurring', 'instant', 'regular', 'venue_badge_5', 'gece_raporu', 'aylik_nabiz', 'chip_trends', 'alt_oneri', 'masa_totem'],
+          features: ['recurring', 'instant', 'regular', 'venue_badge_a', 'gece_raporu', 'aylik_nabiz', 'chip_trends', 'alt_oneri', 'masa_totem', 'selfrez_fine', 'announce_4', 'series_intel', 'commerce'],
         },
         {
           id: 'hakim',
-          label: 'HAKİM',
+          canonical: 'LANDMARK',
+          label: 'LANDMARK',
           price_try: 19900,
+          price_eur: 500,
           billing: 'monthly',
           concurrent_slots: 5,
           active: true,
-          features: ['operator_all', 'pazar_payi', 'bolge_radari', 'anonim_benchmark', 'ai_aylik', 'takeover_1', 'brand_slot', 'featured_event'],
+          features: ['operator_all', 'pazar_payi', 'bolge_radari', 'anonim_benchmark', 'ai_aylik', 'takeover_1', 'brand_slot', 'featured_event', 'badge_b', 'figur_totem', 'announce_12', 'series_vitrine', 'api_export', 'multi_branch'],
         },
       ],
     },
@@ -688,10 +893,13 @@ export const LOCAL_CONFIG = {
   },
 
   regular: {
-    N: 4,
-    WINDOW_D: 45,
+    /** EK-13 AT-41 / EK-26: MİN=5 mühür / 90g · mekan yalnız yükseltir */
+    N: 5,
+    MIN_SEALS: 5,
+    WINDOW_D: 90,
     DECAY_D: 60,
-    THRESHOLD: 4,
+    THRESHOLD: 5,
+    VENUE_MAY_RAISE_ONLY: true,
     PRIVATE_LABEL: 'Regular',
     PARKED: false,
     VITRIN_DEFAULT: false,
@@ -1141,7 +1349,9 @@ export const RS_CONSTANTS = {
   K_DOWN: LOCAL_CONFIG.rs.K_DOWN,
   CAP_POS: LOCAL_CONFIG.rs.CAP_POS,
   CAP_NEG: LOCAL_CONFIG.rs.CAP_NEG,
+  CAP_DAY_POS: LOCAL_CONFIG.rs.CAP_DAY_POS,
   W_A: LOCAL_CONFIG.rs.W_A,
+  W_AIS: LOCAL_CONFIG.rs.W_AIS ?? LOCAL_CONFIG.rs.W_A,
   W_IQ: LOCAL_CONFIG.rs.W_IQ,
   W_CF: LOCAL_CONFIG.rs.W_CF,
   W_M: LOCAL_CONFIG.rs.W_MB,
@@ -1174,10 +1384,15 @@ export function computeAis(lateMinutes, durationMin) {
     return { ais: 0, status: 'no_show' };
   }
   const fullThreshold = kapı * LOCAL_CONFIG.checkin.AIS_FULL_THRESHOLD_PCT;
+  const deepThreshold =
+    kapı * (LOCAL_CONFIG.checkin.AIS_DEEP_LATE_THRESHOLD_PCT ?? 0.85);
   if (lateMinutes <= fullThreshold) {
     return { ais: LOCAL_CONFIG.checkin.AIS_REDUCED, status: 'on_time' };
   }
-  return { ais: LOCAL_CONFIG.checkin.AIS_LATE, status: 'late' };
+  if (lateMinutes <= deepThreshold) {
+    return { ais: LOCAL_CONFIG.checkin.AIS_LATE, status: 'late' };
+  }
+  return { ais: LOCAL_CONFIG.checkin.AIS_DEEP_LATE, status: 'deep_late' };
 }
 
 /**
@@ -1193,6 +1408,12 @@ export function aisFromAttendanceRow(row, startTime, durationMin) {
     if (ais <= 0) return { ais: 0, status: 'no_show', source: 'ais_score' };
     if (ais >= LOCAL_CONFIG.checkin.AIS_REDUCED) {
       return { ais, status: 'on_time', source: 'ais_score' };
+    }
+    if (ais >= LOCAL_CONFIG.checkin.AIS_LATE) {
+      return { ais, status: 'late', source: 'ais_score' };
+    }
+    if (ais >= (LOCAL_CONFIG.checkin.AIS_DEEP_LATE ?? 0.6) || ais > 0) {
+      return { ais, status: 'deep_late', source: 'ais_score' };
     }
     return { ais, status: 'late', source: 'ais_score' };
   }
@@ -1353,21 +1574,79 @@ export function blendCf({ CF_peers, CF_self, peerCount }) {
 }
 
 /**
- * NO_PEER_ENGAGEMENT — peer yokken pozitif delta için R1 VEYA memory şart.
- * Negatif delta engellenmez.
+ * NO_PEER_ENGAGEMENT — peer yokken pozitif delta için RQ ∨ R1 ∨ memory.
+ * Negatif delta engellenmez. Dampener yalnız pozitif Δ'ya (rsEngine).
  */
-export function applyNoPeerEngagementGate(delta, { noPeerPath, hasR1, hasMemory }) {
-  if (noPeerPath && delta > 0 && !(hasR1 || hasMemory)) return 0;
+export function applyNoPeerEngagementGate(delta, { noPeerPath, hasR1, hasMemory, hasRq }) {
+  if (noPeerPath && delta > 0 && !(hasR1 || hasMemory || hasRq)) return 0;
   return delta;
 }
 
 /** @deprecated alias — applyNoPeerEngagementGate */
-export function applySoloEngagementGate(delta, { soloPath, noPeerPath, hasR1, hasMemory }) {
+export function applySoloEngagementGate(delta, { soloPath, noPeerPath, hasR1, hasMemory, hasRq }) {
   return applyNoPeerEngagementGate(delta, {
     noPeerPath: noPeerPath ?? soloPath,
     hasR1,
     hasMemory,
+    hasRq,
   });
+}
+
+/** §4 — no-peer'de akran kırmızısı IF'e girmez (tanıksız suçlama yok). */
+export function applyIfPeerRedHeavy(ifScore, { noPeerPath, redHeavy } = {}) {
+  const v = Number(ifScore) || 0;
+  if (noPeerPath || !redHeavy) return v;
+  return v + Number(LOCAL_CONFIG.rs.IF_FEEDBACK_RED_HEAVY || 0);
+}
+
+/** §1 — aktif L3 varsa IF tavanı 1.0 (T-etkisi −0.20). */
+export function applyIfModL3(ifScore, hasModL3) {
+  const v = Math.min(Math.max(Number(ifScore) || 0, 0), 1);
+  if (!hasModL3) return v;
+  return Number(LOCAL_CONFIG.rs.IF_MOD_L3 ?? 1);
+}
+
+/** 30g kayan geç-merdiveni: count 1-based. */
+export function ifLateFromCount(lateCountInWindow) {
+  const n = Math.max(0, Number(lateCountInWindow) || 0);
+  if (n <= 0) return 0;
+  const ladder = LOCAL_CONFIG.rs.IF_LATE_LADDER || [0.25, 0.25, 0.35, 0.35, 0.5];
+  const idx = Math.min(n, ladder.length) - 1;
+  return Number(ladder[idx] ?? ladder[ladder.length - 1] ?? LOCAL_CONFIG.rs.IF_LATE_SLICE);
+}
+
+/** Gün tavanı: bugünkü pozitif toplam + aday ≤ CAP_DAY_POS. */
+export function clampDayPositiveDelta(candidate, alreadyTodayPositive) {
+  const cap = Number(LOCAL_CONFIG.rs.CAP_DAY_POS ?? LOCAL_CONFIG.rs.CAP_POS ?? 0.12);
+  if (!(candidate > 0)) return candidate;
+  const used = Math.max(0, Number(alreadyTodayPositive) || 0);
+  return Math.max(0, Math.min(candidate, cap - used));
+}
+
+export function farPhase() {
+  return Number(LOCAL_CONFIG.rs.far?.PHASE ?? 0);
+}
+
+/** §11 — iç feeling → POSITIVE|OBSERVATION|NEGATIVE (UI enum) */
+export function feelingToCategory(feeling) {
+  const map = LOCAL_CONFIG.feedback?.LEGACY_TO_CATEGORY || {};
+  return map[String(feeling || '').toLowerCase()] || null;
+}
+
+/** Faz-1 zayıf sinyal; Faz-0 görünürlükte kesilir (delta yine loglanır). */
+export function applyFarToDelta(delta) {
+  const phase = farPhase();
+  if (phase <= 0) return delta;
+  if (phase === 1) return delta * Number(LOCAL_CONFIG.rs.far?.WEAK_MULT ?? 0.5);
+  return delta;
+}
+
+/** §9 FAR — keşif/ranking çarpanı. Faz-0 = RS hiçbir şeyi etkilemez. */
+export function farDiscoveryWeight() {
+  const phase = farPhase();
+  if (phase <= 0) return 0;
+  if (phase === 1) return Number(LOCAL_CONFIG.rs.far?.WEAK_MULT ?? 0.5);
+  return 1;
 }
 
 /**
@@ -1466,17 +1745,30 @@ export function rsRingOpacity(rsScore) {
 }
 
 /**
- * son-part.md §5 — P_r ∈ [0, S_POS_MAX], T_r = clamp(P_r − W_IF·IF, 0, 1).
+ * 24 Ağu v-final — P = .30·AIS + .40·IQ + .05·MB (CF uyur).
+ * IQ NULL (arkadaş yok / FB gelmedi) → bileşen çıkar, kalanlar S_POS_MAX'e yeniden ölçeklenir.
+ * IQ 0.0 (kırmızı) ölçüm olarak kalır.
  */
-export function computeTruthSignalFromComponents({ A_r, IQ_r, CF_r, M_r, IF_r }) {
-  const rawP =
-    RS_CONSTANTS.W_A * A_r +
-    RS_CONSTANTS.W_IQ * IQ_r +
-    RS_CONSTANTS.W_CF * CF_r +
-    RS_CONSTANTS.W_M * M_r;
+export function computeTruthSignalFromComponents({ A_r, IQ_r, CF_r, M_r, IF_r, weights } = {}) {
+  const wA = weights?.wA ?? RS_CONSTANTS.W_A;
+  const wIQ = weights?.wIQ ?? RS_CONSTANTS.W_IQ;
+  const wCF = weights?.wCF ?? RS_CONSTANTS.W_CF;
+  const wM = weights?.wM ?? RS_CONSTANTS.W_M;
+  const iqNull = IQ_r == null || Number.isNaN(Number(IQ_r));
+  let rawP;
+  if (iqNull) {
+    const denom = wA + wM;
+    rawP = denom > 0 ? ((wA * A_r + wM * (M_r || 0)) / denom) * RS_CONSTANTS.S_POS_MAX : 0;
+  } else {
+    rawP =
+      wA * A_r +
+      wIQ * Number(IQ_r) +
+      wCF * (CF_r || 0) +
+      wM * (M_r || 0);
+  }
   const P_r = Math.max(0, Math.min(RS_CONSTANTS.S_POS_MAX, rawP));
-  const T_r = Math.max(0, Math.min(1, P_r - RS_CONSTANTS.W_IF * IF_r));
-  return { P_r, T_r, S_r: T_r };
+  const T_r = Math.max(0, Math.min(1, P_r - RS_CONSTANTS.W_IF * (IF_r || 0)));
+  return { P_r, T_r, S_r: T_r, iq_null: iqNull };
 }
 
 /**
@@ -1493,12 +1785,11 @@ export function computeRsPipeline({
   const deltaRaw = rawDeltaFromTruthSignal(S_r);
   const deltaRawCapped = clampRawDelta(deltaRaw);
 
-  let deltaAfterDs = deltaRawCapped;
-  let dsApplied = false;
-  if (ritualIndex >= 6) {
-    deltaAfterDs = deltaRawCapped * dsMultiplier;
-    dsApplied = true;
-  }
+  const dsApplyFrom = Number(LOCAL_CONFIG.rs.DS_APPLY_FROM ?? 1);
+  const dsApplied = ritualIndex >= dsApplyFrom;
+  const rawDs = Number(dsMultiplier);
+  const dsMult = dsApplied && Number.isFinite(rawDs) ? rawDs : 1.0;
+  let deltaAfterDs = deltaRawCapped * dsMult;
 
   if (nFrozen && deltaAfterDs > 0) {
     deltaAfterDs = 0;
@@ -1529,7 +1820,7 @@ export function computeRsPipeline({
     deltaAfterMd,
     deltaAfterBr,
     deltaFinal,
-    dsMult: dsApplied ? dsMultiplier : 1.0,
+    dsMult,
     bcMult,
     mdMult,
     brMult,
@@ -1558,6 +1849,22 @@ export function getLateCancelRsPenalty(strike) {
   if (strike <= 0) return null;
   const entry = penalties[Math.min(strike - 1, penalties.length - 1)];
   return entry == null ? null : -entry;
+}
+
+/**
+ * §5 AT-14 — kilide-yakın late-cancel ∨ start-civarı no-show (karışım).
+ * @param {{ eventType: string, eventAt: Date|string, startAt: Date|string, nearHours?: number }} args
+ */
+export function isPromiseCoolMixHit({ eventType, eventAt, startAt, nearHours } = {}) {
+  const nearH = Number(nearHours ?? LOCAL_CONFIG.penalties.PROMISE_COOL?.LOCK_NEAR_HOURS ?? 2);
+  const nearMs = Math.max(0, nearH) * 3600 * 1000;
+  const t = new Date(eventAt).getTime();
+  const s = new Date(startAt).getTime();
+  if (!Number.isFinite(t) || !Number.isFinite(s) || nearMs <= 0) return false;
+  const kind = String(eventType || '');
+  if (kind === 'late_cancel') return t <= s && s - t <= nearMs;
+  if (kind === 'no_show') return Math.abs(t - s) <= nearMs;
+  return false;
 }
 
 /** son-part.md §7.2 — no-show askı süreleri (strike 1-based) */
@@ -1633,7 +1940,7 @@ export function requiresReplacement(ritual, now = new Date()) {
   return !isFreeCancelWindow(ritual, now);
 }
 
-/** FL level from fresh feedback count — son-part.md §4.2 */
+/** FL level from co-seal (or legacy fb) count — eşikler 1 / 4 / 8 */
 export function levelFromFbCount(count) {
   const n = Number(count) || 0;
   const [t1, t2, t3] = LOCAL_CONFIG.fl.THRESHOLDS;
@@ -1643,12 +1950,23 @@ export function levelFromFbCount(count) {
   return 'stranger';
 }
 
-/** IQ feedback weight by FL level */
-export function fbWeightFromLevel(level) {
+export const levelFromCoSealCount = levelFromFbCount;
+
+/**
+ * IQ ağırlığı: FL1 1 mühür = 0.5 (doğum) · ≥2 mühür = 1.0 (tam-ses)
+ * FL2 = 0.5 · FL3 = 0
+ */
+export function fbWeightFromLevel(level, coSealCount = null) {
   const weights = LOCAL_CONFIG.fl.FB_WEIGHTS;
-  if (level === 'l1') return weights[0];
-  if (level === 'l2') return weights[1];
-  if (level === 'l3') return weights[2];
+  if (level === 'l3') return weights[2] ?? 0;
+  if (level === 'l2') return weights[1] ?? 0.5;
+  if (level === 'l1') {
+    const n = coSealCount == null ? 1 : Number(coSealCount);
+    if (n >= (LOCAL_CONFIG.fl.TAM_SES_SEALS ?? 2)) {
+      return LOCAL_CONFIG.fl.FL1_FULL_WEIGHT ?? 1.0;
+    }
+    return weights[0] ?? 0.5;
+  }
   return 0;
 }
 
@@ -1713,6 +2031,58 @@ export function updateDsEma(prevEma, dsRaw) {
   const p = Number.isFinite(prev) ? prev : LOCAL_CONFIG.ds.INIT;
   const r = Number.isFinite(raw) ? raw : LOCAL_CONFIG.ds.INIT;
   return (1 - alpha) * p + alpha * r;
+}
+
+/** Yüz-2 trend — yargı yok (iyi/kötü değil, pencere vs EMA). */
+export function dsTrendFromEmaRaw(ema, raw) {
+  const e = Number(ema);
+  const r = Number(raw);
+  if (!Number.isFinite(e) || !Number.isFinite(r)) {
+    return { trend: 'steady', label: 'durağan' };
+  }
+  const d = r - e;
+  if (d > 0.03) return { trend: 'rising', label: 'açılıyor' };
+  if (d < -0.03) return { trend: 'falling', label: 'daralıyor' };
+  return { trend: 'steady', label: 'durağan' };
+}
+
+export function binDsValues(values = [], minN = LOCAL_CONFIG.ds.AGGREGATE_MIN_N || 20) {
+  const nums = (values || []).map((v) => Number(v)).filter((v) => Number.isFinite(v));
+  const n = nums.length;
+  if (n < Number(minN) || n === 0) {
+    return { hidden: true, reason: 'min_n', n, min_n: Number(minN) };
+  }
+  const edges = [0.2, 0.35, 0.5, 0.65, 0.8, 1.01];
+  const bins = edges.map((upper, i) => ({
+    upper,
+    lower: i === 0 ? 0 : edges[i - 1],
+    count: 0,
+  }));
+  for (const v of nums) {
+    const idx = bins.findIndex((b) => v < b.upper);
+    if (idx >= 0) bins[idx].count += 1;
+  }
+  const mean = nums.reduce((a, b) => a + b, 0) / n;
+  return {
+    hidden: false,
+    n,
+    min_n: Number(minN),
+    mean: Number(mean.toFixed(3)),
+    bins: bins.map((b) => ({
+      range: `${b.lower.toFixed(2)}–${b.upper.toFixed(2)}`,
+      share: Number((b.count / n).toFixed(3)),
+    })),
+  };
+}
+
+/** İki anonim dağılımın örtüşmesi (0–1). Kişisel DS yok. */
+export function crowdFitScore(binsA = [], binsB = []) {
+  const mapB = new Map((binsB || []).map((b) => [b.range, Number(b.share) || 0]));
+  let tv = 0;
+  for (const a of binsA || []) {
+    tv += Math.abs((Number(a.share) || 0) - (mapB.get(a.range) || 0));
+  }
+  return Number(Math.max(0, Math.min(1, 1 - tv / 2)).toFixed(3));
 }
 
 export default LOCAL_CONFIG;

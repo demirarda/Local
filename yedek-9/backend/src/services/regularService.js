@@ -4,8 +4,9 @@
  */
 import pool from '../config/database.js';
 import LOCAL_CONFIG from '../config/localConfig.js';
+import { resolveRegularMinSeals } from './megaSpec.js';
 
-const THRESHOLD = Number(LOCAL_CONFIG.regular?.N || LOCAL_CONFIG.regular?.THRESHOLD || 3);
+const THRESHOLD = resolveRegularMinSeals();
 const WINDOW_D = Number(LOCAL_CONFIG.regular?.WINDOW_D || 90);
 const DECAY_D = Number(LOCAL_CONFIG.regular?.DECAY_D || 60);
 const COUNTER_UI = LOCAL_CONFIG.regular?.COUNTER_UI !== false;
@@ -38,15 +39,27 @@ export function formatRegularCounter(count, threshold = THRESHOLD) {
 }
 
 export async function getRegularProgress(userId, venueId) {
+  let threshold = THRESHOLD;
+  if (venueId) {
+    try {
+      const vr = await pool.query(
+        `SELECT regular_min_seals FROM venues WHERE id = $1 LIMIT 1`,
+        [venueId]
+      );
+      threshold = resolveRegularMinSeals(vr.rows[0]?.regular_min_seals);
+    } catch (_e) {
+      threshold = THRESHOLD;
+    }
+  }
   if (!userId || !venueId) {
     return {
       count: 0,
-      needed: THRESHOLD,
+      needed: threshold,
       is_regular: false,
-      threshold: THRESHOLD,
+      threshold,
       window_d: WINDOW_D,
       decay_d: DECAY_D,
-      counter: COUNTER_UI ? formatRegularCounter(0, THRESHOLD) : null,
+      counter: COUNTER_UI ? formatRegularCounter(0, threshold) : null,
       counter_ui: COUNTER_UI,
     };
   }
@@ -67,7 +80,23 @@ export async function getRegularProgress(userId, venueId) {
      JOIN rituals r ON r.id = ra.ritual_id
      WHERE ra.user_id = $1 AND r.venue_id = $2 AND ra.checkin_at IS NOT NULL
        AND ra.status::text NOT IN ('no_show', 'cancelled')
-       AND COALESCE(r.under_min, false) = false`,
+       AND COALESCE(r.under_min, false) = false
+       AND NOT EXISTS (
+         SELECT 1 FROM venue_managers vm
+         WHERE vm.venue_id = r.venue_id AND vm.user_id = ra.user_id
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM org_bonds b
+         WHERE b.user_id = ra.user_id
+           AND b.org_kind = 'venue'
+           AND b.org_id = r.venue_id
+           AND b.bond_kind = 'EKIP'
+           AND (b.ended_at IS NULL OR b.ended_at > NOW() - INTERVAL '90 days')
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM venues v
+         WHERE v.id = r.venue_id AND v.owner_user_id IS NOT DISTINCT FROM ra.user_id
+       )`,
     [userId, venueId, WINDOW_D]
   );
 
@@ -77,6 +106,7 @@ export async function getRegularProgress(userId, venueId) {
     windowCount,
     lastCheckinAt,
     wasRegular,
+    threshold,
   });
 
   const result = await pool.query(
@@ -99,16 +129,16 @@ export async function getRegularProgress(userId, venueId) {
   const count = Number(row.checkin_count) || 0;
   return {
     count,
-    needed: Math.max(0, THRESHOLD - count),
+    needed: Math.max(0, threshold - count),
     is_regular: Boolean(row.is_regular),
-    threshold: THRESHOLD,
+    threshold,
     window_d: WINDOW_D,
     decay_d: DECAY_D,
     regular_since: row.regular_since || null,
     last_checkin_at: row.last_checkin_at || null,
     newly_gained: !wasRegular && isRegular,
     newly_lost: wasRegular && !isRegular,
-    counter: COUNTER_UI ? formatRegularCounter(count, THRESHOLD) : null,
+    counter: COUNTER_UI ? formatRegularCounter(count, threshold) : null,
     counter_ui: COUNTER_UI,
   };
 }
@@ -197,6 +227,19 @@ export async function isVenueRegular(userId, venueId) {
 export async function afterVenueCheckin({ userId, venueId }) {
   if (!userId || !venueId || LOCAL_CONFIG.regular?.PARKED) {
     return { skipped: true };
+  }
+  try {
+    const staff = await pool.query(
+      `SELECT 1 FROM venue_managers WHERE venue_id = $1 AND user_id = $2
+       UNION
+       SELECT 1 FROM venues WHERE id = $1 AND owner_user_id IS NOT DISTINCT FROM $2`,
+      [venueId, userId]
+    );
+    if (staff.rows.length > 0) {
+      return { skipped: true, reason: 'staff_excluded' };
+    }
+  } catch (_e) {
+    /* fail-open to progress query which also excludes staff */
   }
   const progress = await getRegularProgress(userId, venueId);
   // Master Parametre §10 — sönüm (newly_lost) bildirimsiz; yalnız newly_gained push

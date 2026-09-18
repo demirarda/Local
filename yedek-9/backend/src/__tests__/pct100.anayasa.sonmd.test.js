@@ -51,9 +51,9 @@ describe('Sistem Anayasası pct100', () => {
     expect(rs.CAP_POS).toBe(0.12);
     expect(rs.CAP_NEG).toBe(0.15);
     expect(rs.BYPASS_CAP_NEG).toBe(0.2);
-    expect(rs.W_A).toBe(0.25);
-    expect(rs.W_IQ).toBe(0.3);
-    expect(rs.W_CF).toBe(0.15);
+    expect(rs.W_A).toBe(0.3);
+    expect(rs.W_IQ).toBe(0.4);
+    expect(rs.W_CF).toBe(0);
     expect(rs.W_MB).toBe(0.05);
     expect(rs.W_IF).toBe(0.2);
     expect(rs.CF_PEER).toBe(0.65);
@@ -64,7 +64,11 @@ describe('Sistem Anayasası pct100', () => {
     expect(rs.BR_LOWER).toBe(3);
     expect(rs.BC.POS_AMP).toBe(1.25);
     expect(rs.BC.NEG_DAMP).toBe(0.7);
-    expect(rs.BC.NEG_AMP).toBe(1.35);
+    expect(rs.BC.NEG_AMP).toBe(1.2);
+    expect(rs.MIN).toBe(0);
+    expect(rs.CAP_DAY_POS).toBe(0.12);
+    expect(rs.far.PHASE).toBe(0);
+    expect(rs.visibility.PLACEMENT_SEALS).toBe(5);
   });
 
   test('A2 CONF / IQ blend n=1 ×0.40 · n=2 ×0.75', () => {
@@ -89,19 +93,20 @@ describe('Sistem Anayasası pct100', () => {
   });
 
   test('§5 FL · §6 DS · §8 no-peer · §11 Regular', () => {
-    expect(LOCAL_CONFIG.fl.FB_WEIGHTS).toEqual([1.0, 0.5, 0.0]);
+    expect(LOCAL_CONFIG.fl.FB_WEIGHTS).toEqual([0.5, 0.5, 0.0]);
     expect(LOCAL_CONFIG.ds.ALPHA).toBe(0.3);
     expect(LOCAL_CONFIG.ds.FL_W[3]).toBe(0.2);
     expect(LOCAL_CONFIG.rs.no_peer.NO_PEER_DAMPENER).toBe(0.35);
     expect(LOCAL_CONFIG.rs.no_peer.NO_PEER_CEILING).toBe(7.5);
     expect(LOCAL_CONFIG.regular.PARKED).toBe(false);
-    expect(LOCAL_CONFIG.regular.N).toBe(4);
-    expect(LOCAL_CONFIG.regular.WINDOW_D).toBe(45);
+    expect(LOCAL_CONFIG.regular.N).toBe(5);
+    expect(LOCAL_CONFIG.regular.WINDOW_D).toBe(90);
   });
 
   test('§9 MOD · §10 venue · §12 SPARK park · §13 paket', () => {
     expect(LOCAL_CONFIG.mod.L3_RS_BASE).toBe(-0.15);
     expect(LOCAL_CONFIG.mod.L3_RS_MAX).toBe(-0.3);
+    expect(LOCAL_CONFIG.rs.IF_MOD_L3).toBe(1.0);
     expect(LOCAL_CONFIG.venue.MIN_DISPLAY_N).toBe(5);
     expect(LOCAL_CONFIG.zone.SPARK_ENABLED).toBe(false);
     expect(LOCAL_CONFIG.venue.PACKAGES_STUB.PRICE_OP).toBe(7900);

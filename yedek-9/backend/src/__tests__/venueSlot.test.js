@@ -1,4 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import {
   validateSlotPayload,
   validateSuggestionPayload,
@@ -6,6 +9,8 @@ import {
   validateEconomyStub,
 } from '../services/venueSlotService.js';
 import LOCAL_CONFIG from '../config/localConfig.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe('venue slots (F5 §9.4)', () => {
   test('slot requires title', () => {
@@ -94,6 +99,19 @@ describe('venue slots (F5 §9.4)', () => {
     });
     expect(r.ok).toBe(false);
     expect(String(r.error || '')).toMatch(/Negatif|kapı/i);
+  });
+
+  test('§0 RS is not a slot door — min_host_rs ignored on create', () => {
+    const r = validateSlotPayload({
+      title: 'Pencere',
+      time_mode: 'fixed',
+      min_host_rs: 8.5,
+    });
+    expect(r.ok).toBe(true);
+    expect(r.data.min_host_rs).toBeNull();
+    const src = readFileSync(join(__dirname, '../services/venueSlotService.js'), 'utf8');
+    expect(src).not.toMatch(/RS below slot minimum/);
+    expect(src).toMatch(/RS kapı değil/);
   });
 
   test('config exposes slot time modes', () => {

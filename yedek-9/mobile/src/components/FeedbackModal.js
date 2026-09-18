@@ -11,11 +11,12 @@ import {
 import { submitFeedback, submitBatchFeedback } from '../services/api';
 import useAuthStore from '../store/authStore';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 
 const FEEDBACK_OPTIONS = {
-  green: { label: 'Positive', color: '#4CAF50', emoji: '✅' },
-  yellow: { label: 'Neutral', color: '#FF9800', emoji: '⚪' },
-  red: { label: 'Negative', color: '#F44336', emoji: '❌' },
+  green: { label: 'Pozitif', symbol: '○' },
+  yellow: { label: 'Gözlem', symbol: '·' },
+  red: { label: 'Negatif', symbol: '□' },
 };
 
 const RQ_CHIPS = {
@@ -53,6 +54,7 @@ function seededShuffle(arr, seedText) {
 
 export function FeedbackModal({ visible, onClose, ritualId, participants = [] }) {
   const user = useAuthStore((s) => s.user);
+  useLanguageStore((s) => s.lang);
   const [p2pFeedback, setP2pFeedback] = useState({});
   const [p2rFeeling, setP2rFeeling] = useState(null);
   const [p2rChip, setP2rChip] = useState(null);
@@ -141,11 +143,11 @@ export function FeedbackModal({ visible, onClose, ritualId, participants = [] })
       <TouchableOpacity
         style={[
           styles.feedbackButton,
-          selected && { backgroundColor: option.color, borderColor: option.color },
+          selected && styles.feedbackButtonOn,
         ]}
         onPress={onPress}
       >
-        <Text style={styles.feedbackEmoji}>{option.emoji}</Text>
+        <Text style={[styles.feedbackEmoji, selected && styles.feedbackLabelSelected]}>{option.symbol}</Text>
         <Text
           style={[
             styles.feedbackLabel,
@@ -369,6 +371,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#e0e0e0',
     backgroundColor: '#fff',
+  },
+  feedbackButtonOn: {
+    borderColor: '#111',
+    backgroundColor: '#111',
   },
   feedbackEmoji: {
     fontSize: 24,

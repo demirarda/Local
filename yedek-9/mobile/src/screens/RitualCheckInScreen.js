@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TextInput,
   Platform,
+  ScrollView,
 } from 'react-native';
 import * as Location from 'expo-location';
 import useAuthStore from '../store/authStore';
@@ -26,13 +27,16 @@ import NeutralNoShowCard from '../components/NeutralNoShowCard';
 import LocalTagQr from '../components/LocalTagQr';
 import { buildCheckinIntegrity } from '../utils/checkinIntegrity';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 
 export default function RitualCheckInScreen({ route, navigation }) {
   const { ritual: initialRitual, ritualId: paramRitualId, instantUnified } = route.params || {};
   const { user } = useAuthStore();
+  useLanguageStore((s) => s.lang);
   const [ritual, setRitual] = useState(initialRitual || null);
   const ritualId = ritual?.id || paramRitualId;
   const [keyword, setKeyword] = useState('');
+  const [rotatingCode, setRotatingCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [locLoading, setLocLoading] = useState(true);
   const [coords, setCoords] = useState(null);
@@ -190,10 +194,12 @@ export default function RitualCheckInScreen({ route, navigation }) {
   const earlyWindow = doorInfo.early_window;
   const screenOpen = ritualStarted || earlyWindow;
   const tableOpen = Boolean(ritual?.checkin_keyword || ritual?.first_sealed_at || doorInfo.table_open);
+  const venueDoorFirstSeal = Boolean(ritual?.venue_id) && !tableOpen;
   const codeBanned = Boolean(doorInfo.code_banned) || (Boolean(ritual?.first_sealed_at) && !ritual?.checkin_keyword);
   const canFirstSeal = Boolean(doorInfo.can_first_seal) || (doorInfo.door_open && !tableOpen);
   const codeActive = doorInfo.door_open && (tableOpen || canFirstSeal);
   const needsCode = tableOpen && !codeBanned;
+  const rotatingReady = /^\d{6}$/.test(rotatingCode);
   const tableLabel = ritual?.location_name || ritual?.venue_name || ritual?.zone_name || 'Masa';
   const hostLabel = ritual?.host_name || ritual?.host_user_name || 'Host';
   const tableCount =
@@ -281,6 +287,13 @@ export default function RitualCheckInScreen({ route, navigation }) {
       return;
     }
     // T1: GPS yoksa da anahtar (kod / firstSeal) acik — muhur PENDING_WITNESS
+    if (venueDoorFirstSeal && !rotatingReady) {
+      Alert.alert(
+        'Totem kapısı',
+        'Mekanda ilk mühür: figürü okut veya dönen 6 haneli kod. Statik QR / 3 haneli masa kodu kapı değil.'
+      );
+      return;
+    }
     if (!coords && needsCode && !/^\d{3}$/.test(keyword)) {
       Alert.alert('GPS / Kod', 'Konum yok (T1). 3 haneli kodu gir — tanik onayi gerekir.');
       return;
@@ -297,7 +310,8 @@ export default function RitualCheckInScreen({ route, navigation }) {
       const result = await checkIn(ritualId, user?.id, {
         latitude: coords?.latitude ?? null,
         longitude: coords?.longitude ?? null,
-        checkin_code: keyword,
+        checkin_code: venueDoorFirstSeal ? null : keyword,
+        rotating_code: venueDoorFirstSeal ? rotatingCode : null,
         open_note: canFirstSeal && openNote.trim() ? openNote.trim().slice(0, 120) : null,
         mock_location: integrity.mock_location,
         play_integrity: integrity.play_integrity,
@@ -480,11 +494,20 @@ export default function RitualCheckInScreen({ route, navigation }) {
     setDigitalPaste(false);
     setLocalTagRedeem(false);
     setCodeStartedAt((prev) => prev ?? Date.now());
+    if (venueDoorFirstSeal) {
+      setRotatingCode((prev) => (prev.length < 6 ? `${prev}${n}` : prev));
+      return;
+    }
     setKeyword((prev) => (prev.length < 3 ? `${prev}${n}` : prev));
   };
 
   const onCodeTextChange = (text) => {
-    const digits = String(text || '').replace(/\D/g, '').slice(0, 3);
+    const max = venueDoorFirstSeal ? 6 : 3;
+    const digits = String(text || '').replace(/\D/g, '').slice(0, max);
+    if (venueDoorFirstSeal) {
+      setRotatingCode(digits);
+      return;
+    }
     // Paste/autofill: birden fazla hane bir anda geldi
     if (digits.length - keyword.length > 1 || (keyword.length === 0 && digits.length === 3)) {
       setDigitalPaste(true);
@@ -533,7 +556,12 @@ export default function RitualCheckInScreen({ route, navigation }) {
         <Text style={styles.title}>Check-in</Text>
         <View style={{ width: 18 }} />
       </View>
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator
+      >
         <View style={styles.liveBanner}>
           <Text style={styles.liveBannerTitle}>{statusBanner}</Text>
           {isInstantUnified ? (
@@ -574,7 +602,7 @@ export default function RitualCheckInScreen({ route, navigation }) {
             </Text>
           ) : null}
           <Text style={styles.liveBannerSub}>
-            {t('checkin_find_table', 'tr', {
+            {t('checkin_find_table', {
               place: tableLabel,
               host: hostLabel,
               n: tableCount != null ? tableCount : '—',
@@ -598,12 +626,12 @@ export default function RitualCheckInScreen({ route, navigation }) {
           {locLoading ? (
             <ActivityIndicator color="#111" />
           ) : coords ? (
-            <Text style={styles.statusOk}>
-              {earlyWindow && !ritualStarted
-                ? precheck?.gps_ok === false
-                  ? `Konum alindi · radius disi (${precheck?.distance_m ?? '?'}m)`
-                  : 'Konum dogrulandi · warm-up (firstSeal acik)'
-                : 'Konum dogrulandi'}
+            <Text style={outsideRadius ? styles.statusBad : styles.statusOk}>
+              {outsideRadius
+                ? `Konum alindi · masa ${compass?.distance_label || '?'} uzakta`
+                : earlyWindow && !ritualStarted
+                  ? 'Konum dogrulandi · warm-up (firstSeal acik)'
+                  : 'Konum dogrulandi'}
             </Text>
           ) : (
             <Text style={styles.statusBad}>{locError || 'Konum alinamadi'}</Text>
@@ -725,11 +753,61 @@ export default function RitualCheckInScreen({ route, navigation }) {
               ))}
             </View>
           </View>
-        ) : canFirstSeal ? (
+        ) : canFirstSeal && venueDoorFirstSeal && !outsideRadius ? (
+          <View style={styles.waitCard}>
+            <Text style={styles.waitTitle}>Figürü okut veya dönen kod</Text>
+            <Text style={styles.waitBody}>
+              Mekan kapısı NFC ∨ 30sn dönen kod. Statik QR ölü. 3 haneli masa kodu ancak ilk mühürden sonra.
+            </Text>
+            <View style={[styles.codeSlots, isLocked && { opacity: 0.4 }]}>
+              {[0, 1, 2, 3, 4, 5].map((index) => (
+                <Text key={index} style={styles.codeSlot}>{rotatingCode[index] || '·'}</Text>
+              ))}
+            </View>
+            <TextInput
+              value={rotatingCode}
+              onChangeText={onCodeTextChange}
+              keyboardType="number-pad"
+              maxLength={6}
+              editable={!isLocked && codeActive}
+              placeholder="6 haneli dönen kod"
+              placeholderTextColor="#9ca3af"
+              style={styles.codePasteInput}
+            />
+            <View style={[styles.numpad, isLocked && { opacity: 0.4 }]}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                <TouchableOpacity key={n} style={styles.numKey} onPress={() => appendDigit(n)} disabled={isLocked}>
+                  <Text style={styles.numKeyText}>{n}</Text>
+                </TouchableOpacity>
+              ))}
+              <View style={styles.numKey} />
+              <TouchableOpacity style={styles.numKey} onPress={() => appendDigit(0)} disabled={isLocked}>
+                <Text style={styles.numKeyText}>0</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.numKey}
+                onPress={() => {
+                  if (isLocked) return;
+                  setRotatingCode((prev) => prev.slice(0, -1));
+                }}
+                disabled={isLocked}
+              >
+                <Text style={styles.numKeyText}>⌫</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : canFirstSeal && !outsideRadius ? (
           <View style={styles.waitCard}>
             <Text style={styles.waitTitle}>MASAYI SEN AÇIYORSUN</Text>
             <Text style={styles.waitBody}>
               {earlyWindow ? 'Warm-up · ' : ''}GPS yeşilse mühür = kodun doğumu = window'un doğumu. Host yükü yok — ilk gelen açar.
+            </Text>
+          </View>
+        ) : canFirstSeal && outsideRadius ? (
+          <View style={styles.waitCard}>
+            <Text style={styles.waitTitle}>Once yaricapa gir</Text>
+            <Text style={styles.waitBody}>
+              GPS kirmizi. Check-in atlanamaz — masanin {checkinRadius}m icine gel, sonra ilk gelen acar.
             </Text>
           </View>
         ) : (
@@ -856,7 +934,7 @@ export default function RitualCheckInScreen({ route, navigation }) {
         </View>
 
         <Text style={styles.info}>
-          Canlı GPS + söyle / göster / LOCAL-TAG · kısayol NFC · PENDING_WITNESS
+          Canlı GPS + söyle / göster / LOCAL-TAG · kısayol NFC · mekan kapısı NFC∨dönen kod
         </Text>
 
         {canFirstSeal ? (
@@ -881,7 +959,8 @@ export default function RitualCheckInScreen({ route, navigation }) {
               loading ||
               !codeActive ||
               isLocked ||
-              outsideRadius) &&
+              outsideRadius ||
+              (venueDoorFirstSeal && !rotatingReady)) &&
               styles.buttonDisabled,
           ]}
           onPress={handleCheckIn}
@@ -891,7 +970,8 @@ export default function RitualCheckInScreen({ route, navigation }) {
             !codeActive ||
             isLocked ||
             outsideRadius ||
-            (needsCode && !/^\d{3}$/.test(keyword))
+            (needsCode && !/^\d{3}$/.test(keyword)) ||
+            (venueDoorFirstSeal && !rotatingReady)
           }
         >
           {loading ? (
@@ -903,7 +983,9 @@ export default function RitualCheckInScreen({ route, navigation }) {
                 : !doorInfo.door_open
                 ? 'Pencere kapali'
                 : canFirstSeal
-                  ? 'Masayi Ac (firstSeal)'
+                  ? venueDoorFirstSeal
+                    ? 'Kapıyı aç (NFC / dönen kod)'
+                    : 'Masayi Ac (firstSeal)'
                   : codeBanned
                     ? 'Totem ile Check-in'
                     : 'Check-in Tamamla'}
@@ -931,13 +1013,14 @@ export default function RitualCheckInScreen({ route, navigation }) {
             Totem okuma bu derlemede kapalı — ana kültür: kod söyle/göster · LOCAL-TAG
           </Text>
         ) : null}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
+  scroll: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingTop: 56,
@@ -952,7 +1035,7 @@ const styles = StyleSheet.create({
   },
   back: { fontSize: 22, color: '#111' },
   title: { fontSize: 20, fontWeight: '700', color: '#111' },
-  content: { padding: 16 },
+  content: { padding: 16, paddingBottom: 48 },
   liveBanner: {
     backgroundColor: '#111827',
     borderRadius: 14,

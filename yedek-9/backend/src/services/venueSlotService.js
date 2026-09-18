@@ -13,6 +13,7 @@ import {
   resolveTierFromVenue,
   hasPackageFeature,
 } from './venuePackageService.js';
+import { hasMinRole } from './venueRoleService.js';
 
 const BADGE_LEVELS = new Set(LOCAL_CONFIG.badges.LEVELS);
 
@@ -60,17 +61,8 @@ export function validateEconomyStub(body = {}) {
   };
 }
 
-async function isVenueManager(userId, venueId, email = '') {
-  if (!userId) return false;
-  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (adminIds.includes(String(userId))) return true;
-  if (email && adminEmails.includes(String(email).toLowerCase())) return true;
-  const r = await pool.query(
-    `SELECT 1 FROM venue_managers WHERE venue_id = $1 AND user_id = $2 LIMIT 1`,
-    [venueId, userId]
-  );
-  return r.rows.length > 0;
+async function isVenueManager(userId, venueId, email = '', minRole = 'staff') {
+  return hasMinRole(userId, venueId, minRole, email);
 }
 
 export async function getVenueSlotConstraints(venueId) {
@@ -146,7 +138,8 @@ export function validateSlotPayload(body = {}, { maxTableSeats = null } = {}) {
       ends_at: body.ends_at || null,
       recurrence_rule: body.recurrence_rule ? String(body.recurrence_rule).slice(0, 500) : null,
       capacity,
-      min_host_rs: body.min_host_rs != null ? Number(body.min_host_rs) : null,
+      // §0 siyah-ayna: RS kapı değil — kolon durur, yeni slot’ta yazılmaz.
+      min_host_rs: null,
       host_only: Boolean(body.host_only),
       visibility,
       economy_stub: economy.data,
@@ -154,6 +147,7 @@ export function validateSlotPayload(body = {}, { maxTableSeats = null } = {}) {
       required_badge_slug: requiredBadgeSlug,
       min_badge_level: minBadgeLevel,
       brand_priority: Boolean(body.brand_priority),
+      self_rez_mode: body.self_rez_mode ? String(body.self_rez_mode).toUpperCase() : null,
     },
   };
 }
@@ -214,13 +208,13 @@ async function isSlotVisibleToViewer(userId, slot, venueId) {
     const reg = await isVenueRegular(userId, venueId);
     if (!reg) return false;
   }
-  // min_host_rs / badge — sessiz filtre (claim'de de engellenir)
+  // badge — sessiz filtre (claim'de de engellenir). RS kapı değil (§0).
   const eligible = await assertSlotHostEligibility(userId, slot);
   return eligible.ok;
 }
 
 export async function createVenueSlot(venueId, userId, payload, email = '') {
-  const allowed = await isVenueManager(userId, venueId, email);
+  const allowed = await isVenueManager(userId, venueId, email, 'manager');
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed' };
   const constraints = await getVenueSlotConstraints(venueId);
   const valid = validateSlotPayload(payload, { maxTableSeats: constraints.max_table_seats });
@@ -229,6 +223,25 @@ export async function createVenueSlot(venueId, userId, payload, email = '') {
 
   const gate = await assertCanCreateVenueSlot(venueId, { timeMode: d.time_mode });
   if (!gate.ok) return gate;
+
+  const feeCents = Number(d.economy_stub?.claim_fee_cents || 0);
+  if (feeCents > 0) {
+    const { assertPaidVenueMoney } = await import('./megaPackages.js');
+    const paid = assertPaidVenueMoney({
+      amount: feeCents,
+      venueId,
+      venueTier: gate.tier,
+    });
+    if (!paid.ok) return { ...paid, status: 403 };
+  }
+
+  const fine = d.self_rez_mode
+    ? (await import('./megaPackages.js')).assertSelfRezFineTune({
+        venueTier: gate.tier,
+        perRafMode: d.self_rez_mode,
+      })
+    : { ok: true };
+  if (!fine.ok) return { ...fine, status: 403 };
 
   let brandPriority = Boolean(d.brand_priority);
   if (brandPriority && resolveTierFromVenue(gate.venue) !== 'hakim') {
@@ -256,7 +269,10 @@ export async function createVenueSlot(venueId, userId, payload, email = '') {
       d.min_host_rs,
       d.host_only,
       d.visibility,
-      JSON.stringify(d.economy_stub),
+      JSON.stringify({
+        ...d.economy_stub,
+        ...(d.self_rez_mode ? { self_rez_mode: d.self_rez_mode } : {}),
+      }),
       d.required_badge_slug,
       d.min_badge_level,
       d.audience_tag || null,
@@ -279,17 +295,17 @@ export async function createVenueSlot(venueId, userId, payload, email = '') {
   } catch (_e) {
     /* non-fatal */
   }
+  if (d.self_rez_mode) {
+    await pool.query(
+      `UPDATE venue_slots SET self_rez_mode = $2 WHERE id = $1`,
+      [r.rows[0].id, d.self_rez_mode]
+    ).catch(() => {});
+  }
   return { ok: true, slot: r.rows[0], package_tier: gate.tier };
 }
 
 async function assertSlotHostEligibility(userId, slot) {
-  if (slot.min_host_rs != null) {
-    const userRs = await pool.query(`SELECT rs_score FROM users WHERE id = $1`, [userId]);
-    const rs = userRs.rows[0]?.rs_score != null ? Number(userRs.rows[0].rs_score) : null;
-    if (rs == null || rs < Number(slot.min_host_rs)) {
-      return { ok: false, status: 403, error: 'RS below slot minimum' };
-    }
-  }
+  // §0: RS tek başına kapı üretmez. min_host_rs kolon/legacy değer yok sayılır; rozet durur.
   if (slot.required_badge_slug) {
     const meets = await userMeetsBadgeRequirement(
       userId,
@@ -487,6 +503,23 @@ export async function expireDueSuggestions(venueId = null) {
 }
 
 export async function submitSlotSuggestion(venueId, userId, payload) {
+  const { assertBrandPublicRafIstek } = await import('./megaLaunchLocks.js');
+  const brandGate = assertBrandPublicRafIstek({ target: payload?.target || payload?.org_kind || 'venue' });
+  if (!brandGate.ok) return { ...brandGate, status: 403 };
+
+  const proposedFee = Number(payload?.claim_fee_cents || payload?.economy_stub?.claim_fee_cents || payload?.fee_amount || 0);
+  if (proposedFee > 0) {
+    const { resolveTierFromVenue, loadVenuePackageRow } = await import('./venuePackageService.js');
+    const { assertPaidVenueMoney } = await import('./megaPackages.js');
+    const vrow = await loadVenuePackageRow(venueId);
+    const paid = assertPaidVenueMoney({
+      amount: proposedFee,
+      venueId,
+      venueTier: resolveTierFromVenue(vrow || {}),
+    });
+    if (!paid.ok) return { ...paid, status: 403 };
+  }
+
   const constraints = await getVenueSlotConstraints(venueId);
   const valid = validateSuggestionPayload(payload, { maxTableSeats: constraints.max_table_seats });
   if (!valid.ok) return { ok: false, status: 400, error: valid.error };

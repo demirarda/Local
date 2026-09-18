@@ -28,6 +28,7 @@ const REQUIRED_SERVICES = [
   'chipService.js',
   'eventGroupService.js',
   'venueLeadService.js',
+  'p2cArchiveService.js',
 ];
 
 const REQUIRED_STRING_KEYS = [
@@ -89,16 +90,16 @@ describe('pct100 structural Build v3', () => {
 
   test('regular PARKED false · N4 · WINDOW 45', () => {
     expect(LOCAL_CONFIG.regular.PARKED).toBe(false);
-    expect(LOCAL_CONFIG.regular.N).toBe(4);
-    expect(LOCAL_CONFIG.regular.WINDOW_D).toBe(45);
+    expect(LOCAL_CONFIG.regular.N).toBe(5);
+    expect(LOCAL_CONFIG.regular.WINDOW_D).toBe(90);
   });
 
   test('badge 6 aile', () => {
     expect(LOCAL_CONFIG.badges.CATEGORIES).toHaveLength(6);
   });
 
-  test('chip RQ3 / P2V5 + fee surprise', () => {
-    expect(LOCAL_CONFIG.chip.RQ_OPTIONS_PER_COLOR).toBe(3);
+  test('chip RQ5 / P2V5 + fee surprise', () => {
+    expect(LOCAL_CONFIG.chip.RQ_OPTIONS_PER_COLOR).toBe(5);
     expect(LOCAL_CONFIG.chip.P2V_OPTIONS_PER_COLOR).toBe(5);
     expect(LOCAL_CONFIG.chip.SETS.P2V_RED).toContain('p2v_r_ucret');
   });

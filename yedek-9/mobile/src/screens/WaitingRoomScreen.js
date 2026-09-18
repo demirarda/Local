@@ -18,9 +18,11 @@ import { formatCheckinStatusLabel, formatSecondsCountdown, getCheckinWindowInfo 
 import { formatRsLabel } from '../utils/rsVisibility';
 import PulseRing from '../components/PulseRing';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 import { captureInAppMedia } from '../utils/inAppCamera';
 
 export default function WaitingRoomScreen({ route, navigation }) {
+  useLanguageStore((s) => s.lang);
   const initialRitual = route.params?.ritual || null;
   const ritualId = route.params?.ritualId || initialRitual?.id;
   const { user } = useAuthStore();

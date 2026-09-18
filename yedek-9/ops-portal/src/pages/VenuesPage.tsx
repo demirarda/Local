@@ -45,8 +45,27 @@ export default function VenuesPage() {
       <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-4">
         <div className="flex flex-wrap justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-navy">Mekan pipeline</h1>
-            <p className="text-sm text-navy/60">Hedef · anlaşılan · olumsuz</p>
+            <h1 className="text-2xl font-bold text-navy">Launch CRM</h1>
+            <p className="text-sm text-navy/60">
+              Satış kanbanı — hedef mekanlar.               Self-serve başvuruyu onaylamaz.{' '}
+              <a
+                className="text-gold underline"
+                href={import.meta.env.VITE_PRODUCT_OPS_URL || 'http://localhost:3000/admin/basvuru.html'}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Ürün Ops kuyruğu
+              </a>
+              {' · '}
+              <a
+                className="text-gold underline"
+                href="http://localhost:3000/admin/mod.html"
+                target="_blank"
+                rel="noreferrer"
+              >
+                MOD
+              </a>
+            </p>
           </div>
           <ProjectPicker value={projectId} onChange={setProjectId} />
         </div>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOCAL Ops — Aday / lead</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-slate-950 text-slate-100 font-[Inter] min-h-screen">
+  <header class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+    <div>
+      <a href="hub.html" class="text-xs text-slate-500 hover:text-slate-300">← Hub</a>
+      <h1 class="text-lg font-bold">Aday / lead</h1>
+      <p class="text-xs text-slate-400">Nominasyon triage — CRM satış kanbanı değil</p>
+    </div>
+    <select id="status" class="bg-slate-900 border-slate-700 rounded-lg text-sm">
+      <option value="pooled" selected>Havuz</option>
+      <option value="reviewed">İncelendi</option>
+      <option value="all">Tümü</option>
+    </select>
+  </header>
+  <main class="p-6 max-w-5xl mx-auto">
+    <div id="list" class="space-y-3"></div>
+  </main>
+  <script src="/admin/common.js"></script>
+  <script>
+    async function load() {
+      var list = document.getElementById('list');
+      var status = document.getElementById('status').value;
+      list.innerHTML = '<p class="text-slate-500 text-sm">Yükleniyor…</p>';
+      try {
+        var res = await api('/api/nominations?status=' + encodeURIComponent(status) + '&limit=80');
+        var rows = res.data || res.nominations || [];
+        if (!rows.length) { list.innerHTML = '<p class="text-slate-500 text-sm">Boş.</p>'; return; }
+        list.innerHTML = rows.map(function (n) {
+          return '<article class="rounded-xl border border-slate-800 bg-slate-900 p-4 flex justify-between gap-3">' +
+            '<div><p class="font-semibold">' + escapeHtml(n.name || 'İsimsiz pin') + '</p>' +
+            '<p class="text-xs text-slate-400">' + escapeHtml(n.source || '') + ' · ' + escapeHtml(n.status || '') + '</p>' +
+            '<p class="text-sm mt-1">' + escapeHtml((n.note || '').slice(0, 200)) + '</p></div>' +
+            (n.status === 'pooled' ? '<button data-id="' + n.id + '" class="px-3 py-1.5 bg-emerald-700 rounded text-xs">İncele</button>' : '') +
+            '</article>';
+        }).join('');
+        list.querySelectorAll('[data-id]').forEach(function (btn) {
+          btn.addEventListener('click', async function () {
+            await api('/api/nominations/' + btn.getAttribute('data-id'), {
+              method: 'PATCH',
+              body: JSON.stringify({ status: 'reviewed' }),
+            });
+            load();
+          });
+        });
+      } catch (e) {
+        list.innerHTML = '<p class="text-rose-400 text-sm">' + escapeHtml(e.message) + '</p>';
+      }
+    }
+    document.getElementById('status').onchange = load;
+    load();
+  </script>
+</body>
+</html>

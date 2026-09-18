@@ -7,12 +7,12 @@ import LOCAL_CONFIG from '../config/localConfig.js';
 
 const STUB = () => LOCAL_CONFIG.venue?.PACKAGES_STUB || {};
 
-/** Map legacy + §8 tier ids → canonical free|operator|hakim */
+/** Map legacy + MEGA OPEN/OPERATOR/LANDMARK → canonical free|operator|hakim */
 export function normalizeTierId(raw) {
   const t = String(raw || 'free').toLowerCase().trim();
   if (t === 'operator' || t === 'pro') return 'operator';
-  if (t === 'hakim' || t === 'city_partner' || t === 'partner') return 'hakim';
-  if (t === 'free' || t === 'basic' || t === 'none') return 'free';
+  if (t === 'hakim' || t === 'city_partner' || t === 'partner' || t === 'landmark') return 'hakim';
+  if (t === 'free' || t === 'basic' || t === 'none' || t === 'open') return 'free';
   return 'free';
 }
 
@@ -21,7 +21,8 @@ export function resolveTierFromVenue(venue = {}) {
   if (
     venue.city_partner_enabled ||
     raw === 'city_partner' ||
-    raw === 'hakim'
+    raw === 'hakim' ||
+    raw === 'landmark'
   ) {
     return 'hakim';
   }
@@ -66,6 +67,7 @@ export function isTakeoverActive(venue = {}) {
 }
 
 export function getConcurrentSlotCap(venue = {}) {
+  if (STUB().SLOT_LIMIT_REMOVED) return Number.POSITIVE_INFINITY;
   if (isTakeoverActive(venue)) return Number.POSITIVE_INFINITY;
   const tier = resolveTierFromVenue(venue);
   const def = getTierDef(tier);
@@ -163,13 +165,10 @@ export async function assertCanCreateVenueSlot(venueId, { timeMode } = {}) {
 
   const tier = resolveTierFromVenue(venue);
   const mode = String(timeMode || 'fixed').toLowerCase();
+  void mode;
 
-  if ((mode === 'recurring' || mode === 'instant') && tier === 'free') {
-    return { ok: false, status: 403, error: 'Recurring/Instant requires OPERATOR+' };
-  }
-
-  if (isTakeoverActive(venue)) {
-    return { ok: true, venue, tier, takeover: true };
+  if (isTakeoverActive(venue) || STUB().SLOT_LIMIT_REMOVED) {
+    return { ok: true, venue, tier, takeover: isTakeoverActive(venue), unlimited: true };
   }
 
   if (tier === 'free') {

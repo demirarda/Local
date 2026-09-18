@@ -7,6 +7,7 @@ import LOCAL_CONFIG from '../config/localConfig.js';
 import { blacklistIdentityForUser } from './identityService.js';
 import { evaluateGpsEdgeZeroMemoryPattern } from './checkinService.js';
 import { runCsamScan, isCsamHoldStatus } from './csamScanner.js';
+import { isFounderUser } from './productOpsRoles.js';
 
 const LEVELS = new Set(['L0', 'L1', 'L2a', 'L2b', 'L3', 'L4']);
 const EXTREME_KEYS = new Set([
@@ -45,14 +46,6 @@ function normalizeTargetType(targetType) {
   if (t === 'zoneprofile') return 'zone_profile';
   if (t === 'event') return 'venue_event';
   return t;
-}
-
-function isFounderUser(userId) {
-  const founderIds = (process.env.FOUNDER_USER_IDS || process.env.ADMIN_USER_IDS || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return Boolean(userId && founderIds.includes(String(userId)));
 }
 
 function hoursFromNow(h) {
@@ -874,8 +867,13 @@ export async function createReport({
     throw new Error(`Invalid target_type: ${targetType}`);
   }
   const lane =
-    queueLane ||
-    (EXTREME_KEYS.has(categoryKey) ? 'safety' : targetType === 'zone' ? 'ops' : 'general');
+    queueLane === 'safety' ||
+    categoryKey === 'safety' ||
+    categoryKey === 'guvenlik_bildir' ||
+    EXTREME_KEYS.has(categoryKey)
+      ? 'safety'
+      : queueLane ||
+        (targetType === 'zone' ? 'ops' : 'general');
   // zone → dual queue: also mirror ops lane flag inside package
   const pkg = await buildReportPackage({
     reporterId,
@@ -1030,6 +1028,7 @@ export async function applyModAction({
   secondModeratorId = null,
   founderApproved = false,
   founderUserId = null,
+  founderEmail = '',
   note = null,
   contentAction = null,
   rsDeltaOverride = null,
@@ -1041,12 +1040,12 @@ export async function applyModAction({
   if (['L2a', 'L2b'].includes(level)) {
     const okFourEyes =
       (moderatorId && secondModeratorId && moderatorId !== secondModeratorId) ||
-      (moderatorId && founderApproved && isFounderUser(founderUserId || moderatorId));
+      (moderatorId && founderApproved && isFounderUser(founderUserId || moderatorId, founderEmail));
     if (!okFourEyes) {
       throw new Error('L2 four-eyes: two distinct moderators or founder approval required');
     }
-    if (founderApproved && !isFounderUser(founderUserId || moderatorId)) {
-      throw new Error('Founder approval requires FOUNDER_USER_IDS (or ADMIN_USER_IDS) membership');
+    if (founderApproved && !isFounderUser(founderUserId || moderatorId, founderEmail)) {
+      throw new Error('Founder approval requires FOUNDER_USER_IDS / FOUNDER_EMAILS membership');
     }
   }
   if (['L3', 'L4'].includes(level)) {
@@ -1054,8 +1053,8 @@ export async function applyModAction({
       throw new Error('L3/L4 require two distinct moderators');
     }
     if (!founderApproved) throw new Error('L3/L4 require founder approval');
-    if (!isFounderUser(founderUserId || moderatorId)) {
-      throw new Error('Founder approval requires FOUNDER_USER_IDS (or ADMIN_USER_IDS) membership');
+    if (!isFounderUser(founderUserId || moderatorId, founderEmail)) {
+      throw new Error('Founder approval requires FOUNDER_USER_IDS / FOUNDER_EMAILS membership');
     }
   }
 

@@ -1,11 +1,6 @@
 import { io } from 'socket.io-client';
 import { log, warn } from '../utils/logger';
-
-// WebSocket base URL
-// Prefer localhost so it works out of the box with iOS simulator on the same Mac.
-// For physical devices, override with EXPO_PUBLIC_WS_URL in a .env file.
-// Development: Use Mac's local IP for physical devices
-const WS_URL = process.env.EXPO_PUBLIC_WS_URL || 'http://localhost:3000';
+import { getWsUrl } from './api';
 
 class WebSocketService {
   constructor() {
@@ -28,8 +23,9 @@ class WebSocketService {
       this.socket.disconnect();
     }
 
-    log('Connecting to WebSocket:', WS_URL);
-    this.socket = io(WS_URL, {
+    const wsUrl = getWsUrl();
+    log('Connecting to WebSocket:', wsUrl);
+    this.socket = io(wsUrl, {
       transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
       reconnection: true,
       reconnectionDelay: 2000, // Increased delay
@@ -65,7 +61,7 @@ class WebSocketService {
     this.socket.on('connect_error', (error) => {
       // Log as warning instead of error to avoid red error screens
       warn('WebSocket connection error (non-fatal):', error.message || error);
-      warn('WebSocket URL:', WS_URL);
+      warn('WebSocket URL:', getWsUrl());
       warn('Note: App will continue to work without WebSocket. Real-time updates will be disabled.');
       this.isConnected = false;
       // Don't emit error event to avoid breaking the app

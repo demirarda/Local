@@ -21,6 +21,8 @@ import {
   deleteVenuePortal,
   fetchVenuePortals,
   getVenue,
+  patchVenue,
+  deactivateVenuePortal,
 } from '../services/api';
 import { buildPortalDeepLink, buildPortalWebLink } from '../utils/portalDeepLink';
 
@@ -58,6 +60,8 @@ export default function VenuePortalsScreen({ route, navigation }) {
   const [portalIdInput, setPortalIdInput] = useState('');
   const [labelInput, setLabelInput] = useState('');
   const [canAddTableTotem, setCanAddTableTotem] = useState(true);
+  const [totemPath, setTotemPath] = useState('STAFF_DEVICE');
+  const [placementUrl, setPlacementUrl] = useState('');
 
   const load = useCallback(async () => {
     if (!venueId) return;
@@ -70,6 +74,8 @@ export default function VenuePortalsScreen({ route, navigation }) {
       setPortals(portalData.portals || []);
       setMultiRoom(Boolean(portalData.multi_room_flag));
       setCanAddTableTotem(portalData.can_add_table_totem !== false);
+      setTotemPath(String(venueData?.totem_path || 'STAFF_DEVICE').toUpperCase());
+      setPlacementUrl(venueData?.totem_placement_photo_url || '');
     } catch (e) {
       Alert.alert('Totemler', e?.message || 'Totem seti yüklenemedi');
     } finally {
@@ -178,8 +184,45 @@ export default function VenuePortalsScreen({ route, navigation }) {
       <Text style={styles.title}>{venue?.name || 'Mekan'} · Totem seti</Text>
       <Text style={styles.subtitle}>
         Hepsi aynı buradasın-modunu açar (kuyruk-önleme). Sözü olan kapı ekranına düşer,
-        app'siz okuyan web-vitrine.
+        app'siz okuyan web-vitrine. Statik QR kapı değil.
       </Text>
+      <Text style={styles.sectionTitle}>FREE-totem yol-C</Text>
+      <Text style={styles.hint}>wifi şifresi sorar gibi mühür istenir · staff-cihaz → tap-noktası → figür</Text>
+      <View style={styles.presetRow}>
+        {[
+          { id: 'STAFF_DEVICE', label: 'Staff cihaz ₺0' },
+          { id: 'TAP_POINT', label: 'Tap-noktası' },
+          { id: 'FIGUR', label: 'Figür' },
+        ].map((p) => (
+          <TouchableOpacity
+            key={p.id}
+            style={[styles.presetChip, totemPath === p.id && styles.presetChipOn]}
+            onPress={async () => {
+              setTotemPath(p.id);
+              try {
+                await patchVenue(venueId, { totem_path: p.id });
+              } catch (e) {
+                Alert.alert('Yol-C', e?.message || 'Kaydedilemedi');
+              }
+            }}
+          >
+            <Text style={styles.presetChipText}>{p.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <TextInput
+        style={styles.input}
+        placeholder="Yerleşim foto URL (kasa/bar görüş hattı)"
+        value={placementUrl}
+        onChangeText={setPlacementUrl}
+        onBlur={async () => {
+          try {
+            await patchVenue(venueId, { totem_placement_photo_url: placementUrl.trim() || null });
+          } catch (_e) {
+            /* optional */
+          }
+        }}
+      />
 
       {!hasMandatoryTotem ? (
         <View style={styles.warnCard}>
@@ -205,6 +248,9 @@ export default function VenuePortalsScreen({ route, navigation }) {
           <View style={styles.portalHead}>
             <Text style={styles.portalId}>{portal.portal_id}</Text>
             {portal.label ? <Text style={styles.portalLabel}>{portal.label}</Text> : null}
+            {portal.deactivated_at ? (
+              <Text style={styles.ghostBtnDanger}>deaktive</Text>
+            ) : null}
           </View>
           <Text style={styles.linkLabel}>QR içeriği</Text>
           <Text style={styles.linkValue} selectable>
@@ -217,6 +263,28 @@ export default function VenuePortalsScreen({ route, navigation }) {
           <View style={styles.portalActions}>
             <TouchableOpacity style={styles.ghostBtn} onPress={() => sharePortal(portal)}>
               <Text style={styles.ghostBtnText}>Baskıya gönder</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.ghostBtn}
+              onPress={() => {
+                Alert.alert('Uzaktan deaktive', 'Bu totem-ID kapı olarak ölür. Emin misin?', [
+                  { text: 'Vazgeç', style: 'cancel' },
+                  {
+                    text: 'Deaktive',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await deactivateVenuePortal(venueId, portal.portal_id);
+                        await load();
+                      } catch (e) {
+                        Alert.alert('Totem', e?.message || 'Deaktive edilemedi');
+                      }
+                    },
+                  },
+                ]);
+              }}
+            >
+              <Text style={styles.ghostBtnDanger}>Uzaktan kapat</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.ghostBtn, portals.length <= 1 && styles.ghostBtnDisabled]}
@@ -366,6 +434,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   presetChipText: { fontSize: 12, fontWeight: '600', color: MUTED },
+  presetChipOn: { borderColor: PRIMARY, backgroundColor: '#fff7ed' },
   input: {
     borderWidth: 1,
     borderColor: BORDER,

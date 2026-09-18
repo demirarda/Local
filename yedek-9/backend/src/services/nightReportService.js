@@ -3,7 +3,7 @@
  */
 import pool from '../config/database.js';
 import LOCAL_CONFIG from '../config/localConfig.js';
-import { hasPackageFeature, resolveTierFromVenue, loadVenuePackageRow } from './venuePackageService.js';
+import { resolveTierFromVenue, loadVenuePackageRow } from './venuePackageService.js';
 
 function feelingBucket(feeling) {
   const f = String(feeling || '').toLowerCase();
@@ -23,35 +23,14 @@ export async function buildNightReport(venueId, { date = new Date(), mini = fals
     throw err;
   }
   const tier = resolveTierFromVenue(venue);
-  const fullAccess = hasPackageFeature(venue, 'gece_raporu') || tier === 'hakim' || tier === 'operator';
-  let isMini = mini || (!fullAccess && tier === 'free');
+  const { nightReportModeForTier } = await import('./megaPackages.js');
+  const reportMode = nightReportModeForTier(tier);
+  const fullAccess = reportMode === 'full';
+  let isMini = mini || reportMode === 'summary_3';
 
-  // FREE: tek seferlik mini — ayda bir slot sonrası bir kez; ikinci istek kilitli teaser
-  if (isMini && tier === 'free' && !fullAccess) {
-    const monthKey = day.slice(0, 7);
-    const freeUsed =
-      venue.free_slot_month_key === monthKey && Number(venue.free_slots_used_month) > 0;
-    const alreadyConsumed = venue.mini_report_month_key === monthKey;
-    if (!freeUsed) {
-      return {
-        venue_id: venueId,
-        date: day,
-        generated_at: new Date().toISOString(),
-        mode: 'locked',
-        status: 'ok',
-        teaser: 'FREE mini-rapor: bu ay bir slot açıp Ritual tamamlanınca tadımlık kırılım açılır',
-      };
-    }
-    if (alreadyConsumed && consumeMini) {
-      return {
-        venue_id: venueId,
-        date: day,
-        generated_at: new Date().toISOString(),
-        mode: 'consumed',
-        status: 'ok',
-        teaser: 'Bu ayın tek seferlik mini-raporu kullanıldı · OPERATÖR ile her gece tam digest',
-      };
-    }
+  // OPEN: her gece 3 satır özet (masa · mühür · top-chip) — aylık tek-sefer kilit yok
+  if (isMini && !fullAccess) {
+    /* summary always available */
   }
 
   const rituals = await pool.query(
@@ -202,29 +181,25 @@ export async function buildNightReport(venueId, { date = new Date(), mini = fals
   };
 
   if (isMini) {
-    if (tier === 'free' && consumeMini) {
-      const monthKey = day.slice(0, 7);
-      await pool.query(
-        `UPDATE venues SET mini_report_month_key = $2 WHERE id = $1`,
-        [venueId, monthKey]
-      ).catch(() => {});
-    }
     return {
       venue_id: venueId,
       date: day,
       generated_at: new Date().toISOString(),
-      mode: 'mini',
+      mode: 'summary_3',
       status: 'ok',
+      lines: [
+        `masa · ${metrics.ritual_count}`,
+        `mühür · ${metrics.checked_in}`,
+        `top-chip · ${topChip?.chip_id || '—'}`,
+      ],
       gunun_aurasi: aura,
       metrics: {
         ritual_count: metrics.ritual_count,
         checked_in: metrics.checked_in,
-        feeling_totals: metrics.feeling_totals,
+        top_chip: topChip,
       },
-      rituals: ritualRows.slice(0, 3),
-      teaser: 'OPERATÖR paketi ile tam Gece Raporu + Aylık Nabız',
+      teaser: 'OPERATOR ile tam Gece Raporu + Aylık Nabız',
       schedule: { closing_time: closing, offset_min: offsetMin },
-      one_shot: true,
     };
   }
 
@@ -247,13 +222,11 @@ export async function dispatchDueNightReports({ now = new Date() } = {}) {
   const venues = await pool.query(
     `SELECT v.id, v.closing_time, v.subscription_tier, v.pro_enabled, v.city_partner_enabled
      FROM venues v
-     WHERE v.closing_time IS NOT NULL
-       AND (v.pro_enabled = true OR v.subscription_tier::text IN ('operator','hakim','pro','city_partner'))`
+     WHERE v.closing_time IS NOT NULL`
   );
   const { notifyNightReport } = await import('./notifications.js');
   let sent = 0;
   for (const v of venues.rows) {
-    if (!hasPackageFeature(v, 'gece_raporu') && resolveTierFromVenue(v) === 'free') continue;
     const [hh, mm] = String(v.closing_time).split(':').map(Number);
     const target = new Date(now);
     target.setHours(hh || 0, (mm || 0) + offset, 0, 0);

@@ -18,6 +18,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import useAuthStore from '../store/authStore';
 import useConfigStore from '../store/configStore';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 import { getHighlightUserMax } from '../constants/localConfig';
 import { warn } from '../utils/logger';
 import {
@@ -42,10 +43,12 @@ import {
   fetchMyModSanctions,
   createModAppeal,
   fetchMyRegularStatus,
+  fetchDsDashboard,
 } from '../services/api';
 import { SkeletonCard, SkeletonBox, SkeletonList } from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
+import DsCompassCard from '../components/DsCompassCard';
 import { MOOD_TAGS_40 } from '../constants/moodTags';
 import { pulseGridCardImage, pulseMemoryImage } from '../constants/pulseExampleImages';
 import ReportModal from '../components/ReportModal';
@@ -91,6 +94,7 @@ export default function SocialPassportScreen({ route }) {
   const isDark = !!route?.params?.forceDark;
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  useLanguageStore((s) => s.lang);
   const currentUserId = user?.id;
   const viewedUserId = route?.params?.userId || currentUserId;
   const isOwnPassport = String(viewedUserId) === String(currentUserId);
@@ -128,6 +132,7 @@ export default function SocialPassportScreen({ route }) {
   const [showReportModal, setShowReportModal] = useState(false);
   const [mySanctions, setMySanctions] = useState([]);
   const [myRegularStatus, setMyRegularStatus] = useState(null);
+  const [dsDash, setDsDash] = useState(null);
   const mainScrollRef = useRef(null);
   const [tabsOffsetY, setTabsOffsetY] = useState(0);
   const loadInProgressRef = useRef(false);
@@ -145,6 +150,7 @@ export default function SocialPassportScreen({ route }) {
     if (!isOwnPassport || !currentUserId) {
       setMySanctions([]);
       setMyRegularStatus(null);
+      setDsDash(null);
       return;
     }
     fetchMyModSanctions()
@@ -153,6 +159,9 @@ export default function SocialPassportScreen({ route }) {
     fetchMyRegularStatus()
       .then((data) => setMyRegularStatus(data || null))
       .catch(() => setMyRegularStatus(null));
+    fetchDsDashboard()
+      .then((data) => setDsDash(data || null))
+      .catch(() => setDsDash(null));
   }, [isOwnPassport, currentUserId]);
 
   const handleAppeal = (sanction) => {
@@ -1258,7 +1267,13 @@ export default function SocialPassportScreen({ route }) {
               </Text>
             )}
             <Text style={[styles.rsScoreLine, isDark && { color: '#fbbf24' }]}>
-              RS Score {canSeeExactRS && rsDisplay != null ? rsDisplay : '•••'}
+              {profile?.city_display_veil && !isOwnPassport
+                ? 'yeni şehir'
+                : canSeeExactRS && rsDisplay != null
+                  ? `RS Score ${rsDisplay}`
+                  : isOwnPassport
+                    ? 'HENÜZ GÖSTERİLMİYOR'
+                    : 'RS · · ·'}
             </Text>
             {isOwnPassport && profile?.regular_vitrine_visible && myRegularStatus?.is_regular ? (
               <TouchableOpacity onPress={() => navigation.navigate('MyRegulars')} activeOpacity={0.85}>
@@ -1340,10 +1355,20 @@ export default function SocialPassportScreen({ route }) {
                 </View>
               )}
               <TouchableOpacity style={styles.statCell} onPress={() => navigation.navigate('RSTransparency')} activeOpacity={0.85}>
-                <Text style={[styles.statNum, styles.statNumNavy]}>{canSeeExactRS && rsDisplay != null ? rsDisplay : '•'}</Text>
+                <Text style={[styles.statNum, styles.statNumNavy]}>
+                  {canSeeExactRS && rsDisplay != null ? rsDisplay : isOwnPassport ? '…' : '•'}
+                </Text>
                 <Text style={styles.statLabel}>RS Skoru</Text>
               </TouchableOpacity>
             </View>
+            {isOwnPassport && dsDash && !dsDash.hidden ? (
+              <DsCompassCard
+                data={dsDash}
+                compact
+                dark={isDark}
+                onPress={() => navigation.navigate('DSUserDashboard')}
+              />
+            ) : null}
             {/* §14 Social bar */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shortcutBar}>
               {(isOwnPassport || profile?.friends_list_public) ? (
@@ -1404,10 +1429,10 @@ export default function SocialPassportScreen({ route }) {
               </TouchableOpacity>
             </ScrollView>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shortcutBar}>
-              {isOwnPassport ? (
+              {isOwnPassport && profile?.placement_complete ? (
               <TouchableOpacity style={styles.shortcutActive} onPress={() => navigation.navigate('DSUserDashboard')}>
                 <View style={[styles.shortcutDot, { backgroundColor: '#1B2E4A' }]} />
-                <Text style={styles.shortcutActiveText}>DS Paneli →</Text>
+                <Text style={styles.shortcutActiveText}>Keşif Pusulası →</Text>
               </TouchableOpacity>
               ) : null}
               <TouchableOpacity style={styles.shortcutChip} onPress={() => navigation.navigate('BadgeGallery', { initialTab: 'earned' })}>
@@ -1498,21 +1523,21 @@ export default function SocialPassportScreen({ route }) {
               onPress={() => setActiveTab('quote')}
               activeOpacity={0.9}
             >
-              <Text style={[styles.segmentSlotText, isDark && { color: '#cbd5e1' }, activeTab === 'quote' && styles.segmentSlotTextOn]}>Quote</Text>
+              <Text style={[styles.segmentSlotText, isDark && { color: '#cbd5e1' }, activeTab === 'quote' && styles.segmentSlotTextOn]}>{t('tab_quote')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.segmentSlot, activeTab === 'badge' && styles.segmentSlotOn]}
               onPress={() => setActiveTab('badge')}
               activeOpacity={0.9}
             >
-              <Text style={[styles.segmentSlotText, isDark && { color: '#cbd5e1' }, activeTab === 'badge' && styles.segmentSlotTextOn]}>Badge</Text>
+              <Text style={[styles.segmentSlotText, isDark && { color: '#cbd5e1' }, activeTab === 'badge' && styles.segmentSlotTextOn]}>{t('tab_badge')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.segmentSlot, activeTab === 'memories' && styles.segmentSlotOn]}
               onPress={() => setActiveTab('memories')}
               activeOpacity={0.9}
             >
-              <Text style={[styles.segmentSlotText, isDark && { color: '#cbd5e1' }, activeTab === 'memories' && styles.segmentSlotTextOn]}>Memories</Text>
+              <Text style={[styles.segmentSlotText, isDark && { color: '#cbd5e1' }, activeTab === 'memories' && styles.segmentSlotTextOn]}>{t('tab_memories')}</Text>
             </TouchableOpacity>
             {isOwnPassport ? (
               <TouchableOpacity
@@ -1523,7 +1548,7 @@ export default function SocialPassportScreen({ route }) {
                 }}
                 activeOpacity={0.9}
               >
-                <Text style={[styles.segmentSlotText, isDark && { color: '#cbd5e1' }, activeTab === 'rulo' && styles.segmentSlotTextOn]}>Rulo</Text>
+                <Text style={[styles.segmentSlotText, isDark && { color: '#cbd5e1' }, activeTab === 'rulo' && styles.segmentSlotTextOn]}>{t('tab_rulo')}</Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -1961,10 +1986,6 @@ export default function SocialPassportScreen({ route }) {
         <TouchableOpacity style={styles.navItemGray} onPress={() => navigation.navigate('Pulse')}>
           <MaterialIcons name="insights" size={24} color={isDark ? '#9ca3af' : GRAY_TEXT_TERT} />
           <Text style={[styles.navLabelGray, isDark && { color: '#9ca3af' }]}>Pulse</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItemGray} onPress={() => navigation.navigate('Local')}>
-          <MaterialIcons name="public" size={24} color={isDark ? '#9ca3af' : GRAY_TEXT_TERT} />
-          <Text style={[styles.navLabelGray, isDark && { color: '#9ca3af' }]}>Local</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItemGray} onPress={() => navigation.navigate('CityRhythm')}>
           <MaterialIcons name="bar-chart" size={24} color={isDark ? '#9ca3af' : GRAY_TEXT_TERT} />

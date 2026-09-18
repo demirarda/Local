@@ -4,6 +4,7 @@
  * Keep in sync with backend/src/i18n/stringTable.js
  */
 import { CHIP_COPY_STUBS } from './chipCopyStubs';
+import useLanguageStore from '../store/languageStore';
 
 export const CONCEPT_WORDS = Object.freeze({
   ritual: 'Ritual',
@@ -135,6 +136,12 @@ export const STRING_TABLE = {
     key: 'report_cat_sexual_assault',
     EN: 'Sexual assault',
     TR: 'Cinsel saldırı',
+    open: false,
+  },
+  guvenlik_bildir: {
+    key: 'guvenlik_bildir',
+    EN: 'Safety alert (not feedback)',
+    TR: 'Güvenlik bildir (FB değil)',
     open: false,
   },
 
@@ -321,19 +328,321 @@ export const STRING_TABLE = {
     TR: 'Bizi nasıl bulursun',
   },
 
+  // Settings + language picker
+  settings_title: { key: 'settings_title', EN: 'Settings', TR: 'Ayarlar' },
+  settings_back_passport: { key: 'settings_back_passport', EN: '← Passport', TR: '← Passport' },
+  settings_edit_profile: { key: 'settings_edit_profile', EN: 'Edit profile', TR: 'Profili Duzenle' },
+  settings_user_fallback: { key: 'settings_user_fallback', EN: 'User', TR: 'Kullanici' },
+  settings_uni_city_fallback: { key: 'settings_uni_city_fallback', EN: 'University · City', TR: 'Universite · Sehir' },
+  settings_profile_hub: { key: 'settings_profile_hub', EN: 'Profile settings', TR: 'Profil ayarlari' },
+  settings_profile_hub_sub: {
+    key: 'settings_profile_hub_sub',
+    EN: 'Uni tag · hosted count · privacy',
+    TR: 'Uni-etiket · hosted sayı · gizlilik',
+  },
+  settings_trust_label: { key: 'settings_trust_label', EN: 'Trust', TR: 'Guvenilirlik' },
+  settings_trust_status: {
+    key: 'settings_trust_status',
+    EN: 'Monochrome band · raw number hidden',
+    TR: 'Monokrom bant · ham sayı gizli',
+  },
+  settings_trust_sub: {
+    key: 'settings_trust_sub',
+    EN: 'Open the RS transparency screen',
+    TR: 'Detay için RS şeffaflık ekranı',
+  },
+  settings_group_account: { key: 'settings_group_account', EN: 'Account', TR: 'Hesap' },
+  settings_profile_info: { key: 'settings_profile_info', EN: 'Profile details', TR: 'Profil Bilgileri' },
+  settings_profile_info_sub: {
+    key: 'settings_profile_info_sub',
+    EN: 'Name, university, bio',
+    TR: 'Ad, universite, biyografi',
+  },
+  settings_rs_visibility: { key: 'settings_rs_visibility', EN: 'RS visibility', TR: 'RS Gorunurlugu' },
+  settings_rs_visibility_sub: {
+    key: 'settings_rs_visibility_sub',
+    EN: 'Who can see your RS score?',
+    TR: 'Kim RS skorunu gorebilir?',
+  },
+  settings_city: { key: 'settings_city', EN: 'City', TR: 'Sehir' },
+  settings_city_active: { key: 'settings_city_active', EN: '{city} active', TR: '{city} aktif' },
+  settings_city_pick: { key: 'settings_city_pick', EN: 'Choose a city', TR: 'Sehir secimi' },
+  settings_venue_apply: { key: 'settings_venue_apply', EN: 'LOCAL Venue application', TR: 'LOCAL Venue Basvurusu' },
+  settings_venue_apply_sub: {
+    key: 'settings_venue_apply_sub',
+    EN: 'Apply as a venue on LOCAL',
+    TR: "Mekan olarak LOCAL'e basvur",
+  },
+  settings_glossary: { key: 'settings_glossary', EN: '10. Glossary', TR: '10. Sozluk' },
+  settings_glossary_sub: { key: 'settings_glossary_sub', EN: 'Terms and language', TR: 'Sozluk ve terimler' },
+  settings_lte3: { key: 'settings_lte3', EN: 'LTE-3 Trust Engine', TR: 'LTE-3 Trust Engine' },
+  settings_lte3_sub: {
+    key: 'settings_lte3_sub',
+    EN: 'RS constants and pipeline',
+    TR: 'RS motoru sabitleri ve boru hatti',
+  },
+  settings_moderation: { key: 'settings_moderation', EN: 'Moderation panel', TR: 'Moderasyon Paneli' },
+  settings_moderation_sub: {
+    key: 'settings_moderation_sub',
+    EN: 'Reports and safety actions',
+    TR: 'Sikayet ve guvenlik islemleri',
+  },
+  settings_group_privacy: { key: 'settings_group_privacy', EN: 'Privacy', TR: 'Gizlilik' },
+  settings_search_visible: { key: 'settings_search_visible', EN: 'Appear in search', TR: 'Aramada Gorun' },
+  settings_search_visible_sub: {
+    key: 'settings_search_visible_sub',
+    EN: 'People can find you in search',
+    TR: 'Kullanicilar seni aramada gorebilir',
+  },
+  settings_location_share: { key: 'settings_location_share', EN: 'Location sharing', TR: 'Konum Paylasimi' },
+  settings_location_share_sub: {
+    key: 'settings_location_share_sub',
+    EN: 'Used only during check-in',
+    TR: 'Sadece check-in sirasinda kullanilir',
+  },
+  settings_active_status: { key: 'settings_active_status', EN: 'Active status', TR: 'Aktif Durumu' },
+  settings_active_status_sub: {
+    key: 'settings_active_status_sub',
+    EN: 'Connections can see when you are around',
+    TR: 'Baglantilarin cevrimici durumunu gorebilir',
+  },
+  settings_group_notifications: { key: 'settings_group_notifications', EN: 'Notifications', TR: 'Bildirimler' },
+  settings_notif_prefs: { key: 'settings_notif_prefs', EN: 'Notification preferences', TR: 'Bildirim Tercihleri' },
+  settings_notif_prefs_sub: {
+    key: 'settings_notif_prefs_sub',
+    EN: 'Category-level control (§11)',
+    TR: 'Kategori bazli kontrol (§11)',
+  },
+  settings_notif_live: { key: 'settings_notif_live', EN: 'Live Ritual started', TR: 'Canli Ritual basladi' },
+  settings_notif_friends: {
+    key: 'settings_notif_friends',
+    EN: 'A friend joined a Ritual',
+    TR: 'Rituale arkadasin katildi',
+  },
+  settings_notif_rs: { key: 'settings_notif_rs', EN: 'RS score changed', TR: 'RS skoru degisti' },
+  settings_notif_badge: { key: 'settings_notif_badge', EN: 'New badge earned', TR: 'Yeni rozet kazanildi' },
+  settings_group_social: { key: 'settings_group_social', EN: 'Social', TR: 'Sosyal' },
+  settings_qr_bump: { key: 'settings_qr_bump', EN: 'QR-Bump', TR: 'QR-Bump' },
+  settings_qr_bump_sub: { key: 'settings_qr_bump_sub', EN: 'Add a nearby friend', TR: 'Yakin arkadas ekle' },
+  settings_regular: { key: 'settings_regular', EN: 'Regular status', TR: 'Regular Durumu' },
+  settings_regular_sub: {
+    key: 'settings_regular_sub',
+    EN: '{n} venue · private tag',
+    TR: '{n} mekân · gizli etiket',
+  },
+  settings_regular_none: {
+    key: 'settings_regular_none',
+    EN: 'Not Regular yet (private, not shared)',
+    TR: 'Henuz regular degil (ozel, paylasilmaz)',
+  },
+  settings_memories: { key: 'settings_memories', EN: 'My memories', TR: 'Anilarim' },
+  settings_memories_sub: { key: 'settings_memories_sub', EN: 'Your Ritual memories', TR: 'Ritual anilarin' },
+  settings_group_coming: { key: 'settings_group_coming', EN: 'Coming soon (§14)', TR: 'Yakinda (§14)' },
+  settings_stub_feature: { key: 'settings_stub_feature', EN: 'Feature', TR: 'Ozellik' },
+  settings_stub_on: { key: 'settings_stub_on', EN: 'On', TR: 'Aktif' },
+  settings_stub_off: { key: 'settings_stub_off', EN: 'Off', TR: 'Pasif' },
+  settings_group_appearance: { key: 'settings_group_appearance', EN: 'Appearance', TR: 'Gorunum' },
+  settings_language: { key: 'settings_language', EN: 'Language', TR: 'Dil' },
+  settings_language_sub: {
+    key: 'settings_language_sub',
+    EN: 'App language · Ritual stays Ritual',
+    TR: 'Uygulama dili · Ritual çevrilmez',
+  },
+  settings_dark_mode: { key: 'settings_dark_mode', EN: 'Appearance (Dark theme)', TR: 'Gorunum (Koyu Tema)' },
+  settings_group_session: { key: 'settings_group_session', EN: 'Session', TR: 'Oturum' },
+  settings_logout: { key: 'settings_logout', EN: 'Log out', TR: 'Cikis Yap' },
+  settings_group_danger: { key: 'settings_group_danger', EN: 'Danger zone', TR: 'Tehlikeli Bolge' },
+  settings_freeze: { key: 'settings_freeze', EN: 'Freeze account', TR: 'Hesabi Dondur' },
+  settings_freeze_sub: {
+    key: 'settings_freeze_sub',
+    EN: 'Temporarily off · RS kept',
+    TR: 'Gecici devre disi · RS korunur',
+  },
+  settings_delete: { key: 'settings_delete', EN: 'Delete account', TR: 'Hesabi Sil' },
+  settings_delete_sub: {
+    key: 'settings_delete_sub',
+    EN: 'Permanent · cannot be undone',
+    TR: 'Kalici silme · geri alinamaz',
+  },
+  settings_privacy: { key: 'settings_privacy', EN: 'Privacy', TR: 'Gizlilik' },
+  settings_terms: { key: 'settings_terms', EN: 'Terms', TR: 'Kosullar' },
+  settings_cookies: { key: 'settings_cookies', EN: 'Cookies', TR: 'Cerezler' },
+  settings_contact: { key: 'settings_contact', EN: 'Contact', TR: 'Iletisim' },
+  settings_badge_pivot: { key: 'settings_badge_pivot', EN: 'Pivot Host', TR: 'Pivot Host' },
+  settings_badge_verified: { key: 'settings_badge_verified', EN: 'Verified', TR: 'Verified' },
+  nav_city_rhythm: { key: 'nav_city_rhythm', EN: 'City Rhythm', TR: 'City Rhythm', translate: false },
+  nav_passport: { key: 'nav_passport', EN: 'Passport', TR: 'Passport', translate: false },
+
+  auth_tagline: {
+    key: 'auth_tagline',
+    EN: 'Real connections in real moments...',
+    TR: 'Gercek anlarda gercek baglantilar...',
+  },
+  auth_university: { key: 'auth_university', EN: 'University', TR: 'Üniversiteli' },
+  auth_kyc: { key: 'auth_kyc', EN: 'Verify with ID', TR: 'Kimlik ile doğrula' },
+  auth_login: { key: 'auth_login', EN: 'Log in', TR: 'Giris Yap' },
+  auth_welcome: { key: 'auth_welcome', EN: 'Welcome to LOCAL', TR: "LOCAL'e Hos Geldin" },
+  auth_continue_login: { key: 'auth_continue_login', EN: 'Log in to continue', TR: 'Devam etmek icin giris yap' },
+  auth_email: { key: 'auth_email', EN: 'Email', TR: 'E-posta' },
+  auth_email_placeholder: { key: 'auth_email_placeholder', EN: 'email@example.com', TR: 'e-posta@ornek.com' },
+  auth_password: { key: 'auth_password', EN: 'Password', TR: 'Sifre' },
+  auth_password_placeholder: { key: 'auth_password_placeholder', EN: 'Enter your password', TR: 'Sifreni gir' },
+  auth_forgot: { key: 'auth_forgot', EN: 'Forgot password', TR: 'Sifremi Unuttum' },
+  auth_remember: { key: 'auth_remember', EN: 'Keep me signed in on this device', TR: 'Bu cihazda girisimi acik tut' },
+  auth_no_account: { key: 'auth_no_account', EN: "Don't have an account?", TR: 'Hesabin yok mu?' },
+  auth_register: { key: 'auth_register', EN: 'Sign up', TR: 'Kayit Ol' },
+  auth_footer: {
+    key: 'auth_footer',
+    EN: 'By logging in you accept the following:',
+    TR: 'Giris yaparak su metinleri kabul edersin:',
+  },
+  auth_terms: { key: 'auth_terms', EN: 'Terms of Use', TR: 'Kullanim Kosullari' },
+  auth_privacy_policy: { key: 'auth_privacy_policy', EN: 'Privacy Policy', TR: 'Gizlilik Politikasi' },
+  auth_and: { key: 'auth_and', EN: 'and', TR: 've' },
+
+  search_tab_all: { key: 'search_tab_all', EN: 'All', TR: 'Tümü' },
+  search_tab_series: { key: 'search_tab_series', EN: 'Series', TR: 'Seriler' },
+  search_tab_slots: { key: 'search_tab_slots', EN: 'Slots', TR: 'Slotlar' },
+  search_tab_venues: { key: 'search_tab_venues', EN: 'Venues', TR: 'Mekanlar' },
+  search_tab_zones: { key: 'search_tab_zones', EN: 'Zones', TR: "Zone'lar" },
+  search_tab_people: { key: 'search_tab_people', EN: 'People', TR: 'Kişiler' },
+  search_tab_forum: { key: 'search_tab_forum', EN: 'Forum', TR: 'Forum' },
+  search_tab_category: { key: 'search_tab_category', EN: 'Category', TR: 'Kategori' },
+  search_tab_location: { key: 'search_tab_location', EN: 'Location', TR: 'Konum' },
+  search_tab_brands: { key: 'search_tab_brands', EN: 'Brand', TR: 'Brand' },
+
+  pulse_subtitle: { key: 'pulse_subtitle', EN: 'Flow in your city', TR: 'Sehrindeki Akis' },
+  pulse_create: { key: 'pulse_create', EN: '+ Create Ritual', TR: '+ Ritual Olustur' },
+  pulse_verify_to_create: {
+    key: 'pulse_verify_to_create',
+    EN: 'Verify your university email to create a Ritual.',
+    TR: 'Ritual olusturmak icin universite e-postani dogrulamalisin.',
+  },
+  pulse_load_failed_title: { key: 'pulse_load_failed_title', EN: 'Pulse failed to load', TR: 'Pulse yuklenemedi' },
+  pulse_load_failed_msg: {
+    key: 'pulse_load_failed_msg',
+    EN: 'Rituals could not load. Check your connection and try again.',
+    TR: 'Rituals yuklenemedi. Baglantini kontrol edip tekrar dene.',
+  },
+  pulse_filter_all: { key: 'pulse_filter_all', EN: 'All', TR: 'Tümü' },
+  pulse_filter_friends: { key: 'pulse_filter_friends', EN: 'Friends', TR: 'Arkadaşlar' },
+  pulse_filter_hidden: { key: 'pulse_filter_hidden', EN: 'Hidden', TR: 'Gizli' },
+  pulse_filter_live_now: { key: 'pulse_filter_live_now', EN: 'Live now', TR: 'Şimdi Canlı' },
+  pulse_filter_has_room: { key: 'pulse_filter_has_room', EN: 'Spots open', TR: 'Yer Var' },
+  pulse_filter_starting: { key: 'pulse_filter_starting', EN: 'Starting soon', TR: 'Başlamak Üzere' },
+  pulse_filter_nearby: { key: 'pulse_filter_nearby', EN: 'Nearby', TR: 'Yakınımda' },
+  pulse_filter_following: { key: 'pulse_filter_following', EN: 'Following', TR: 'Takip Edilenler' },
+  pulse_filter_special: { key: 'pulse_filter_special', EN: 'Special events', TR: 'Özel Etkinlikler' },
+  pulse_filter_verified: { key: 'pulse_filter_verified', EN: 'Verified', TR: 'Doğrulanmışlar' },
+  pulse_filter_series: { key: 'pulse_filter_series', EN: 'Series', TR: 'Seri' },
+  pulse_filter_new: { key: 'pulse_filter_new', EN: 'New on LOCAL', TR: "LOCAL'de Yeni" },
+  pulse_filter_more: { key: 'pulse_filter_more', EN: 'More', TR: 'Daha fazla' },
+  pulse_filter_less: { key: 'pulse_filter_less', EN: 'Less', TR: 'Daha az' },
+  pulse_empty_all_title: { key: 'pulse_empty_all_title', EN: 'Pulse is empty', TR: 'Pulse bos' },
+  pulse_empty_all_msg: {
+    key: 'pulse_empty_all_msg',
+    EN: 'No friend or FL memories in the last 24 hours. After a Ritual ends, you can share in the Window.',
+    TR: 'Son 24 saatte arkadas ve FL kapsaminda memory yok. Ritual bitince windowda paylasim yapilabilir.',
+  },
+  pulse_empty_live_title: { key: 'pulse_empty_live_title', EN: 'No live Ritual', TR: 'Canli Ritual yok' },
+  pulse_empty_live_msg: {
+    key: 'pulse_empty_live_msg',
+    EN: 'No live or about-to-start Ritual is visible right now.',
+    TR: 'Simdilik canli veya cok yakin baslayan Ritual gorunmuyor.',
+  },
+  pulse_empty_starting_title: { key: 'pulse_empty_starting_title', EN: 'Nothing starting soon', TR: 'Yakinda baslayan yok' },
+  pulse_empty_starting_msg: {
+    key: 'pulse_empty_starting_msg',
+    EN: 'No Ritual is about to start.',
+    TR: 'Baslamak uzere olan Ritual bulunmuyor.',
+  },
+  pulse_empty_local_world_title: { key: 'pulse_empty_local_world_title', EN: 'Local World is empty', TR: 'Local World bos' },
+  pulse_empty_local_world_msg: {
+    key: 'pulse_empty_local_world_msg',
+    EN: 'No open forum or city-wide public memory is visible.',
+    TR: 'Acik forum veya sehir geneli public memory gorunmuyor.',
+  },
+  pulse_empty_friends_title: { key: 'pulse_empty_friends_title', EN: 'Friends feed is empty', TR: 'Arkadas akisi bos' },
+  pulse_empty_friends_msg: {
+    key: 'pulse_empty_friends_msg',
+    EN: 'No Pulse shares from friends in the last 24 hours.',
+    TR: 'Arkadaslarinin son 24 saatlik pulse paylasimi yok.',
+  },
+  pulse_empty_fl_title: { key: 'pulse_empty_fl_title', EN: 'FL feed is empty', TR: 'FL akisi bos' },
+  pulse_empty_fl_msg: {
+    key: 'pulse_empty_fl_msg',
+    EN: 'No shares from close friends (FL) in the last 24 hours.',
+    TR: 'Yakin arkadas (FL) kapsaminda son 24 saatte paylasim yok.',
+  },
+  pulse_empty_uni_title: { key: 'pulse_empty_uni_title', EN: 'Uni feed is empty', TR: 'Uni akisi bos' },
+  pulse_empty_uni_msg: {
+    key: 'pulse_empty_uni_msg',
+    EN: 'No Pulse shares from people at the same university.',
+    TR: 'Ayni universiteden kullanicilarin pulse paylasimi yok.',
+  },
+  pulse_empty_hidden_title: { key: 'pulse_empty_hidden_title', EN: 'No hidden Ritual', TR: 'Gizli Ritual yok' },
+  pulse_empty_hidden_msg: {
+    key: 'pulse_empty_hidden_msg',
+    EN: 'No open Ritual with hidden visibility.',
+    TR: 'Gorunurlugu hidden olan acik Ritual bulunmuyor.',
+  },
+  pulse_empty_special_title: { key: 'pulse_empty_special_title', EN: 'No special events', TR: 'Ozel etkinlik yok' },
+  pulse_empty_special_msg: {
+    key: 'pulse_empty_special_msg',
+    EN: 'The curated special-event list is empty.',
+    TR: 'Kurasyonlu ozel etkinlik listesi bos.',
+  },
+  pulse_empty_nearby_title: { key: 'pulse_empty_nearby_title', EN: 'No Ritual nearby', TR: 'Yakininda Ritual yok' },
+  pulse_empty_nearby_msg: {
+    key: 'pulse_empty_nearby_msg',
+    EN: 'No live or starting-soon Ritual in the GPS radius.',
+    TR: 'GPS yarıcapinda canli veya yakinda baslayan Ritual gorunmuyor.',
+  },
+  pulse_empty_default_title: { key: 'pulse_empty_default_title', EN: 'Nothing in this filter', TR: 'Bu filtrede icerik yok' },
+  pulse_empty_default_msg: {
+    key: 'pulse_empty_default_msg',
+    EN: 'No Ritual or memory matches the selected filter.',
+    TR: 'Secili filtreye uygun Ritual veya memory bulunamadi.',
+  },
+  pulse_empty_action_map: { key: 'pulse_empty_action_map', EN: 'Open map', TR: 'Haritaya bak' },
+  pulse_empty_action_add_friend: { key: 'pulse_empty_action_add_friend', EN: 'Add a friend', TR: 'Arkadas ekle' },
+  pulse_empty_action_citywide: { key: 'pulse_empty_action_citywide', EN: 'See the whole city', TR: 'Tum sehre bak' },
+  bubble_active: { key: 'bubble_active', EN: 'LIVE', TR: 'AKTIF' },
+  bubble_active_hint: { key: 'bubble_active_hint', EN: 'Ritual is ongoing', TR: 'Ritual devam ediyor' },
+  bubble_near: { key: 'bubble_near', EN: 'NEAR', TR: 'YAKIN' },
+  bubble_near_hint: { key: 'bubble_near_hint', EN: 'Window still open', TR: 'Window hala acik' },
+  bubble_upcoming: { key: 'bubble_upcoming', EN: 'SOON', TR: 'YAKLASAN' },
+  bubble_upcoming_hint: { key: 'bubble_upcoming_hint', EN: 'Ritual starts soon', TR: 'Ritual yakinda basliyor' },
+  bubble_ended: { key: 'bubble_ended', EN: 'ENDED', TR: 'SONA ERDI' },
+  bubble_ended_hint: { key: 'bubble_ended_hint', EN: 'Open archive', TR: 'Arsivi ac' },
+
   ...Object.fromEntries(
     Object.entries(CHIP_COPY_STUBS).map(([k, v]) => [k, { ...v, route: v.route || 'RitualFeedback' }])
   ),
 };
 
+function resolveLang(lang) {
+  if (lang === 'en' || lang === 'tr') return lang;
+  try {
+    const current = useLanguageStore.getState?.()?.lang;
+    if (current === 'en' || current === 'tr') return current;
+  } catch (_e) {
+    // store may be unavailable in isolated tests
+  }
+  return 'tr';
+}
+
 /**
  * @param {string} key
- * @param {'tr'|'en'} [lang]
- * @param {Record<string, string|number>} [vars]
+ * @param {'tr'|'en'|Record<string, string|number>} [langOrVars]
+ * @param {Record<string, string|number>} [maybeVars]
  */
-export function t(key, lang = 'tr', vars = {}) {
+export function t(key, langOrVars, maybeVars) {
   const row = STRING_TABLE[key];
   if (!row) return key;
+  const varsAreFirst = langOrVars && typeof langOrVars === 'object' && !Array.isArray(langOrVars);
+  const lang = resolveLang(varsAreFirst ? undefined : langOrVars);
+  const vars = varsAreFirst ? langOrVars : maybeVars || {};
   let out = row.translate === false ? row.EN : lang === 'en' ? row.EN : row.TR;
   for (const [k, v] of Object.entries(vars || {})) {
     out = out.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));

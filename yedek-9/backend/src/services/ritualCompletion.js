@@ -289,7 +289,7 @@ async function onRitualEnteredWindow(ritualId) {
 
   for (const p of participants.rows) {
     try {
-      await notifyWindowOpened(p.user_id, ritualData).catch(() => {});
+      // §11 — TEK toplu FB bildirimi; window_opened buraya basılmaz (spam-yasağı)
       await notifyFeedbackAvailable(p.user_id, ritualData).catch(() => {});
       await enqueue(
         'ds-update',

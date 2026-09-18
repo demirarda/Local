@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOCAL Ops — ZONE-EVENT</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-slate-950 text-slate-100 font-[Inter] min-h-screen">
+  <header class="border-b border-slate-800 px-6 py-4">
+    <a href="hub.html" class="text-xs text-slate-500 hover:text-slate-300">← Hub</a>
+    <h1 class="text-lg font-bold">ZONE-EVENT grupları</h1>
+    <p class="text-xs text-slate-400">Şemsiye kart · masa listesi — launch’ta lazım</p>
+  </header>
+  <main class="p-6 max-w-5xl mx-auto space-y-4">
+    <div class="rounded-xl border border-slate-800 p-4">
+      <label class="text-xs text-slate-400">Grup adı</label>
+      <input id="name" class="mt-1 w-full bg-slate-900 border-slate-700 rounded-lg text-sm" placeholder="LOCAL @ Emirgan" />
+      <label class="text-xs text-slate-400 mt-3 block">Toplam kapasite</label>
+      <input id="cap" type="number" class="mt-1 w-full bg-slate-900 border-slate-700 rounded-lg text-sm" />
+      <button id="create" class="mt-3 px-3 py-2 bg-blue-600 rounded-lg text-sm font-semibold">Oluştur</button>
+      <p id="msg" class="text-sm mt-2"></p>
+    </div>
+    <div id="list" class="space-y-2"></div>
+  </main>
+  <script src="/admin/common.js"></script>
+  <script>
+    async function load() {
+      var list = document.getElementById('list');
+      try {
+        var res = await api('/api/event-groups?limit=50');
+        var rows = res.data || [];
+        list.innerHTML = rows.length
+          ? rows.map(function (g) {
+              return '<div class="rounded-xl border border-slate-800 bg-slate-900 p-4"><p class="font-semibold">' +
+                escapeHtml(g.name) + '</p><p class="text-xs text-slate-400">' + escapeHtml(g.id) +
+                (g.capacity_total ? ' · cap ' + g.capacity_total : '') + '</p></div>';
+            }).join('')
+          : '<p class="text-slate-500 text-sm">Grup yok.</p>';
+      } catch (e) {
+        list.innerHTML = '<p class="text-rose-400 text-sm">' + escapeHtml(e.message) + '</p>';
+      }
+    }
+    document.getElementById('create').onclick = async function () {
+      var msg = document.getElementById('msg');
+      try {
+        await api('/api/event-groups', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: document.getElementById('name').value,
+            capacity_total: document.getElementById('cap').value ? Number(document.getElementById('cap').value) : undefined,
+          }),
+        });
+        msg.className = 'text-sm text-emerald-400 mt-2';
+        msg.textContent = 'Oluşturuldu.';
+        load();
+      } catch (e) {
+        msg.className = 'text-sm text-rose-400 mt-2';
+        msg.textContent = e.message;
+      }
+    };
+    load();
+  </script>
+</body>
+</html>

@@ -1,26 +1,27 @@
-# LOCAL Admin Panel
+# LOCAL Product Ops
 
-Analytics dashboard ve moderasyon paneli. Sadece `.env` içinde `ADMIN_USER_IDS` veya `ADMIN_EMAILS` ile tanımlı kullanıcılar erişebilir.
+Rol kapılı yönetim. `ADMIN_EMAILS` / `ADMIN_USER_IDS` **founder yapmaz** — yalnız mekan paneli override (opsiyonel).
+
+## Roller (`.env`, virgülle)
+
+| Env | Rol | Ne yapar |
+|---|---|---|
+| `FOUNDER_EMAILS` / `FOUNDER_USER_IDS` | founder | Config, L3/L4, brand, hub’ın hepsi |
+| `OPS_MODERATOR_EMAILS` / `OPS_MODERATOR_USER_IDS` | moderator | MOD kuyruğu L0–L2; başvuru onayı yok |
+| `OPS_VENUE_OPS_EMAILS` / `OPS_VENUE_OPS_USER_IDS` | venue_ops | Başvuru onay, pin, nominasyon |
+| `OPS_SUPPORT_EMAILS` / `OPS_SUPPORT_USER_IDS` | support | Arama + not; onay/ceza yok |
+| `OPS_READONLY_EMAILS` / `OPS_READONLY_USER_IDS` | read_only | Nabız; yazma yok |
+| `ADMIN_EMAILS` / `ADMIN_USER_IDS` | — | Mekan paneli override. Ops rolü değil. |
+
+Aynı kişi birden fazla listede olabilir; **founder listesi kazanır**, sonra moderator → venue_ops → support → read_only.
 
 ## Erişim
 
-1. Backend çalışırken tarayıcıda: **http://localhost:3000/admin**
-2. Admin olarak tanımlı bir kullanıcının **email + şifre** ile giriş yapın.
-3. `.env`: `ADMIN_EMAILS=admin@example.com` veya `ADMIN_USER_IDS=uuid1,uuid2`
+1. Backend: **http://localhost:3000/admin/hub.html**
+2. LOCAL hesabı (email + şifre) — yukarıdaki listelerden birinde olmalı.
+3. Hub menüsü `GET /api/admin/me` ile role göre kesilir. MOD: `/admin/mod.html`.
 
 ## Veritabanı
 
-- Migration 021: `reports.action_note` (bildirim işlem notu).
-- **Migration 027:** RS geçmişi ve bildirim şablonları için çalıştırın: `npm run migrate` (backend dizininde). Bu, `rs_history` ve `report_templates` tablolarını ekler.
-
-## Özellikler
-
-- **Dashboard:** Toplam kullanıcı/ritüel, feedback, katılım, bekleyen bildirim (tıklanınca Bildirimler'e gider), askıdaki kullanıcı/ritüel, RS dağılımı, son 7/30/90 gün grafiği, son kayıt olan kullanıcılar, şehirlere göre ritüel.
-- **Kullanıcılar:** Listeleme, arama, üniversite/RS min-max filtresi, sayfa başına 10/20/50, detay (RS, host doğrulama, bildirim sayısı, "Bildirimleri görüntüle" linki), **RS düzenleme**, **profil düzenleme (isim, şehir, üniversite)**, **RS geçmişi**, **şifre sıfırlama**, **anonimleştirme**, askıya alma / kaldırma (onay ile), CSV indir.
-- **Ritüeller:** Listeleme, durum/şehir/tarih aralığı filtresi, sayfa başına 10/20/50, detay (katılımcı, host, bildirim sayısı, "Bildirimleri görüntüle" linki), **ritüel düzenleme (başlık, tarih, kapasite, durum)**, askıya alma / kaldırma (onay ile), CSV indir.
-- **Bildirimler:** Tip ve durum filtresi, kullanıcı/ritüel hedef filtresi, detayda **şablon kullan** (işlem notu), "Kullanıcıyı askıya al" / "Ritüeli askıya al" tek tık, çözüldü/reddet (not ile), CSV indir.
-- **Araçlar:** **Toplu RS güncelleme** (CSV: email veya user_id + rs_score), **duyuru e-postası** (tüm kullanıcılar veya seçili ID’lere).
-- **Şablonlar:** Bildirim işlem notu şablonları (ekle, düzenle, sil); bildirim detayında "Şablon kullan" ile not alanına doldurma.
-- **Feedback:** Son feedback listesi, ritüel ID ile filtre, sayfalama.
-- **Doğrulama:** Host doğrula (user UUID), mekan doğrula (mekan adı + şehir); doğrulanmış host ve mekan listesi, doğrulama kaldırma (revoke).
-- **Genel:** 401'de oturum sonlandı / login'e yönlendirme, işlem sonrası toast, CSV dışa aktarma.
+- Migration 021: `reports.action_note`
+- Migration 027: `rs_history`, `report_templates` — `npm run migrate`

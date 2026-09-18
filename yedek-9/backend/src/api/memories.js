@@ -33,6 +33,8 @@ import {
   assertCameraCaptureSource,
   buildStampLabel,
 } from '../services/memoryStamp.js';
+import { maskRsScoreList, resolveRsForViewer, getRsViewState } from '../services/rsVisibility.js';
+import { assertCameraRollFirst } from '../services/megaSpec.js';
 
 const router = express.Router();
 const MB = 1024 * 1024;
@@ -89,6 +91,11 @@ async function presentMemory(row) {
 async function presentMemoryList(rows = []) {
   const withMedia = await enrichMemoryMediaUrlList(rows);
   return enrichMemoryMusicList(withMedia);
+}
+
+async function presentMemoriesForViewer(rows, viewerId) {
+  const presented = await presentMemoryList(rows);
+  return maskRsScoreList(presented, viewerId, { idKey: 'user_id', scoreKey: 'user_rs_score' });
 }
 
 function validateRitualMemoryCreate(ritual, attendance, { draft = false } = {}) {
@@ -178,7 +185,17 @@ router.get('/:id([0-9a-fA-F-]{36})', authenticateToken, async (req, res) => {
     ) {
       return res.status(404).json({ success: false, error: 'Memory not found' });
     }
-    return res.json({ success: true, data: row });
+    const rsState = await getRsViewState([row.user_id]);
+    const data = {
+      ...row,
+      user_rs_score: resolveRsForViewer(
+        req.user.userId,
+        row.user_id,
+        row.user_rs_score,
+        rsState
+      ).rs_score,
+    };
+    return res.json({ success: true, data });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to fetch memory' });
   }
@@ -294,7 +311,7 @@ router.get('/ritual/:ritualId', authenticateToken, async (req, res) => {
       Number(mix.yanki) || 0.8,
     ]);
 
-    const memories = await presentMemoryList(
+    const memories = await presentMemoriesForViewer(
       result.rows.map((memory) => ({
         id: memory.id,
         ritual_id: memory.ritual_id,
@@ -316,7 +333,8 @@ router.get('/ritual/:ritualId', authenticateToken, async (req, res) => {
         content_url: memory.content_url,
         image_url: memory.content_url,
         photo_url: memory.content_url,
-      }))
+      })),
+      userId
     );
 
     res.json({
@@ -418,7 +436,7 @@ router.get('/pulse', authenticateToken, async (req, res) => {
       is_verified_host_source: false,
       is_verified_venue_source: false,
     }));
-    memories = await presentMemoryList(memories);
+    memories = await presentMemoriesForViewer(memories, viewer_id);
 
     // Eligibility filtering (Spec 5.6) - Only from:
     // 1) direct friends, 2) followed host, 3) verified host, 4) verified venue
@@ -939,6 +957,14 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
         content_url: toS3Uri(finalKey),
         upload_type: uploadType,
       });
+      const rollGate = assertCameraRollFirst({ type: typeCol || uploadType, status });
+      if (!rollGate.ok) {
+        return res.status(400).json({
+          success: false,
+          error: rollGate.error,
+          code: rollGate.code,
+        });
+      }
       const stampLabel = buildStampLabel(ritualRow);
       const result = await pool.query(
         `INSERT INTO memories (id, ritual_id, user_id, content, memory_type, expires_at, content_url, memory_scope, created_in_window, type,
@@ -1068,6 +1094,14 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
     });
 
     const status = req.body.status === 'draft' ? 'draft' : 'published';
+    const rollGate = assertCameraRollFirst({ type: memoryTypeEnum || req.body.type, status });
+    if (!rollGate.ok) {
+      return res.status(400).json({
+        success: false,
+        error: rollGate.error,
+        code: rollGate.code,
+      });
+    }
     // §3: Rulo drafts are photo/video only — quote/playlist are instant
     if (status === 'draft' && !['photo', 'media'].includes(memoryTypeEnum)) {
       return res.status(400).json({
@@ -1162,10 +1196,11 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
       created_at: newMemory.created_at,
       content_url: newMemory.content_url,
     });
+    const [maskedCreate] = await presentMemoriesForViewer([memoryData], user_id);
 
     res.status(201).json({
       success: true,
-      data: memoryData
+      data: maskedCreate || memoryData
     });
   } catch (error) {
     logger.error('Error creating memory', { 
@@ -1461,6 +1496,17 @@ router.post('/:id/vote', authenticateToken, async (req, res) => {
     const vote = Number(req.body.vote);
     if (vote !== 1 && vote !== -1) {
       return res.status(400).json({ success: false, error: 'vote must be 1 or -1' });
+    }
+    const owner = await pool.query(`SELECT user_id FROM memories WHERE id = $1`, [req.params.id]);
+    if (!owner.rows[0]) {
+      return res.status(404).json({ success: false, error: 'Memory not found' });
+    }
+    if (String(owner.rows[0].user_id) === String(req.user.userId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Cannot vote on your own memory',
+        code: 'SELF_VOTE_FORBIDDEN',
+      });
     }
     await pool.query(
       `INSERT INTO memory_votes (memory_id, user_id, vote)

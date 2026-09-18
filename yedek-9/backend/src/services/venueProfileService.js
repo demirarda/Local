@@ -4,10 +4,12 @@
 import pool from '../config/database.js';
 import LOCAL_CONFIG from '../config/localConfig.js';
 import { updateOnboardingStep, maybeMarkVenueLive } from './venueApplicationService.js';
+import { hasMinRole, getVenueAccess } from './venueRoleService.js';
 import { notifyBadgeApproval } from './notifications.js';
 import { computeVenueTrustAura } from './venueTrustAuraService.js';
 import { getFeaturedArchivePreview } from './venueArchiveService.js';
 import { resolveBadgeKeys } from './badgeEngine.js';
+import { resolveTierFromVenue } from './venuePackageService.js';
 
 const BADGE_MAX = LOCAL_CONFIG.venue.BADGE_HIGHLIGHT_VENUE;
 
@@ -18,6 +20,122 @@ export const LOCKED_SECTION_IDS = [
   'archive_full',
   'business_tab',
 ];
+
+/** §7 gerçekleşme-sicili yalnız para-alan panel (ücretli yönetici). */
+export function canSeeFulfillmentSicil({ canManage, venue } = {}) {
+  if (!canManage) return false;
+  return resolveTierFromVenue(venue || {}) !== 'free';
+}
+
+async function computeVenueLifeLine(venueId, { includeFulfillment = false } = {}) {
+  const minN = Number(LOCAL_CONFIG.venue.LIFE_LINE_MIN || LOCAL_CONFIG.venue.MIN_DISPLAY_N || 5);
+  let past = 0;
+  let live = 0;
+  let planned = 0;
+  let denied = 0;
+  let attempted = 0;
+
+  try {
+    const sealed = await pool.query(
+      `SELECT COUNT(DISTINCT DATE(r.start_time))::int AS c
+       FROM rituals r
+       JOIN ritual_attendance ra ON ra.ritual_id = r.id
+       WHERE r.venue_id = $1
+         AND ra.checkin_at IS NOT NULL
+         AND COALESCE(ra.checkin_phase, 'sealed') = 'sealed'
+         AND r.suspended_at IS NULL`,
+      [venueId]
+    );
+    past = Number(sealed.rows[0]?.c || 0);
+  } catch (_e) {
+    past = 0;
+  }
+
+  try {
+    const liveR = await pool.query(
+      `SELECT COUNT(*)::int AS c
+       FROM rituals
+       WHERE venue_id = $1
+         AND status::text IN ('live')
+         AND suspended_at IS NULL`,
+      [venueId]
+    );
+    live = Number(liveR.rows[0]?.c || 0);
+  } catch (_e) {
+    live = 0;
+  }
+
+  try {
+    const slots = await pool.query(
+      `SELECT COUNT(*)::int AS c
+       FROM venue_slots
+       WHERE venue_id = $1
+         AND status::text = 'open'
+         AND starts_at IS NOT NULL
+         AND starts_at > NOW()`,
+      [venueId]
+    );
+    planned = Number(slots.rows[0]?.c || 0);
+  } catch (_e) {
+    planned = 0;
+  }
+
+  try {
+    const futureRituals = await pool.query(
+      `SELECT COUNT(*)::int AS c
+       FROM rituals
+       WHERE venue_id = $1
+         AND start_time > NOW()
+         AND status::text IN ('prelobby', 'active', 'created')
+         AND suspended_at IS NULL`,
+      [venueId]
+    );
+    planned += Number(futureRituals.rows[0]?.c || 0);
+  } catch (_e) {
+    /* ignore */
+  }
+
+  try {
+    const fulfill = await pool.query(
+      `SELECT
+         COUNT(*)::int AS attempted,
+         COUNT(*) FILTER (WHERE cancel_reason = 'yer_veremedik')::int AS denied
+       FROM rituals
+       WHERE venue_id = $1`,
+      [venueId]
+    );
+    attempted = Number(fulfill.rows[0]?.attempted || 0);
+    denied = Number(fulfill.rows[0]?.denied || 0);
+  } catch (_e) {
+    attempted = 0;
+    denied = 0;
+  }
+
+  const soft = past < minN;
+  const given = Math.max(0, attempted - denied);
+  const placeRate = attempted > 0 ? given / attempted : null;
+
+  const fulfillment = includeFulfillment
+    ? {
+        place_given_rate: placeRate,
+        place_given_label:
+          placeRate == null ? null : `Yer-verme %${Math.round(placeRate * 100)}`,
+      }
+    : {
+        place_given_rate: null,
+        place_given_label: null,
+      };
+
+  return {
+    past: soft ? null : past,
+    live,
+    planned: soft ? null : planned,
+    soft,
+    min_n: minN,
+    placeholder: soft ? 'Yeni mekan' : null,
+    ...fulfillment,
+  };
+}
 
 function defaultLockedSections(isManager) {
   const mk = (id, label, teaser) => ({
@@ -72,15 +190,8 @@ export function validateVitrinePayload(body = {}) {
   return { ok: true, vitrine, highlighted_badge_keys: badges };
 }
 
-async function isVenueManager(userId, venueId, email = '') {
-  if (!userId) return false;
-  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  if (adminIds.includes(String(userId))) return true;
-  const r = await pool.query(
-    `SELECT 1 FROM venue_managers WHERE venue_id = $1 AND user_id = $2 LIMIT 1`,
-    [venueId, userId]
-  );
-  return r.rows.length > 0;
+async function isVenueManager(userId, venueId, email = '', minRole = 'staff') {
+  return hasMinRole(userId, venueId, minRole, email);
 }
 
 export async function getVenueProfile(venueId, viewerUserId = null, viewerEmail = '') {
@@ -90,7 +201,8 @@ export async function getVenueProfile(venueId, viewerUserId = null, viewerEmail 
       `SELECT id, name, city, address, description, slug, vitrine, vitrine_published,
               highlighted_badge_keys, subscription_tier, is_verified, owner_user_id,
               venue_rs, rs_rating_count, badge_tier, total_rituals, created_at,
-              chain_id, brand_id
+              chain_id, brand_id, pro_enabled, city_partner_enabled, category,
+              membership_vitrine_enabled
        FROM venues WHERE id = $1`,
       [venueId]
     );
@@ -106,7 +218,9 @@ export async function getVenueProfile(venueId, viewerUserId = null, viewerEmail 
   if (r.rows.length === 0) return { ok: false, status: 404, error: 'Venue not found' };
 
   const row = r.rows[0];
-  const canManage = await isVenueManager(viewerUserId, venueId, viewerEmail);
+  const access = await getVenueAccess(viewerUserId, venueId, viewerEmail);
+  const canManage = Boolean(access.ok);
+  const canEdit = Boolean(access.permissions?.profile);
   const vitrine = normalizeVitrine(row.vitrine);
   const showVitrine = canManage || row.vitrine_published;
 
@@ -120,7 +234,7 @@ export async function getVenueProfile(venueId, viewerUserId = null, viewerEmail 
     [venueId]
   );
 
-  const [trustAura, archivePreview, highlightedBadges, chipBreakdown, characterCard] =
+  const [trustAura, archivePreview, highlightedBadges, chipBreakdown, characterCard, lifeLine, membership] =
     await Promise.all([
       computeVenueTrustAura(venueId, { audience: canManage ? 'panel' : 'public' }),
       getFeaturedArchivePreview(venueId, 3),
@@ -129,6 +243,18 @@ export async function getVenueProfile(venueId, viewerUserId = null, viewerEmail 
       import('./discoveryProfileService.js')
         .then((m) => m.buildVenueCharacterCard(venueId))
         .catch(() => null),
+      computeVenueLifeLine(venueId, {
+        includeFulfillment: canSeeFulfillmentSicil({ canManage, venue: row }),
+      }).catch(() => null),
+      import('./venueMembershipService.js')
+        .then((m) =>
+          m.getVenueMembershipBundle(venueId, { canManage, viewerUserId })
+        )
+        .catch(() => ({
+          vitrine_enabled: true,
+          badge: null,
+          plans: [],
+        })),
     ]);
 
   return {
@@ -158,18 +284,24 @@ export async function getVenueProfile(venueId, viewerUserId = null, viewerEmail 
       archive_preview_count: canManage
         ? archiveCount.rows[0]?.c || 0
         : Math.min(archiveCount.rows[0]?.c || 0, 3),
-      locked_sections: defaultLockedSections(canManage),
+      locked_sections: defaultLockedSections(canEdit),
       can_manage: canManage,
+      my_role: access.ok ? access.role : null,
+      permissions: access.ok ? access.permissions : null,
       chip_breakdown: chipBreakdown || { hidden: true, breakdown: [] },
       /** §12 karakter kartı — hacim kartta yok */
       character_card: characterCard?.card || null,
       character_volume: characterCard?.profile_volume || null,
+      life_line: lifeLine,
+      category: row.category || vitrine.categories?.[0] || null,
+      membership: membership || { vitrine_enabled: true, badge: null, plans: [] },
+      membership_badge: membership?.badge || null,
     },
   };
 }
 
 export async function updateVenueVitrine(venueId, userId, payload, email = '') {
-  const allowed = await isVenueManager(userId, venueId, email);
+  const allowed = await isVenueManager(userId, venueId, email, 'manager');
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed to edit vitrine' };
 
   const valid = validateVitrinePayload(payload);
@@ -211,7 +343,7 @@ export async function updateVenueVitrine(venueId, userId, payload, email = '') {
 }
 
 export async function publishVenueVitrine(venueId, userId, email = '') {
-  const allowed = await isVenueManager(userId, venueId, email);
+  const allowed = await isVenueManager(userId, venueId, email, 'manager');
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed' };
 
   const check = await pool.query(`SELECT vitrine FROM venues WHERE id = $1`, [venueId]);

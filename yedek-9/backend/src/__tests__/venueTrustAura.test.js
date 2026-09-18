@@ -7,8 +7,15 @@ import {
   buildAuraDistribution,
   applyMinDisplayGate,
   repeatRaterWeight,
+  RATER_ID_SQL,
 } from '../services/venueTrustAuraService.js';
 import LOCAL_CONFIG from '../config/localConfig.js';
+import { canSeeFulfillmentSicil } from '../services/venueProfileService.js';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe('venue Trust/Aura VEN-4 (sonMD)', () => {
   test('config: 0–1 prior_internal · MIN_DISPLAY · REPEAT_RATER', () => {
@@ -16,25 +23,25 @@ describe('venue Trust/Aura VEN-4 (sonMD)', () => {
     expect(LOCAL_CONFIG.venue.DISPLAY_SCALE).toBe(10);
     expect(LOCAL_CONFIG.venue.PRIOR).toBe(5.0);
     expect(LOCAL_CONFIG.venue.MIN_DISPLAY_N).toBe(5);
-    expect(LOCAL_CONFIG.venue.MIN_ANSWERS_PER_OBS).toBe(2);
-    expect(LOCAL_CONFIG.venue.REPEAT_RATER_W).toEqual([1.0, 0.5, 0.5, 0.25]);
+    expect(LOCAL_CONFIG.venue.MIN_ANSWERS_PER_OBS).toBe(1);
+    expect(LOCAL_CONFIG.venue.K).toBe(5);
+    expect(LOCAL_CONFIG.venue.WINDOW_DAYS).toBe(120);
+    expect(LOCAL_CONFIG.venue.MAX_OBS_PER_PERSON_PER_NIGHT).toBe(2);
   });
 
   test('feelingToInternal 0–1 · feelingToScore display ×10', () => {
     expect(feelingToInternal('green')).toBe(1);
-    expect(feelingToInternal('yellow')).toBe(0.65);
-    expect(feelingToInternal('red')).toBe(0.3);
+    expect(feelingToInternal('yellow')).toBe(0.5);
+    expect(feelingToInternal('red')).toBe(0);
     expect(feelingToScore('green')).toBe(10);
-    expect(feelingToScore('yellow')).toBe(6.5);
-    expect(feelingToScore('red')).toBe(3);
+    expect(feelingToScore('yellow')).toBe(5);
+    expect(feelingToScore('red')).toBe(0);
   });
 
-  test('repeatRaterWeight bands', () => {
+  test('repeatRaterWeight 1/(1+k·n)', () => {
     expect(repeatRaterWeight(0)).toBe(1);
-    expect(repeatRaterWeight(1)).toBe(0.5);
-    expect(repeatRaterWeight(2)).toBe(0.5);
-    expect(repeatRaterWeight(3)).toBe(0.25);
-    expect(repeatRaterWeight(9)).toBe(0.25);
+    expect(repeatRaterWeight(1)).toBeCloseTo(0.5, 5);
+    expect(repeatRaterWeight(3)).toBeCloseTo(0.25, 5);
   });
 
   test('VEN-4 prior fallback when n_eff=0 (display 5.0)', () => {
@@ -62,7 +69,7 @@ describe('venue Trust/Aura VEN-4 (sonMD)', () => {
     const pub = applyMinDisplayGate(base, { audience: 'public' });
     expect(pub.score_hidden).toBe(true);
     expect(pub.score).toBeNull();
-    expect(pub.public_label).toMatch(/gözlem/i);
+    expect(pub.public_label).toMatch(/beş kez|Yeni mekan/i);
     const panel = applyMinDisplayGate(base, { audience: 'panel' });
     expect(panel.score_hidden).toBe(false);
     expect(panel.score).toBe(base.score);
@@ -101,5 +108,25 @@ describe('venue Trust/Aura VEN-4 (sonMD)', () => {
     expect(kahve.status).toBe('tentative');
     const muzik = r.categories.find((c) => c.category === 'muzik');
     expect(muzik.status).toBe('stable');
+  });
+
+  test('§7 rater id is from_user_id/rater_id — f.user_id yok', () => {
+    expect(RATER_ID_SQL).toBe('COALESCE(f.from_user_id, f.rater_id)');
+    const src = readFileSync(join(__dirname, '../services/venueTrustAuraService.js'), 'utf8');
+    expect(src).not.toMatch(/f\.user_id,/);
+    expect(src).toContain("place === 'zone'");
+  });
+
+  test('§7 gerçekleşme-sicili yalnız para-alan yönetici', () => {
+    expect(canSeeFulfillmentSicil({ canManage: false, venue: { subscription_tier: 'hakim' } })).toBe(
+      false
+    );
+    expect(canSeeFulfillmentSicil({ canManage: true, venue: { subscription_tier: 'free' } })).toBe(
+      false
+    );
+    expect(canSeeFulfillmentSicil({ canManage: true, venue: { subscription_tier: 'operator' } })).toBe(
+      true
+    );
+    expect(canSeeFulfillmentSicil({ canManage: true, venue: { pro_enabled: true } })).toBe(true);
   });
 });

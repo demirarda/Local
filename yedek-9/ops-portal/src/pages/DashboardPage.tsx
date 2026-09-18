@@ -83,7 +83,7 @@ export default function DashboardPage() {
             {data.sections.venues && (
               <section className="bg-white rounded-xl border border-navy/10 p-5">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="font-semibold text-navy">Mekanlar</h2>
+                  <h2 className="font-semibold text-navy">Launch CRM</h2>
                   <Link to="/venues" className="text-sm text-gold hover:underline">
                     Tümü →
                   </Link>

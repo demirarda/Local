@@ -81,10 +81,10 @@ export async function processDoorClosingWarnings() {
   return { notified };
 }
 
-/** Feedback kapanis uyarisi — window bitisinden 6 saat once */
+/** Feedback kapanis uyarisi — window bitisinden ~2 saat once (şartname §11) */
 export async function processFeedbackClosingWarnings() {
   const floorH = LOCAL_CONFIG.ritual.FEEDBACK_FLOOR_HOURS;
-  const warnBeforeH = 6;
+  const warnBeforeH = 2;
   const rows = await pool.query(
     `SELECT r.id AS ritual_id, r.title, ra.user_id
      FROM rituals r

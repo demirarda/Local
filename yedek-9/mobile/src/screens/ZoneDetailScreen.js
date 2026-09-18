@@ -9,7 +9,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { createModReport, fetchZone, scanZoneMarker, startZoneSpark, joinZoneSpark, followZone, unfollowZone, setZoneFollowBell } from '../services/api';
+import { createModReport, fetchZone, scanZoneMarker, startZoneSpark, joinZoneSpark, followZone, unfollowZone, setZoneFollowBell, fetchZoneLeague } from '../services/api';
+import { DsBinsChart } from '../components/DsCompassCard';
 import useConfigStore from '../store/configStore';
 import useAuthStore from '../store/authStore';
 import ReportModal from '../components/ReportModal';
@@ -30,6 +31,7 @@ export default function ZoneDetailScreen({ route, navigation }) {
   const [followLoading, setFollowLoading] = useState(false);
   const [bellLoading, setBellLoading] = useState(false);
   const [sparkMeetup, setSparkMeetup] = useState(null);
+  const [league, setLeague] = useState(null);
   const sparkEnabled = useConfigStore((s) => s.config?.zone?.spark_enabled) === true;
   const currentUserId = useAuthStore((s) => s.user?.id);
 
@@ -45,6 +47,8 @@ export default function ZoneDetailScreen({ route, navigation }) {
           setFollowing(Boolean(data?.follow?.is_following));
           setBell(Boolean(data?.follow?.bell));
         }
+        const lig = await fetchZoneLeague().catch(() => null);
+        if (!cancelled) setLeague(lig);
       } catch (e) {
         if (!cancelled) Alert.alert('Hata', e?.message || 'Zone yüklenemedi');
       } finally {
@@ -158,24 +162,21 @@ export default function ZoneDetailScreen({ route, navigation }) {
 
   const live = zone?.live_rituals || [];
   const archive = zone?.archive || [];
-  const dist = zone?.distribution?.hakimiyet || [];
+  const dist = zone?.character?.parts || zone?.distribution?.hakimiyet || [];
+  const liveness = zone?.liveness;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
         <MaterialIcons name="arrow-back" size={22} color={TEXT} />
       </TouchableOpacity>
-      <Text style={styles.eyebrow}>ZONE</Text>
+      <Text style={styles.eyebrow}>ZONE · kamusal zemin · işletme yok</Text>
       <Text style={styles.title}>{zone?.name || 'Zone'}</Text>
       <Text style={styles.meta}>
         {zone?.marker_type || 'TREE'}
         {zone?.radius_m ? ` · ${zone.radius_m}m` : ''}
+        {' · kamusal nokta'}
       </Text>
-      {zone?.geo_lat != null && zone?.geo_lng != null ? (
-        <Text style={styles.meta}>
-          {Number(zone.geo_lat).toFixed(5)}, {Number(zone.geo_lng).toFixed(5)}
-        </Text>
-      ) : null}
 
       {currentUserId ? (
         <FollowBellControls
@@ -193,11 +194,31 @@ export default function ZoneDetailScreen({ route, navigation }) {
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Aura</Text>
         <Text style={styles.panelBody}>
-          {zone?.aura?.score != null ? zone.aura.score.toFixed(2) : '—'}
-          {zone?.aura?.n_eff != null ? ` · ${zone.aura.n_eff} gozlem` : ''}
+          {zone?.aura?.words_copy || (zone?.sik_anilanlar || []).slice(0, 3).join(' · ') || '—'}
         </Text>
-        <Text style={styles.muted}>Trust yok (zone)</Text>
+        <Text style={styles.muted}>Trust sayısı yok · Sık anılanlar (P2Z kelimeleri)</Text>
       </View>
+
+      <View style={styles.panel}>
+        <Text style={styles.panelTitle}>Canlılık</Text>
+        <Text style={styles.panelBody}>{liveness?.copy || (live.length ? 'şu an canlı' : 'şu an sessiz')}</Text>
+        <Text style={styles.muted}>
+          Geçmiş masa {liveness?.past_tables ?? archive.length} · bu hafta {liveness?.weekly_rhythm ?? '—'}
+        </Text>
+      </View>
+
+      {zone?.ds_discovery && !zone.ds_discovery.hidden ? (
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Keşif endeksi</Text>
+          <Text style={styles.panelBody}>
+            {zone.ds_discovery.index != null ? Number(zone.ds_discovery.index).toFixed(2) : '—'}
+          </Text>
+          <DsBinsChart bins={zone.ds_discovery.bins || []} />
+          <Text style={styles.muted}>
+            Anonim mühürlü kitle · n={zone.ds_discovery.n} · yargı yok · kişisel DS yok
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Canli Rituals</Text>
@@ -236,17 +257,52 @@ export default function ZoneDetailScreen({ route, navigation }) {
       </View>
 
       <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Dagitim (hakimiyet)</Text>
+        <Text style={styles.panelTitle}>Karakter</Text>
+        <Text style={styles.panelBody}>{zone?.character?.ruhu || zone?.distribution?.ruhu || '—'}</Text>
         {dist.length === 0 ? (
           <Text style={styles.muted}>Veri yok</Text>
         ) : (
-          dist.map((d) => (
-            <Text key={d.category} style={styles.listItem}>
-              {d.category}: {d.n}
+          dist.slice(0, 6).map((d) => (
+            <Text key={d.label || d.category} style={styles.listItem}>
+              %{d.pct ?? '—'} {d.label || d.category}
             </Text>
           ))
         )}
+        {(zone?.distribution?.uni || []).length ? (
+          <Text style={styles.muted}>
+            Üni: {(zone.distribution.uni || []).slice(0, 3).map((u) => u.uni).join(' · ')}
+          </Text>
+        ) : null}
       </View>
+
+      {league ? (
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Zone ligi (bu hafta en canlı)</Text>
+          <Text style={styles.muted}>Canlılık · skor/kişi yok · ödül rozet+şehir-şöhreti</Text>
+          {(league.standings || []).length === 0 ? (
+            <Text style={styles.muted}>Bu hafta henüz masa yok</Text>
+          ) : (
+            league.standings.slice(0, 8).map((row) => (
+              <Text key={row.zone_id} style={styles.listItem}>
+                {row.rank}. {row.name} · {row.tables} masa
+              </Text>
+            ))
+          )}
+        </View>
+      ) : null}
+
+      {Array.isArray(zone?.nearby_venues) && zone.nearby_venues.length ? (
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Yakın mekanlar</Text>
+          <Text style={styles.muted}>Zone canlanır → C→Z→V köprüsü</Text>
+          {zone.nearby_venues.map((v) => (
+            <Text key={v.id} style={styles.listItem}>
+              {v.name}
+              {v.distance_m != null ? ` · ${Math.round(v.distance_m)}m` : ''}
+            </Text>
+          ))}
+        </View>
+      ) : null}
 
       <TouchableOpacity style={styles.secondaryBtn} onPress={onMarkerScan}>
         <Text style={styles.secondaryBtnText}>ZONE-KEY tara (+1p)</Text>
@@ -278,7 +334,7 @@ export default function ZoneDetailScreen({ route, navigation }) {
       )}
 
       <Text style={styles.hint}>
-        Zone raporları moderasyon + OPS çift kuyruğa düşer.
+        P2Z, zone bakım ekibine rapordur. Totem/temizlik/işaret ZONE-OPS kuyruğuna düşer.
       </Text>
       <TouchableOpacity style={styles.reportBtn} onPress={() => setShowReport(true)}>
         <Text style={styles.reportBtnText}>Zone bildir</Text>

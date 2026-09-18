@@ -42,16 +42,17 @@ describe('RS pipeline (son-part.md §5)', () => {
     expect(getMaturationMultiplier(12)).toBe(1.0);
   });
 
-  test('DS skipped before ritual 6', () => {
+  test('§2 DS applies from ritual 1', () => {
+    expect(LOCAL_CONFIG.rs.DS_APPLY_FROM).toBe(1);
     const early = computeRsPipeline({
       S_r: 0.7,
       currentRS: 5.5,
-      ritualIndex: 3,
+      ritualIndex: 1,
       dsMultiplier: 1.2,
       bcTrend: 0.8,
     });
-    expect(early.dsApplied).toBe(false);
-    expect(early.deltaAfterDs).toBe(early.deltaRawCapped);
+    expect(early.dsApplied).toBe(true);
+    expect(early.deltaAfterDs).toBeCloseTo(early.deltaRawCapped * 1.2, 6);
   });
 
   test('BC skipped before ritual 4', () => {
@@ -129,6 +130,27 @@ describe('RS pipeline (son-part.md §5)', () => {
       IF_r: 0,
     });
     expect(over.P_r).toBe(RS_CONSTANTS.S_POS_MAX);
+
+    const iqNull = computeTruthSignalFromComponents({
+      A_r: 1,
+      IQ_r: null,
+      CF_r: 1,
+      M_r: 0,
+      IF_r: 0,
+    });
+    expect(iqNull.iq_null).toBe(true);
+    // §4: P = (.30·AIS + .05·MB) / .35 × .75  → MB=0 ⇒ 0.30/0.35 × 0.75
+    expect(iqNull.P_r).toBeCloseTo((0.3 / 0.35) * 0.75, 5);
+
+    const iqZero = computeTruthSignalFromComponents({
+      A_r: 1,
+      IQ_r: 0,
+      CF_r: 1,
+      M_r: 0,
+      IF_r: 0,
+    });
+    expect(iqZero.iq_null).toBe(false);
+    expect(iqZero.P_r).toBeCloseTo(0.3, 5);
   });
 
   test('blendIqFromRaw n=1 uses 60% neutral + 40% raw', () => {
@@ -225,7 +247,7 @@ describe('No-peer path (§4)', () => {
     );
   });
 
-  test('no_peer engagement blocks positive delta without R1 or memory', () => {
+  test('no_peer engagement blocks positive delta without RQ, R1 or memory', () => {
     expect(
       applyNoPeerEngagementGate(0.05, { noPeerPath: true, hasR1: false, hasMemory: false })
     ).toBe(0);
@@ -234,6 +256,14 @@ describe('No-peer path (§4)', () => {
     ).toBe(0.05);
     expect(
       applyNoPeerEngagementGate(0.05, { noPeerPath: true, hasR1: false, hasMemory: true })
+    ).toBe(0.05);
+    expect(
+      applyNoPeerEngagementGate(0.05, {
+        noPeerPath: true,
+        hasR1: false,
+        hasMemory: false,
+        hasRq: true,
+      })
     ).toBe(0.05);
   });
 

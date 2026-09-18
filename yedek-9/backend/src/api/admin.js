@@ -1,14 +1,27 @@
 import express from 'express';
 import pool from '../config/database.js';
-import { authenticateToken, requireAdmin } from './auth.js';
+import { authenticateToken, requireAdmin, requireProductOps } from './auth.js';
 import { logAdminAction } from '../utils/auditLog.js';
 import bcrypt from 'bcryptjs';
 import { sendAnnouncementEmail } from '../services/email.js';
+import { navForRole } from '../services/productOpsRoles.js';
 
 const router = express.Router();
 
 router.use(authenticateToken);
 router.use(requireAdmin);
+
+router.get('/me', (req, res) => {
+  const role = req.productOpsRole || 'founder';
+  return res.json({
+    success: true,
+    data: {
+      role,
+      nav: navForRole(role),
+      user: { id: req.user?.userId, email: req.user?.email },
+    },
+  });
+});
 
 // GET /api/admin/users - List users (paginated, optional search, university, rs_min, rs_max)
 router.get('/users', async (req, res) => {
@@ -721,7 +734,7 @@ router.post('/announcements', async (req, res) => {
 });
 
 // POST /api/admin/users/:id/anonymize - Anonymize user (GDPR: clear PII, keep rs_score etc.)
-router.post('/users/:id/anonymize', requireAdmin, async (req, res) => {
+router.post('/users/:id/anonymize', requireProductOps('identity'), async (req, res) => {
   try {
     const { id } = req.params;
     const authUserId = req.user?.userId;
@@ -1007,7 +1020,7 @@ router.get('/venue-applications', async (req, res) => {
   }
 });
 
-router.post('/venue-applications/:id/approve', async (req, res) => {
+router.post('/venue-applications/:id/approve', requireProductOps('applications_decide'), async (req, res) => {
   try {
     const { approveVenueApplication } = await import('../services/venueApplicationService.js');
     const result = await approveVenueApplication(req.params.id, req.user.userId, {
@@ -1029,7 +1042,7 @@ router.post('/venue-applications/:id/approve', async (req, res) => {
   }
 });
 
-router.post('/venue-applications/:id/reject', async (req, res) => {
+router.post('/venue-applications/:id/reject', requireProductOps('applications_decide'), async (req, res) => {
   try {
     const { rejectVenueApplication } = await import('../services/venueApplicationService.js');
     const result = await rejectVenueApplication(req.params.id, req.user.userId, {
@@ -1210,7 +1223,7 @@ router.get('/rs-sanity', async (req, res) => {
 });
 
 // GET /api/admin/config — §12 kalibrasyon snapshot (read-only)
-router.get('/config', async (_req, res) => {
+router.get('/config', requireProductOps('config'), async (_req, res) => {
   try {
     const { getPublicConfig } = await import('../services/publicConfigService.js');
     const LOCAL_CONFIG = (await import('../config/localConfig.js')).default;
@@ -1228,7 +1241,7 @@ router.get('/config', async (_req, res) => {
 });
 
 // GET /api/admin/founder-decisions — son-part1.md §10 çözümleri
-router.get('/founder-decisions', async (_req, res) => {
+router.get('/founder-decisions', requireProductOps('config'), async (_req, res) => {
   try {
     const { getFounderDecisionsSummary } = await import('../config/founderDecisions.js');
     return res.json({ success: true, data: getFounderDecisionsSummary() });
@@ -1249,7 +1262,7 @@ router.get('/users/:id/score-events', async (req, res) => {
 });
 
 // POST /api/admin/venues/:id/package-activate — odeme sonrasi manuel tier
-router.post('/venues/:id/package-activate', async (req, res) => {
+router.post('/venues/:id/package-activate', requireProductOps('config'), async (req, res) => {
   try {
     const { activateVenuePackageTier } = await import('../services/venueBusinessService.js');
     const result = await activateVenuePackageTier(req.params.id, req.body?.tier_id);
@@ -1273,7 +1286,7 @@ router.get('/brands', async (req, res) => {
   }
 });
 
-router.post('/brands', async (req, res) => {
+router.post('/brands', requireProductOps('brand'), async (req, res) => {
   try {
     const { createBrandAdmin } = await import('../services/brandService.js');
     const result = await createBrandAdmin({
@@ -1300,7 +1313,7 @@ router.post('/brands', async (req, res) => {
   }
 });
 
-router.post('/brands/:id/members', async (req, res) => {
+router.post('/brands/:id/members', requireProductOps('brand'), async (req, res) => {
   try {
     const { addBrandMember } = await import('../services/brandService.js');
     const result = await addBrandMember(req.params.id, req.body?.user_id, {
@@ -1313,6 +1326,56 @@ router.post('/brands/:id/members', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to add brand member' });
+  }
+});
+
+router.get('/p2c-heatmap', async (req, res) => {
+  try {
+    const { buildP2cZoneCandidateHeatmap } = await import('../services/p2cArchiveService.js');
+    const data = await buildP2cZoneCandidateHeatmap({
+      city: req.query.city || null,
+      windowDays: req.query.window_days,
+    });
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to build P2C heatmap' });
+  }
+});
+
+router.post('/zones/from-candidate', async (req, res) => {
+  try {
+    const { declareZoneFromCandidate } = await import('../services/zoneService.js');
+    const result = await declareZoneFromCandidate({
+      name: req.body?.name,
+      geoLat: req.body?.geo_lat,
+      geoLng: req.body?.geo_lng,
+      people: req.body?.people,
+      rituals: req.body?.rituals,
+      isHome: req.body?.is_home === true,
+      cityId: req.body?.city_id || null,
+      radiusM: req.body?.radius_m,
+    });
+    if (!result.ok) {
+      return res.status(result.status || 403).json({
+        success: false,
+        error: result.error || result.code,
+        code: result.code,
+      });
+    }
+    return res.status(201).json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/admin/at9-trace-farming — §10 AT-9 tek-tık-iz izleme
+router.get('/at9-trace-farming', async (req, res) => {
+  try {
+    const { buildAt9TraceFarmingReport } = await import('../services/at9TraceFarmingService.js');
+    const data = await buildAt9TraceFarmingReport({ windowDays: req.query.days });
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to load AT-9 metric' });
   }
 });
 

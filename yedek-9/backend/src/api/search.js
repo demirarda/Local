@@ -48,6 +48,26 @@ router.get('/chains/:id', authenticateToken, async (req, res) => {
   }
 });
 
+router.get('/brands/:id/ds-fit', authenticateToken, async (req, res) => {
+  try {
+    const { isBrandMember } = await import('../services/brandService.js');
+    const { isVenuePlatformOverride } = await import('../services/productOpsRoles.js');
+    const member = await isBrandMember(req.user?.userId, req.params.id);
+    const override = isVenuePlatformOverride(req.user?.userId, req.user?.email);
+    if (!member && !override) {
+      return res.status(403).json({ success: false, error: 'Brand member required' });
+    }
+    const { getBrandCrowdFit } = await import('../services/dsAggregateService.js');
+    const result = await getBrandCrowdFit(req.params.id);
+    if (!result.ok) {
+      return res.status(result.status || 400).json({ success: false, error: result.error });
+    }
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Brand crowd fit failed' });
+  }
+});
+
 router.get('/brands/:id', authenticateToken, async (req, res) => {
   try {
     const result = await getBrandProfile(req.params.id);

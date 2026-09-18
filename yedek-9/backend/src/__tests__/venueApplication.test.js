@@ -19,10 +19,19 @@ describe('venue application (F5 §9.1)', () => {
       venue_name: 'Cafe Roma',
       city: 'Milano',
       proof_notes: 'Partita IVA ve mekan fotograflari eklendi.',
-      category: 'Kahve',
+      maps_url: 'https://maps.google.com/?cid=1',
+      photo_urls: [
+        'https://cdn.example/1.jpg',
+        'https://cdn.example/2.jpg',
+        'https://cdn.example/3.jpg',
+        'https://cdn.example/4.jpg',
+        'https://cdn.example/5.jpg',
+      ],
+      commitment_accepted: true,
     });
     expect(r.ok).toBe(true);
     expect(r.data.venue_name).toBe('Cafe Roma');
+    expect(r.data.closing_time).toBeTruthy();
   });
 
   test('onboarding steps match spec order', () => {
@@ -34,8 +43,8 @@ describe('venue application (F5 §9.1)', () => {
   });
 
   test('VEN-4 config constants', () => {
-    expect(LOCAL_CONFIG.venue.K).toBe(3);
+    expect(LOCAL_CONFIG.venue.K).toBe(5);
     expect(LOCAL_CONFIG.venue.PRIOR).toBe(5.0);
-    expect(LOCAL_CONFIG.venue.WINDOW_DAYS).toBe(90);
+    expect(LOCAL_CONFIG.venue.WINDOW_DAYS).toBe(120);
   });
 });

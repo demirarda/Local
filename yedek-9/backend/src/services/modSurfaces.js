@@ -9,6 +9,7 @@ export const REPORT_CATEGORIES = [
   'report_cat_other',
   'report_cat_csam',
   'report_cat_sexual_assault',
+  'guvenlik_bildir',
 ];
 
 /** 11+ yüzey — rapor açılabilir entry points */

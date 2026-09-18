@@ -95,6 +95,7 @@ export default function RSTransparencyScreen() {
   }
 
   const currentRS = rsHistory?.currentRS ?? null;
+  const notShownYet = Boolean(rsHistory?.not_shown_yet);
   const feedbackCount = rsHistory?.feedbackCount ?? 0;
   const changes = rsHistory?.changes ?? [];
   const hasData = currentRS != null && currentRS !== undefined;
@@ -148,9 +149,13 @@ export default function RSTransparencyScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <View style={styles.heroScore}>
           <View style={styles.hsBody}>
-            <Text style={styles.hsLabel}>Guvenilirlik Skoru · LTE-3 v3</Text>
+            <Text style={styles.hsLabel}>
+              {notShownYet ? 'HENÜZ GÖSTERİLMİYOR' : 'Guvenilirlik Skoru'}
+            </Text>
             <View style={styles.hsMain}>
-              <Text style={styles.hsNum}>{hasData ? Number(currentRS).toFixed(1) : '—'}</Text>
+              <Text style={styles.hsNum}>
+                {notShownYet ? '…' : hasData ? Number(currentRS).toFixed(1) : '—'}
+              </Text>
               <View style={styles.hsRight}>
                 <Text style={styles.hsStatus}>{statusText} · {rsDelta >= 0 ? 'Yukseliyor ↑' : 'Dusuyor ↓'}</Text>
                 <View style={styles.hsTier}><Text style={styles.hsTierText}>{rsBadge.label}</Text></View>

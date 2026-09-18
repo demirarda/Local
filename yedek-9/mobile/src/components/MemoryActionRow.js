@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 
 /** Memory action row — v3 §15: ▲ sayı · ▼ (sayı yok) · Söz · Yankı */
 export default function MemoryActionRow({
@@ -12,9 +13,11 @@ export default function MemoryActionRow({
   onDownvote,
   onSoz,
   onEcho,
-  lang = 'tr',
+  lang: langProp,
   style,
 }) {
+  const storedLang = useLanguageStore((s) => s.lang);
+  const lang = langProp === 'en' || langProp === 'tr' ? langProp : storedLang;
   const sozLabel = t('soz', lang);
   const yankiLabel = t('yanki', lang);
 

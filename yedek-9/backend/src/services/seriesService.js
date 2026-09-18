@@ -354,6 +354,8 @@ export async function generateSeriesInstances() {
     const rule = normalizeRecurrenceRule(row.recurrence_rule);
     const days = rule.interval_days;
     if (await closeSeriesIfCompleted(row)) continue;
+    const slept = await sleepEmptySeries(row.id);
+    if (slept.asleep) continue;
 
     const last = await pool.query(
       `SELECT start_time FROM rituals WHERE series_id = $1 ORDER BY start_time DESC LIMIT 1`,
@@ -373,6 +375,73 @@ export async function generateSeriesInstances() {
     if (spawned && !spawned.skipped) created += 1;
   }
   return { created, series: series.rows.length };
+}
+
+export async function sleepEmptySeries(seriesId, { weeks = null } = {}) {
+  const { seriesSleepWeeks } = await import('./megaPackages.js');
+  const n = weeks != null ? Number(weeks) : seriesSleepWeeks();
+  const last = await pool.query(
+    `SELECT r.id,
+            EXISTS (
+              SELECT 1 FROM ritual_attendance ra
+              WHERE ra.ritual_id = r.id AND ra.checkin_phase = 'sealed'
+            ) AS sealed
+     FROM rituals r
+     WHERE r.series_id = $1 AND r.start_time < NOW()
+     ORDER BY r.start_time DESC
+     LIMIT $2`,
+    [seriesId, n]
+  );
+  if (last.rows.length < n) return { asleep: false, reason: 'not_enough_history' };
+  const allEmpty = last.rows.every((row) => !row.sealed);
+  if (!allEmpty) return { asleep: false };
+  await pool.query(
+    `UPDATE ritual_series SET active = false, updated_at = NOW() WHERE id = $1`,
+    [seriesId]
+  );
+  return { asleep: true, empty_weeks: n, rule: 'ghost_calendar' };
+}
+
+export async function buildSeriesIntelligence(seriesId, { venueTier } = {}) {
+  const { seriesIntelligenceAllowed } = await import('./megaPackages.js');
+  if (!seriesIntelligenceAllowed(venueTier || 'operator')) {
+    return { ok: false, status: 403, error: 'Series-zekası OPERATOR+', code: 'SERIES_INTEL_OPERATOR' };
+  }
+  const instances = await pool.query(
+    `SELECT r.id, r.start_time, r.host_id, r.capacity, r.status,
+            (SELECT COUNT(*)::int FROM ritual_attendance ra
+              WHERE ra.ritual_id = r.id AND ra.checkin_at IS NOT NULL) AS nabiz,
+            (SELECT COUNT(*)::int FROM ritual_attendance ra
+              WHERE ra.ritual_id = r.id AND ra.checkin_phase = 'sealed') AS seals
+     FROM rituals r
+     WHERE r.series_id = $1
+     ORDER BY r.start_time ASC`,
+    [seriesId]
+  );
+  const followers = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM ritual_series_followers WHERE series_id = $1`,
+    [seriesId]
+  ).catch(() => ({ rows: [{ n: 0 }] }));
+  const hosts = [...new Set(instances.rows.map((r) => r.host_id).filter(Boolean))];
+  const weak = instances.rows
+    .filter((r) => Number(r.capacity) > 0 && Number(r.nabiz) / Number(r.capacity) < 0.4)
+    .map((r) => r.start_time);
+  return {
+    ok: true,
+    season: {
+      sessions: instances.rows.length,
+      weak_weeks: weak.length,
+      occupancy: instances.rows.map((r) => ({
+        at: r.start_time,
+        nabiz: r.nabiz,
+        seals: r.seals,
+        doluluk: r.capacity > 0 ? Math.round((Number(r.nabiz) / Number(r.capacity)) * 100) : null,
+      })),
+    },
+    subscribers: { loyal_core: Number(followers.rows[0]?.n || 0) },
+    host_handoff: { distinct_hosts: hosts.length },
+    compare_self: true,
+  };
 }
 
 export default {
@@ -395,4 +464,6 @@ export default {
   getSeriesFollowState,
   listSeriesInstances,
   generateSeriesInstances,
+  sleepEmptySeries,
+  buildSeriesIntelligence,
 };

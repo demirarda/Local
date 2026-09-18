@@ -31,9 +31,12 @@ describe('venue package §8', () => {
     expect(packagePrice(19900, { size_multiplier: 1 })).toBe(19900);
   });
 
-  test('concurrent caps + addon + takeover', () => {
-    expect(getConcurrentSlotCap({ subscription_tier: 'operator' })).toBe(3);
-    expect(getConcurrentSlotCap({ subscription_tier: 'hakim', addon_slots: 2 })).toBe(7);
+  test('concurrent caps removed (EK-2 Position B) — Infinity', () => {
+    expect(LOCAL_CONFIG.venue.PACKAGES_STUB.SLOT_LIMIT_REMOVED).toBe(true);
+    expect(getConcurrentSlotCap({ subscription_tier: 'operator' })).toBe(Number.POSITIVE_INFINITY);
+    expect(getConcurrentSlotCap({ subscription_tier: 'hakim', addon_slots: 2 })).toBe(
+      Number.POSITIVE_INFINITY
+    );
     expect(
       getConcurrentSlotCap({
         subscription_tier: 'free',

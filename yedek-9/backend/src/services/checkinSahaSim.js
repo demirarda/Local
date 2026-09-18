@@ -60,7 +60,7 @@ export function sahaLocationLocks() {
 
 /**
  * Tam-gün saha sim — bir günün kapı sınıfları tek geçişte.
- * 30dk stres: duration=30 kapı 10dk, late AIS 0.85, door start−15 açık.
+ * 30dk stres: duration=30 kapı 10dk, late AIS 0.80, door start−15 açık.
  */
 export function runTamGunSahaSim() {
   const locks = sahaLocationLocks();

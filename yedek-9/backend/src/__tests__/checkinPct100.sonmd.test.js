@@ -287,7 +287,11 @@ describe('check-in sonMD §4 lokasyon %100', () => {
     expect(createSrc).toContain('getOrCreateLineZone');
     expect(seriesSrc).toContain('ROUTE_ONE_SHOT');
     expect(zoneSrc).toContain('getOrCreateLineZone');
-    expect(zoneSrc).toContain("'p2r','p2v','p2z','rq'");
+    expect(zoneSrc).toContain('computeZoneAuraDisplay');
+    expect(zoneSrc).not.toContain("'p2r','p2v','p2z','rq'");
+    const auraSrc = readFileSync(join(root, 'services/venueTrustAuraService.js'), 'utf8');
+    expect(auraSrc).toContain("fetchRitualObservations(zoneId, 'p2z'");
+    expect(auraSrc).toContain('COALESCE(f.from_user_id, f.rater_id)');
   });
 
   test('home empty door collapses without host penalty', () => {

@@ -92,7 +92,14 @@ export async function deleteOwnAccount({ userId, confirmPhrase }) {
       [userId, FORMER_MEMBER_NAME]
     );
 
-    await client.query(`DELETE FROM device_tokens WHERE user_id = $1`, [userId]);
+    try {
+      await client.query('SAVEPOINT discipline_snap');
+      const { snapshotDisciplineToIdentityHash } = await import('./identityService.js');
+      await snapshotDisciplineToIdentityHash(client, userId);
+      await client.query('RELEASE SAVEPOINT discipline_snap');
+    } catch (_e) {
+      await client.query('ROLLBACK TO SAVEPOINT discipline_snap').catch(() => {});
+    }
 
     await client.query('COMMIT');
   } catch (e) {

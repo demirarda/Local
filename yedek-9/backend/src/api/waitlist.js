@@ -14,6 +14,7 @@ import {
   listMyWaitlistEntries,
   getWaitlistStatus,
   promoteWaitlistForRitual,
+  acceptWaitlistOffer,
 } from '../services/waitlistService.js';
 
 const router = express.Router();
@@ -177,6 +178,17 @@ router.post('/waitlist/:ritualId/promote', async (req, res) => {
   } catch (error) {
     console.error('Error promoting waitlist:', error);
     return res.status(500).json({ success: false, error: 'Failed to promote waitlist' });
+  }
+});
+
+router.post('/waitlist/:ritualId/accept-offer', async (req, res) => {
+  if (!waitlistGate(res)) return;
+  try {
+    const result = await acceptWaitlistOffer(req.user.userId, req.params.ritualId);
+    if (!result.ok) return res.status(result.status).json(result.body);
+    return res.json({ success: true, data: result.data });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to accept offer' });
   }
 });
 

@@ -21,7 +21,7 @@ describe('check-in §9–§10 saha sim %100', () => {
     expect(sim.ok).toBe(true);
     expect(sim.stres30.duration_min).toBe(30);
     expect(sim.stres30.kapi_min).toBe(10);
-    expect(sim.stres30.late.ais).toBe(0.85);
+    expect(sim.stres30.late.ais).toBe(0.8);
     expect(sim.locks.metro.location_type).toBe('moving');
     expect(sim.locks.vapur.location_type).toBe('ferry');
     expect(sim.locks.ev.is_home).toBe(true);

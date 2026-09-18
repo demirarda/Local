@@ -1,21 +1,25 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import LanguageToggle from '../components/LanguageToggle';
+import useT from '../i18n/useT';
 
 export default function AuthWelcomeScreen({ navigation }) {
+  const t = useT();
   return (
     <View style={styles.container}>
       <Text style={styles.logo}>L.</Text>
       <Text style={styles.brand}>LOCAL</Text>
-      <Text style={styles.tagline}>Gercek anlarda gercek baglantilar...</Text>
+      <Text style={styles.tagline}>{t('auth_tagline')}</Text>
       <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('OnboardingName')}>
-        <Text style={styles.primaryText}>Üniversiteli</Text>
+        <Text style={styles.primaryText}>{t('auth_university')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.kycBtn} onPress={() => navigation.navigate('OnboardingIdentityKyc')}>
-        <Text style={styles.kycText}>Kimlik ile doğrula</Text>
+        <Text style={styles.kycText}>{t('auth_kyc')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.secondaryText}>Giris Yap</Text>
+        <Text style={styles.secondaryText}>{t('auth_login')}</Text>
       </TouchableOpacity>
+      <LanguageToggle style={styles.langToggle} />
     </View>
   );
 }
@@ -31,4 +35,5 @@ const styles = StyleSheet.create({
   kycText: { color: '#111827', fontWeight: '800' },
   secondaryBtn: { width: '100%', maxWidth: 360, marginTop: 10, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, paddingVertical: 14, alignItems: 'center', backgroundColor: '#fff' },
   secondaryText: { color: '#111827', fontWeight: '700' },
+  langToggle: { marginTop: 28 },
 });

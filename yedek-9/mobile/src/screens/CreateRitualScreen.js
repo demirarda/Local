@@ -17,6 +17,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { createRitual, publishRitual, fetchUserRecentRituals, getManagedVenues, fetchCategories, fetchVenueSlots, nominateVenuePlace } from '../services/api';
 import { getApiErrorMessage, getPenaltyBannerText } from '../utils/penaltyHelpers';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 import useAuthStore from '../store/authStore';
 import useConfigStore from '../store/configStore';
 import {
@@ -26,9 +27,60 @@ import {
   isScheduledLocationType,
 } from '../constants/localConfig';
 import { requireVerifiedUser } from '../utils/verificationGuard';
-import MainBottomNav from '../components/MainBottomNav';
+import MainBottomNav, { mainBottomNavHeight } from '../components/MainBottomNav';
+import * as Location from 'expo-location';
 
 const ZONE_RADIUS_PRESETS = [75, 85, 100];
+
+const CITY_PIN = {
+  istanbul: { lat: 41.0082, lng: 28.9784 },
+  ankara: { lat: 39.9334, lng: 32.8597 },
+  izmir: { lat: 38.4237, lng: 27.1428 },
+  milano: { lat: 45.4642, lng: 9.19 },
+  milan: { lat: 45.4642, lng: 9.19 },
+};
+
+function foldCityKey(name) {
+  return String(name || '')
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
+    .replace(/ı/g, 'i')
+    .trim()
+    .toLowerCase();
+}
+
+function cityFallbackPin(city) {
+  return CITY_PIN[foldCityKey(city)] || null;
+}
+
+async function resolveHostGpsPin(city) {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status === 'granted') {
+      let pos = null;
+      try {
+        pos = await Location.getLastKnownPositionAsync();
+      } catch (_e) {
+        /* ignore */
+      }
+      if (!pos) {
+        pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+      }
+      const lat = pos?.coords?.latitude;
+      const lng = pos?.coords?.longitude;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat, lng, source: 'device' };
+      }
+    }
+  } catch (_e) {
+    /* fall through */
+  }
+  const fb = cityFallbackPin(city);
+  if (fb) return { ...fb, source: 'city' };
+  return null;
+}
 
 const PRIMARY_COLOR = '#000000';
 const LIGHT_BACKGROUND = '#ffffff';
@@ -65,15 +117,14 @@ const CATEGORIES = [
 ];
 const DURATIONS = ['30 min', '1 hour', '2 hours', '2.5 hours', '3 hours', '4 hours', '6 hours'];
 const FORUM_SURFACES = [
-  {
-    value: 'whole_window',
-    label: 'Tum Window',
-    description: 'Canli Window icerigi yorumlanabilir',
+  { value: 'memories_only',
+    label: 'Paylaşılan anılar',
+    description: 'Arşivde yalnız LOCAL World’e düşen M’ler — window sızmaz (varsayılan)',
   },
   {
-    value: 'memories_only',
-    label: 'Sadece Anilar',
-    description: 'Yalnizca Local World\'e paylasilan anilar',
+    value: 'whole_window',
+    label: 'Tüm Window',
+    description: 'Sohbet+M+izler arşive iner (cam-masa)',
   },
 ];
 const TIME_TYPES = [
@@ -81,10 +132,12 @@ const TIME_TYPES = [
   { value: 'planned', label: 'Planlı', description: 'Belirli başlangıç zamanı' },
   { value: 'series', label: 'Seri', description: 'Aynı ritüelin haftalık veya iki haftalık serisi' },
 ];
-/** §7 — host onayli "Yer Iste" yolu kaldirildi; acik veya davetli */
+/** EK-15b kapı: PUBLIC / APPROVAL / FRIENDS / SOLO — business’da son ikisi yok */
 const ENTRY_TYPES = [
-  { value: 'open', label: 'Acik', description: 'Herkes katilabilir' },
-  { value: 'invite_only', label: 'Davetli', description: 'Yalnizca davet ile' },
+  { value: 'PUBLIC', entry: 'open', label: 'Public', description: 'Herkes katılabilir' },
+  { value: 'APPROVAL', entry: 'request', label: 'Onaylı', description: 'Host / mekan onaylar' },
+  { value: 'FRIENDS', entry: 'reference', label: 'Friends', description: 'Yalnız arkadaşlar' },
+  { value: 'SOLO', entry: 'open', label: 'Solo', description: 'Tek kişilik masa' },
 ];
 const SERIES_CADENCES = [
   { value: 'WEEKLY', label: 'Her hafta', description: '7 gunde bir yeni Ritual' },
@@ -121,6 +174,7 @@ const DEFINITION_LEVELS = [
 const HOBBIES = ['Reading', 'Cooking', 'Running', 'Music', 'Hiking'];
 
 export default function CreateRitualScreen({ navigation, route }) {
+  useLanguageStore((s) => s.lang);
   const publicConfig = useConfigStore((s) => s.config);
   const sparkMeetupId = route?.params?.sparkMeetupId || route?.params?.spark_meetup_id || null;
   const minRitualSize = publicConfig.ritual.min_size;
@@ -157,23 +211,24 @@ export default function CreateRitualScreen({ navigation, route }) {
         footerBg: '#ffffff',
       };
   const insets = useSafeAreaInsets();
+  const navH = mainBottomNavHeight(insets.bottom);
   const [title, setTitle] = useState('Morning Coffee Circle');
   const [selectedCategory, setSelectedCategory] = useState('Coffee');
   const [description, setDescription] = useState('');
   const [time, setTime] = useState('9:00');
-  const [location, setLocation] = useState('Brera');
+  const [location, setLocation] = useState('');
   const [selectedDuration, setSelectedDuration] = useState('2 hours');
   const [selectedLiveWindow, setSelectedLiveWindow] = useState(
     () => Number(publicConfig?.ritual?.window_hours_default) || 12
   );
-  const [openForum, setOpenForum] = useState(false);
-  const [forumSurface, setForumSurface] = useState('whole_window');
+  const [openForum, setOpenForum] = useState(true);
+  const [forumSurface, setForumSurface] = useState('memories_only');
   /** §12 — DEFAULT CLOSED; TRANSPARENT = window şehre okunur */
   const [windowVisibility, setWindowVisibility] = useState('CLOSED');
   /** §2 — default false; true ise alım kilit anında kapanır */
   const [plannersOnly, setPlannersOnly] = useState(false);
   const [capacity, setCapacity] = useState(10);
-  const [selectedEntryType, setSelectedEntryType] = useState('open');
+  const [selectedEntryType, setSelectedEntryType] = useState('PUBLIC');
   const [universityGate, setUniversityGate] = useState(null);
   const [ritualVisibility, setRitualVisibility] = useState('public');
   const [discoveryAudience, setDiscoveryAudience] = useState('PUBLIC');
@@ -201,6 +256,12 @@ export default function CreateRitualScreen({ navigation, route }) {
   const isMountedRef = useRef(true);
 
   const { user } = useAuthStore();
+  const doorOptions =
+    locationType === 'zone' && !selectedVenueId
+      ? ENTRY_TYPES.filter((d) => d.value === 'PUBLIC')
+      : selectedVenueId
+        ? ENTRY_TYPES.filter((d) => d.value === 'PUBLIC' || d.value === 'APPROVAL')
+        : ENTRY_TYPES;
   const penaltyBannerText = getPenaltyBannerText(user?.penalty);
   const hostCreateBlocked =
     !!user?.penalty?.is_host_banned || !!user?.penalty?.is_penalty_suspended;
@@ -215,6 +276,7 @@ export default function CreateRitualScreen({ navigation, route }) {
     if (nextType === 'zone') {
       const zoneDefault = String(getGpsBoundsForLocationType('zone', publicConfig).min);
       setCheckInRadius((prev) => (prev.trim() ? prev : zoneDefault));
+      setSelectedEntryType('PUBLIC');
     }
   };
 
@@ -263,6 +325,9 @@ export default function CreateRitualScreen({ navigation, route }) {
       setVenueSlots([]);
       setSelectedSlotId(null);
       return;
+    }
+    if (selectedEntryType === 'FRIENDS' || selectedEntryType === 'SOLO') {
+      setSelectedEntryType('PUBLIC');
     }
     let cancelled = false;
     (async () => {
@@ -367,8 +432,8 @@ export default function CreateRitualScreen({ navigation, route }) {
       return;
     }
 
-    if (!time || !location) {
-      Alert.alert('Hata', 'Lutfen saat ve konum gir');
+    if (!time) {
+      Alert.alert('Hata', 'Lutfen saat gir');
       return;
     }
 
@@ -433,8 +498,16 @@ export default function CreateRitualScreen({ navigation, route }) {
         return;
       }
 
-      const locationLat = 45.4718;
-      const locationLng = 9.1881;
+      const pin = await resolveHostGpsPin(user?.city);
+      if (!pin) {
+        Alert.alert(
+          'Konum gerekli',
+          'Check-in pini için konum izni ver veya profilde şehir seç. Masa varsayılanı artık Milano değil.'
+        );
+        return;
+      }
+      const locationLat = pin.lat;
+      const locationLng = pin.lng;
 
       const locType = selectedVenueId ? 'venue' : locationType;
       if (isScheduledLocationType(locType) && (timeType === 'series' || timeType === 'recurring')) {
@@ -458,11 +531,12 @@ export default function CreateRitualScreen({ navigation, route }) {
       const ritualData = {
         title: title.trim(),
         type: selectedCategory,
-        venue_name: location.trim(),
+        venue_name: location.trim() || user?.city || 'Masa',
         start_time: startTime.toISOString(),
         duration: durationMinutes,
         capacity: capacity,
-        entry_type: selectedEntryType,
+        door: selectedEntryType,
+        entry_type: (ENTRY_TYPES.find((d) => d.value === selectedEntryType)?.entry) || 'open',
         university_gate: universityGate,
         location_lat: locationLat,
         location_lng: locationLng,
@@ -564,9 +638,6 @@ export default function CreateRitualScreen({ navigation, route }) {
 
       Alert.alert('Basarili', successMsg, buttons);
     } catch (error) {
-      console.error('Error creating ritual:', error);
-      
-      // Handle specific error for attendance requirement
       if (error.requires_attendance || error.message?.includes('attend at least one ritual')) {
         Alert.alert(
           'Once Bir Rituale Katil',
@@ -577,6 +648,25 @@ export default function CreateRitualScreen({ navigation, route }) {
               text: 'Ritualsi Kesfet',
               onPress: () => navigation.navigate('Main', { screen: 'Pulse' })
             }
+          ]
+        );
+      } else if (error.code === 'K1_TIME_OVERLAP' || String(error.message || '').includes('Zaman cakismasi')) {
+        Alert.alert(
+          'Saat cakisiyor',
+          `${error.message || 'Ayni anda iki taahhut olamaz.'}\n\nOnce o Ritual bitsin veya host olarak iptal et, sonra yenisini ac.`,
+          [
+            { text: 'Tamam' },
+            ...(error.conflicting_ritual_id
+              ? [
+                  {
+                    text: 'Mevcut Rituali ac',
+                    onPress: () =>
+                      navigation.navigate('RitualDetail', {
+                        ritualId: error.conflicting_ritual_id,
+                      }),
+                  },
+                ]
+              : []),
           ]
         );
       } else if (error.code === 'HOST_BANNED' || error.code === 'PENALTY_SUSPENDED') {
@@ -611,7 +701,7 @@ export default function CreateRitualScreen({ navigation, route }) {
         {/* Form alanı */}
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: navH + 96 }]}
           showsVerticalScrollIndicator={false}
         >
           {penaltyBannerText ? (
@@ -741,15 +831,15 @@ export default function CreateRitualScreen({ navigation, route }) {
 
             {selectedVenueId && (
               <View style={styles.fieldContainer}>
-                <Text style={[styles.label, { color: theme.text }]}>Mekan Slotu</Text>
+                <Text style={[styles.label, { color: theme.text }]}>Mekan Rafı</Text>
                 <Text style={[styles.subLabel, { color: theme.muted }]}>
-                  Acik slot sec (opsiyonel — slot kapilir ve Rituale baglanir)
+                  Açık raf seç (opsiyonel — raf üstlenilir ve Rituale bağlanır)
                 </Text>
                 {loadingSlots ? (
                   <ActivityIndicator size="small" color={theme.text} style={{ marginTop: 8 }} />
                 ) : venueSlots.length === 0 ? (
                   <Text style={[styles.subLabel, { color: theme.muted, marginTop: 8 }]}>
-                    Bu mekanda acik slot yok
+                    Bu mekanda açık raf yok
                   </Text>
                 ) : (
                   <View style={styles.tagContainer}>
@@ -757,7 +847,7 @@ export default function CreateRitualScreen({ navigation, route }) {
                       style={[styles.tag, !selectedSlotId && styles.tagSelected]}
                       onPress={() => setSelectedSlotId(null)}
                     >
-                      <Text style={[styles.tagText, !selectedSlotId && styles.tagTextSelected]}>Slot yok</Text>
+                      <Text style={[styles.tagText, !selectedSlotId && styles.tagTextSelected]}>Raf yok</Text>
                     </TouchableOpacity>
                     {venueSlots.map((slot) => (
                       <TouchableOpacity
@@ -808,7 +898,7 @@ export default function CreateRitualScreen({ navigation, route }) {
                     style={[styles.textInput, styles.halfInput, { color: theme.text }]}
                     value={location}
                     onChangeText={setLocation}
-                    placeholder="Brera"
+                    placeholder={user?.city || 'Masa adı'}
                     placeholderTextColor={DARK_TEXT_TERTIARY}
                   />
                 </View>
@@ -910,10 +1000,10 @@ export default function CreateRitualScreen({ navigation, route }) {
               <View style={styles.toggleRow}>
                 <View style={styles.toggleLabelBlock}>
                   <Text style={[styles.label, { color: theme.text, marginBottom: 4 }]}>
-                    Masa bitince tartışma devam etsin mi?
+                    Masa bitince LOCAL Forum’da yaşasın mı?
                   </Text>
                   <Text style={[styles.subLabel, { color: theme.muted }]}>
-                    Hayır — izler kalır, defter kapanır. Evet — forum açık kalır.
+                    Kapalı: yalnız bitirenlerin profillerinde. Açık (varsayılan): search/keşif/arşivde kamusal.
                   </Text>
                 </View>
                 <Switch
@@ -1325,9 +1415,14 @@ export default function CreateRitualScreen({ navigation, route }) {
 
             {/* Entry Type */}
             <View style={styles.fieldContainer}>
-              <Text style={[styles.label, { color: theme.text }]}>Katilim Tipi</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Kapı</Text>
+              {locationType === 'zone' && !selectedVenueId ? (
+                <Text style={[styles.subLabel, { color: theme.muted }]}>
+                  Zone kamusal — onay kapısı yok
+                </Text>
+              ) : null}
               <View style={styles.optionContainer}>
-                {ENTRY_TYPES.map((type) => (
+                {doorOptions.map((type) => (
                   <TouchableOpacity
                     key={type.value}
                     style={[
@@ -1352,7 +1447,7 @@ export default function CreateRitualScreen({ navigation, route }) {
                 ))}
               </View>
               <View style={styles.entryTypeDescriptions}>
-                {ENTRY_TYPES.map((type) => (
+                {doorOptions.map((type) => (
                   <Text
                     key={type.value}
                     style={[styles.entryTypeDescription, { color: theme.muted }]}
@@ -1425,9 +1520,19 @@ export default function CreateRitualScreen({ navigation, route }) {
           </View>
           )}
         </ScrollView>
-        {/* Footer butonu - ekranın en altında, safe area ile */}
+        {/* Footer: tab bar'ın üstünde — kaydet burada */}
         {canCreate && !checkingEligibility && (
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 16, backgroundColor: theme.footerBg, borderTopColor: theme.border }]}>
+          <View
+            style={[
+              styles.footer,
+              {
+                bottom: navH,
+                paddingBottom: 12,
+                backgroundColor: theme.footerBg,
+                borderTopColor: theme.border,
+              },
+            ]}
+          >
             <TouchableOpacity
               style={[
                 styles.createButton,
@@ -1728,11 +1833,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingTop: 16,
+    paddingTop: 12,
     paddingHorizontal: 20,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: LIGHT_CARD_BORDER,
+    zIndex: 15,
   },
   createButton: {
     backgroundColor: '#000',

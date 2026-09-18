@@ -2,7 +2,7 @@ import express from 'express';
 import pool from '../config/database.js';
 import { notifyFriendRequestAccepted, notifyFriendRequest } from '../services/notifications.js';
 import { authenticateToken } from './auth.js';
-import { getRsPublicFlags, resolveRsForViewer } from '../services/rsVisibility.js';
+import { getRsViewState, resolveRsForViewer } from '../services/rsVisibility.js';
 import { enqueue } from '../services/queueSystem.js';
 import { sendError } from '../utils/errorResponse.js';
 
@@ -202,7 +202,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const result = await pool.query(query, [userId, status]);
 
-    const publicFlags = await getRsPublicFlags(result.rows.map((row) => row.friend_id));
+    const publicFlags = await getRsViewState(result.rows.map((row) => row.friend_id));
     const baseUrl = process.env.API_PUBLIC_URL || (req.protocol + '://' + req.get('host'));
     res.json({
       success: true,
@@ -422,7 +422,7 @@ router.get('/pending', authenticateToken, async (req, res) => {
     `;
 
     const result = await pool.query(query, [userId]);
-    const publicFlags = await getRsPublicFlags(result.rows.map((row) => row.requester_id));
+    const publicFlags = await getRsViewState(result.rows.map((row) => row.requester_id));
 
     res.json({
       success: true,

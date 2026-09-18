@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  RefreshControl,
+  TextInput,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { getVenue, getVenueFollowStatus, followVenue, unfollowVenue, setVenueFollowBell, createModReport } from '../services/api';
+import { getVenue, getVenueFollowStatus, followVenue, unfollowVenue, setVenueFollowBell, createModReport, patchVenueMembershipVitrine, createVenueMembershipPlan, enrollVenueMembership } from '../services/api';
 import ReportModal from '../components/ReportModal';
 import VenueCharacterCard from '../components/VenueCharacterCard';
 import FollowBellControls from '../components/FollowBellControls';
@@ -35,6 +35,7 @@ export default function VenueDetailScreen({ route, navigation }) {
   const [bellLoading, setBellLoading] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [reportType, setReportType] = useState('venue');
+  const [planTitle, setPlanTitle] = useState('');
 
   const { user } = useAuthStore();
   const currentUserId = user?.id;
@@ -179,6 +180,33 @@ export default function VenueDetailScreen({ route, navigation }) {
         <Text style={styles.name}>{vitrine?.headline || venue.name}</Text>
         {vitrine?.tagline ? <Text style={styles.tagline}>{vitrine.tagline}</Text> : null}
         {venue.city ? <Text style={styles.city}>{venue.city}</Text> : null}
+        {(() => {
+          const line = venue.life_line || venue.profile?.life_line;
+          if (!line) return null;
+          if (line.soft) {
+            return (
+              <Text style={[styles.city, { marginTop: 8 }]}>
+                {line.placeholder || 'Yeni mekan'} — LOCAL beş kez tanır, sonra konuşur
+              </Text>
+            );
+          }
+          return (
+            <Text style={[styles.city, { marginTop: 8 }]}>
+              🕯 Geçmiş {line.past ?? 0} · Şu an {line.live ?? 0} masa · Planlı {line.planned ?? 0}+
+            </Text>
+          );
+        })()}
+        {(venue.membership_badge || venue.profile?.membership_badge) ? (
+          <Text style={[styles.city, { marginTop: 4, fontWeight: '700' }]}>
+            💳 {(venue.membership_badge || venue.profile?.membership_badge).label}
+          </Text>
+        ) : null}
+        {(venue.life_line || venue.profile?.life_line)?.place_given_label &&
+        (venue.can_manage || venue.profile?.can_manage) ? (
+          <Text style={[styles.city, { marginTop: 4 }]}>
+            {(venue.life_line || venue.profile.life_line).place_given_label}
+          </Text>
+        ) : null}
         {(venue.profile?.highlighted_badges || venue.highlighted_badges || []).length > 0 ? (
           <View style={styles.venueBadgeRow}>
             {(venue.profile?.highlighted_badges || venue.highlighted_badges || []).slice(0, highlightVenueMax).map((b) => (
@@ -205,7 +233,7 @@ export default function VenueDetailScreen({ route, navigation }) {
               </Text>
               {rows.map((c) => (
                 <Text key={c.chip_id} style={{ fontSize: 12, color: MUTED }}>
-                  {c.chip_id}: {c.total} (🟢{c.green} 🟡{c.yellow} 🔴{c.red})
+                  {c.label || c.chip_id}{c.total ? ` ×${c.total}` : ''}
                 </Text>
               ))}
             </View>
@@ -236,12 +264,12 @@ export default function VenueDetailScreen({ route, navigation }) {
             <Text style={styles.regularProgressLabel}>
               {venue.regular_progress.is_regular
                 ? 'Regular'
-                : `Regular ilerleme · ${venue.regular_progress.counter || `${venue.regular_progress.count}/${venue.regular_progress.threshold || 3}`}`}
+                : `Regular ilerleme · ${venue.regular_progress.counter || `${venue.regular_progress.count}/${venue.regular_progress.threshold || 5}`}`}
             </Text>
             <Text style={styles.regularProgressHint}>
               {venue.regular_progress.is_regular
                 ? 'Bu mekanda Regular’sın (yalnız sen görürsün)'
-                : `Son ${venue.regular_progress.window_d || 45} günde ${venue.regular_progress.needed} check-in daha · yalnız sana görünür`}
+                : `Son ${venue.regular_progress.window_d || 90} günde ${venue.regular_progress.needed} check-in daha · yalnız sana görünür`}
             </Text>
           </View>
         ) : null}
@@ -257,6 +285,52 @@ export default function VenueDetailScreen({ route, navigation }) {
             followingLabel="Takiptesin"
           />
         )}
+        {currentUserId ? (
+          <View style={{ marginTop: 12 }}>
+            <TouchableOpacity
+              disabled
+              style={[styles.followBtn, { backgroundColor: '#e5e7eb', opacity: 0.85 }]}
+            >
+              <Text style={[styles.followBtnText, { color: '#6b7280' }]}>Şimdi Masa Aç</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 12, color: MUTED, marginTop: 6 }}>
+              {venue?.walk_in_cta?.copy ||
+                (String(venue?.door_policy || '').toUpperCase() === 'SHELF_ONLY'
+                  ? 'Bu mekân yalnız raf ile açılır'
+                  : 'Mekandayken figürü okut — bu kapı fiziksel.')}
+            </Text>
+            {venue?.event_marketing_card ? (
+              <View style={{ marginTop: 10, padding: 12, backgroundColor: '#fff7ed', borderRadius: 10 }}>
+                <Text style={{ fontWeight: '700', color: '#9a3412' }}>
+                  {venue.event_marketing_card.title}
+                </Text>
+                <Text style={{ marginTop: 6, color: '#9a3412', fontSize: 13 }}>
+                  {(venue.event_marketing_card.actions || []).join(' · ')}
+                </Text>
+              </View>
+            ) : null}
+            {venue?.sicil?.label ? (
+              <Text style={{ fontSize: 12, color: MUTED, marginTop: 8 }}>
+                Sicil · {venue.sicil.label}
+              </Text>
+            ) : null}
+            {venue?.lifecycle?.phase && venue.lifecycle.phase !== 'active' ? (
+              <Text style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>
+                Mekan {venue.lifecycle.phase}
+              </Text>
+            ) : null}
+            {venue?.event_detectors?.signals?.length ? (
+              <Text style={{ fontSize: 12, color: '#9a3412', marginTop: 4 }}>
+                AT-20 {venue.event_detectors.signals.map((s) => s.code).join(' · ')}
+              </Text>
+            ) : null}
+            {venue?.both_stamp ? (
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f766e', marginTop: 4 }}>
+                BOTH
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
         {currentUserId ? (
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             <TouchableOpacity
@@ -353,39 +427,188 @@ export default function VenueDetailScreen({ route, navigation }) {
               ? {
                   trust: {
                     score: trustDisplay?.score,
+                    score_hidden: trustDisplay?.score_hidden,
+                    public_label: trustDisplay?.public_label,
                     label: seatingLabel || venue.profile?.seating_label,
                   },
                   aura: {
-                    score: auraDisplay?.score,
-                    label: seatingLabel || venue.profile?.seating_label,
-                  },
-                  chips_under_scores: [],
-                  distribution_slices: (auraDisplay?.distribution?.categories || [])
-                    .slice(0, 3)
-                    .map((c) => ({
-                      category: c.category,
-                      avg_score: c.avg_score,
-                      status: c.status,
-                    })),
-                  distribution_other:
-                    (auraDisplay?.distribution?.categories || []).length > 3
-                      ? {
-                          label: '+diğer',
-                          count_categories:
-                            (auraDisplay?.distribution?.categories || []).length - 3,
-                        }
+                    words: auraDisplay?.words || [],
+                    type_tag: venue.category || venue.type || 'Mekan',
+                    label: auraDisplay?.hidden
+                      ? venue.category || venue.type || 'Mekan'
                       : null,
+                  },
+                  chips_under_scores: (auraDisplay?.top_chips || []).slice(0, 3),
                   chain_id: venue.chain_id || venue.profile?.chain_id,
                   brand_id: venue.brand_id || venue.profile?.brand_id,
                 }
               : null)
           }
           volume={venue.character_volume || venue.profile?.character_volume}
-          showVolume
+          showVolume={false}
           onChainPress={(id) => navigation.navigate('ChainProfile', { chainId: id })}
           onBrandPress={(id) => navigation.navigate('BrandProfile', { brandId: id })}
         />
       </View>
+
+      {(() => {
+        const mem = venue.membership || venue.profile?.membership;
+        const plans = mem?.plans || [];
+        const vitrineOn = mem?.vitrine_enabled !== false;
+        if (!vitrineOn && !canManage && !plans.length) return null;
+        return (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Üyelik & Kredi</Text>
+            <Text style={styles.mutedSmall}>
+              Satıcı künyesi görünür · sicil satıcıya işler · RS/DS yok
+            </Text>
+            {canManage ? (
+              <TouchableOpacity
+                style={{ marginTop: 8, marginBottom: 8 }}
+                onPress={async () => {
+                  try {
+                    await patchVenueMembershipVitrine(venueId, !vitrineOn);
+                    load();
+                  } catch (e) {
+                    Alert.alert('Hata', e?.message || 'Vitrin güncellenemedi');
+                  }
+                }}
+              >
+                <Text style={{ fontWeight: '700', color: PRIMARY }}>
+                  Vitrin {vitrineOn ? 'açık — kapat' : 'kapalı — aç (default açık)'}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+            {vitrineOn
+              ? plans.map((p) => (
+                  <View key={p.id} style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
+                    <Text style={{ fontWeight: '700', color: TEXT }}>{p.title}</Text>
+                    <Text style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+                      {p.seller_label || `Satıcı: ${p.seller_name}`}
+                      {p.plan_kind === 'credit' ? ' · kredi' : ' · aylık'}
+                      {p.auto_drop_on_seal ? ' · mühürde düşer' : ''}
+                    </Text>
+                    {canManage && p.seller_sicil ? (
+                      <Text style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>
+                        Sicil (satıcı): {p.seller_sicil.fulfilled}/{p.seller_sicil.attempted} gerçekleşme
+                      </Text>
+                    ) : null}
+                    <TouchableOpacity
+                      style={{ marginTop: 6 }}
+                      onPress={async () => {
+                        try {
+                          await enrollVenueMembership(venueId, p.id);
+                          Alert.alert('Kaydım var', 'Anında onaylandı.');
+                          load();
+                        } catch (e) {
+                          Alert.alert('Hata', e?.message || 'Kayıt alınamadı');
+                        }
+                      }}
+                    >
+                      <Text style={{ fontWeight: '700', color: PRIMARY }}>
+                        {p.enrolled ? 'Kayıtlı' : 'Kaydım var'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              : null}
+            {canManage ? (
+              <View style={{ marginTop: 12 }}>
+                <TextInput
+                  value={planTitle}
+                  onChangeText={setPlanTitle}
+                  placeholder="Plan adı (aylık veya kredi)"
+                  placeholderTextColor={MUTED}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: BORDER,
+                    borderRadius: 8,
+                    padding: 10,
+                    color: TEXT,
+                  }}
+                />
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (!planTitle.trim()) return;
+                      try {
+                        await createVenueMembershipPlan(venueId, {
+                          title: planTitle.trim(),
+                          plan_kind: 'monthly',
+                          seller_type: 'venue',
+                        });
+                        setPlanTitle('');
+                        load();
+                      } catch (e) {
+                        Alert.alert('Hata', e?.message || 'Plan eklenemedi');
+                      }
+                    }}
+                  >
+                    <Text style={{ fontWeight: '700', color: PRIMARY }}>Aylık ekle</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (!planTitle.trim()) return;
+                      try {
+                        await createVenueMembershipPlan(venueId, {
+                          title: planTitle.trim(),
+                          plan_kind: 'credit',
+                          credits: 4,
+                          seller_type: 'venue',
+                        });
+                        setPlanTitle('');
+                        load();
+                      } catch (e) {
+                        Alert.alert('Hata', e?.message || 'Plan eklenemedi');
+                      }
+                    }}
+                  >
+                    <Text style={{ fontWeight: '700', color: PRIMARY }}>Kredi ekle</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (!planTitle.trim()) return;
+                      try {
+                        await createVenueMembershipPlan(venueId, {
+                          title: planTitle.trim(),
+                          plan_kind: 'monthly',
+                          seller_type: 'seller_at_venue',
+                          seller_name: planTitle.trim(),
+                        });
+                        setPlanTitle('');
+                        load();
+                      } catch (e) {
+                        Alert.alert('Hata', e?.message || 'Seller plan eklenemedi');
+                      }
+                    }}
+                  >
+                    <Text style={{ fontWeight: '700', color: PRIMARY }}>Satıcı planı</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (!planTitle.trim()) return;
+                      try {
+                        await createVenueMembershipPlan(venueId, {
+                          title: planTitle.trim(),
+                          plan_kind: 'monthly',
+                          seller_type: 'org_to_org',
+                          seller_name: planTitle.trim(),
+                        });
+                        setPlanTitle('');
+                        load();
+                      } catch (e) {
+                        Alert.alert('Hata', e?.message || 'Partner plan eklenemedi');
+                      }
+                    }}
+                  >
+                    <Text style={{ fontWeight: '700', color: PRIMARY }}>Partner planı</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        );
+      })()}
 
       {vitrine?.hours ? (
         <View style={styles.section}>

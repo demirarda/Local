@@ -29,8 +29,9 @@ describe('public config (son-part.md §12)', () => {
     expect(cfg.ds_display.mult_mature).toEqual([0.45, 0.75]);
   });
 
-  test('regular threshold is 4 (v3 N:4) with no RS effect in service layer', () => {
-    expect(getPublicConfig().regular.threshold).toBe(4);
-    expect(getPublicConfig().regular.n).toBe(4);
+  test('regular threshold is 5 / 90d (EK-13 / EK-26) with no RS effect in service layer', () => {
+    expect(getPublicConfig().regular.threshold).toBe(5);
+    expect(getPublicConfig().regular.n).toBe(5);
+    expect(getPublicConfig().regular.window_d).toBe(90);
   });
 });

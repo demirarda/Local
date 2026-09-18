@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fetchRitualDetail, fetchRitualMemories, createMemory, createMemoryMedia, deleteMemory, emergencyExit, checkMemoryEligibility, reportUser, reportMessage, createModReport, fetchChatMessages, sendChatMessage, editChatMessage, deleteChatMessage, reactToChatMessage, revealRitualKeyword, endRitualLiveActivity, voteMemory, echoMemory, sozMemory, fetchRitualWindow, touchRitualWindowPresence, witnessPendingCheckin } from '../services/api';
+import { fetchRitualDetail, fetchRitualMemories, createMemory, createMemoryMedia, deleteMemory, emergencyExit, leaveRitual, checkMemoryEligibility, reportUser, reportMessage, createModReport, fetchChatMessages, sendChatMessage, editChatMessage, deleteChatMessage, reactToChatMessage, revealRitualKeyword, endRitualLiveActivity, voteMemory, echoMemory, sozMemory, fetchRitualWindow, touchRitualWindowPresence, witnessPendingCheckin, fetchRuloMemories, publishMemory, vacateRitualHost, queueOrtakAn } from '../services/api';
 import websocketService from '../services/websocket';
 import MemoryActionRow from '../components/MemoryActionRow';
 import ShareToPulseModal from '../components/ShareToPulseModal';
@@ -61,6 +61,9 @@ export default function LiveRitualScreen({ route, navigation }) {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportTarget, setReportTarget] = useState(null); // { type: 'user'|'message', id: string }
   const [readerCount, setReaderCount] = useState(null);
+  const [showRuloPicker, setShowRuloPicker] = useState(false);
+  const [ruloItems, setRuloItems] = useState([]);
+  const [ruloLoading, setRuloLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const scrollViewRef = useRef(null);
 
@@ -68,6 +71,7 @@ export default function LiveRitualScreen({ route, navigation }) {
   const { user } = useAuthStore();
   const currentUserId = user?.id;
   const isHost = ritual?.host_id === currentUserId;
+  const hostRoleLabel = ritual?.host_label || (ritual?.venue_id ? 'REZİDAN' : 'HOST');
   const sameUserId = (a, b) => String(a ?? '') === String(b ?? '');
   const canCreateMemory = isWindowPhase(ritual) || isLivePhase(ritual);
   const canDraftMemory =
@@ -420,24 +424,74 @@ export default function LiveRitualScreen({ route, navigation }) {
   // Memory photos/videos are captured live; gallery selection is intentionally unavailable.
   const VIDEO_MAX_S = VIDEO_MAX_S_DEFAULT;
 
-  // Handle photo capture — in-app camera only, no filters/gallery
+  const saveCaptureToRulo = async (captured, kind) => {
+    const content = kind === 'video' ? '🎬' : '📸';
+    const opts = {
+      memoryType: 'ritual',
+      type: kind === 'video' ? 'media' : 'photo',
+      status: 'draft',
+      audience: 'WINDOW',
+      destination: 'ritual_only',
+      shareType: 'solo',
+      caption: content,
+    };
+    await createMemoryMedia(
+      ritualId,
+      currentUserId,
+      {
+        uri: captured.uri,
+        upload_type: kind === 'video' ? 'video' : 'photo',
+        content_type: captured.mimeType || (kind === 'video' ? 'video/mp4' : 'image/jpeg'),
+        duration_seconds: kind === 'video' ? captured.durationSec || VIDEO_MAX_S : 0,
+        file_size_bytes: captured.fileSize || 0,
+        capture_source: 'camera',
+      },
+      opts
+    );
+  };
+
+  const openRuloPicker = async () => {
+    setShowRuloPicker(true);
+    setRuloLoading(true);
+    try {
+      const items = await fetchRuloMemories();
+      setRuloItems(Array.isArray(items) ? items : []);
+    } catch (e) {
+      Alert.alert('Hata', e?.message || 'Rulo acilamadi');
+      setShowRuloPicker(false);
+    } finally {
+      setRuloLoading(false);
+    }
+  };
+
+  const handlePublishFromRulo = async (item) => {
+    if (!item?.id || savingMemory) return;
+    try {
+      setSavingMemory(true);
+      await publishMemory(item.id, { memoryScope: 'solo', audience: 'WINDOW' });
+      setShowRuloPicker(false);
+      await loadMemories();
+      Alert.alert('Gönderildi', 'Rulo’dan Window’a seçtin.');
+    } catch (e) {
+      Alert.alert('Hata', e?.message || 'Rulo’dan gönderilemedi');
+    } finally {
+      setSavingMemory(false);
+    }
+  };
+
+  // Handle photo capture — in-app camera only; EK-27: first to RULO, no instant publish
   const handlePhotoSelect = async () => {
     try {
       const captured = await captureInAppMedia('photo', { videoMaxS: VIDEO_MAX_S });
       if (!captured?.uri) return;
-      setSelectedImage(captured.uri);
-      setSelectedMemoryType('photo');
-      setSelectedMediaMeta({
-        upload_type: 'photo',
-        content_type: captured.mimeType || 'image/jpeg',
-        duration_seconds: 0,
-        file_size_bytes: captured.fileSize || 0,
-        capture_source: 'camera',
-      });
-      if (!inputText.trim()) setInputText('📸 ');
+      setSavingMemory(true);
+      await saveCaptureToRulo(captured, 'photo');
+      Alert.alert('Rulo', 'Çekim Rulo’ya indi. Window’a göndermek için Rulo’dan seç.');
     } catch (error) {
       console.error('Error picking image from camera:', error);
-      Alert.alert('Hata', 'Kamera acilamadi');
+      Alert.alert('Hata', error?.message || 'Kamera acilamadi');
+    } finally {
+      setSavingMemory(false);
     }
   };
 
@@ -445,19 +499,14 @@ export default function LiveRitualScreen({ route, navigation }) {
     try {
       const captured = await captureInAppMedia('video', { videoMaxS: VIDEO_MAX_S });
       if (!captured?.uri) return;
-      setSelectedImage(captured.uri);
-      setSelectedMemoryType('video');
-      setSelectedMediaMeta({
-        upload_type: 'video',
-        content_type: captured.mimeType || 'video/mp4',
-        duration_seconds: captured.durationSec || VIDEO_MAX_S,
-        file_size_bytes: captured.fileSize || 0,
-        capture_source: 'camera',
-      });
-      if (!inputText.trim()) setInputText('🎬 ');
+      setSavingMemory(true);
+      await saveCaptureToRulo(captured, 'video');
+      Alert.alert('Rulo', 'Video Rulo’ya indi. Window’a göndermek için Rulo’dan seç.');
     } catch (error) {
       console.error('Error capturing video:', error);
-      Alert.alert('Hata', 'Video kamera acilamadi');
+      Alert.alert('Hata', error?.message || 'Video kamera acilamadi');
+    } finally {
+      setSavingMemory(false);
     }
   };
 
@@ -579,6 +628,10 @@ export default function LiveRitualScreen({ route, navigation }) {
 
     // If memory type is selected, create memory
     if (selectedMemoryType) {
+      if (selectedMemoryType === 'photo' || selectedMemoryType === 'video') {
+        Alert.alert('Rulo', 'Foto/video çekimi önce Rulo’ya iner. Window’a Rulo’dan seçerek gönder.');
+        return;
+      }
       if (!canCreateMemory && !(isWarmupDraftOnly && selectedMemoryType === 'draft')) {
         Alert.alert(
           isWarmupDraftOnly ? 'Isınma evresi' : 'Window bekleniyor',
@@ -713,8 +766,19 @@ export default function LiveRitualScreen({ route, navigation }) {
         categoryKey,
         description: reportData.description,
         leaveAfter,
+        queueLane:
+          categoryKey === 'guvenlik_bildir' || categoryKey === 'safety' || categoryKey === 'report_cat_csam'
+            ? 'safety'
+            : null,
       });
-      Alert.alert('Basarili', leaveAfter ? 'Rapor iletildi · cezasiz ayrildin' : 'Rapor basariyla gonderildi');
+      Alert.alert(
+        categoryKey === 'guvenlik_bildir' ? 'Güvenlik' : 'Basarili',
+        categoryKey === 'guvenlik_bildir'
+          ? 'Güvenlik bildirimi ayrı kuyruğa alındı — FB değil.'
+          : leaveAfter
+            ? 'Rapor iletildi · cezasiz ayrildin'
+            : 'Rapor basariyla gonderildi'
+      );
       setShowReportModal(false);
       setReportTarget(null);
       if (leaveAfter) {
@@ -836,7 +900,7 @@ export default function LiveRitualScreen({ route, navigation }) {
           ) : null}
           {isAnnouncement && (
             <View style={styles.hostBadgeSmall}>
-              <Text style={styles.hostBadgeText}>HOST</Text>
+              <Text style={styles.hostBadgeText}>{hostRoleLabel}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -849,7 +913,7 @@ export default function LiveRitualScreen({ route, navigation }) {
               <Text style={[styles.msgRoleBadge, styles.msgRoleDefault]}>{userFL}</Text>
             )}
             {isAnnouncement && (
-              <Text style={[styles.msgRoleBadge, styles.msgRoleHost]}>★ HOST</Text>
+              <Text style={[styles.msgRoleBadge, styles.msgRoleHost]}>★ {hostRoleLabel}</Text>
             )}
             <Text style={styles.msgTime}>{timeText}</Text>
           </View>
@@ -1588,6 +1652,55 @@ export default function LiveRitualScreen({ route, navigation }) {
             (ritual?.code_display || ritual?.checkin_keyword)
         )}
       />
+      {isHost && String(ritual?.origin) === 'VEN_EVENT' ? (
+        <View style={{ flexDirection: 'row', marginHorizontal: 16, marginTop: 8, gap: 8 }}>
+          {['quiz', 'poll', 'announce'].map((kind) => (
+            <TouchableOpacity
+              key={kind}
+              style={{ flex: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: '#fff7ed', borderRadius: 8 }}
+              onPress={async () => {
+                try {
+                  await queueOrtakAn(ritualId, { kind, payload: { text: kind } });
+                  Alert.alert('Ortak-an', `${kind} kuyruğa alındı (event-içi).`);
+                } catch (e) {
+                  Alert.alert('Ortak-an', e?.message || 'Kuyruğa alınamadı');
+                }
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#9a3412' }}>{kind}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+      {isHost && String(ritual?.status || '') !== 'cancelled' ? (
+        <TouchableOpacity
+          style={{ marginHorizontal: 16, marginTop: 8, paddingVertical: 10, alignItems: 'center' }}
+          onPress={() => {
+            Alert.alert(
+              'Hostluğu bırak',
+              'R aynen kalır, hostluk boşta kalır. Üstlenmek isteyen sözlü alır.',
+              [
+                { text: 'Vazgeç', style: 'cancel' },
+                {
+                  text: 'Bırak',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await vacateRitualHost(ritualId);
+                      Alert.alert('Hostluk', 'Boşta. Üstlenmek ister misin? kartı kadroda.');
+                      await loadRitual();
+                    } catch (e) {
+                      Alert.alert('Hostluk', e?.message || 'Bırakılamadı');
+                    }
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#b91c1c' }}>Hostluğu bırak</Text>
+        </TouchableOpacity>
+      ) : null}
 
       {/* Unified Stream (Chat + Memories) */}
       <View style={[styles.streamSection, { backgroundColor: isDark ? ui.screen : ui.stream }]}>
@@ -1637,6 +1750,66 @@ export default function LiveRitualScreen({ route, navigation }) {
           >
             <MaterialIcons name="report" size={16} color="#b91c1c" />
             <Text style={styles.leaveButtonText}>Bildir ve ayrıl</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.leaveButton}
+            onPress={() => {
+              if (!requireVerifiedUser(user, 'Sebepli ayrılmak için doğrulama gerekli.')) return;
+              Alert.alert(
+                'Sebepli ayrıl',
+                'Tek sefer cezasız · bu gecenin pozitif RS kazancı düşer. Tekrar-desen merdiven doğurur.',
+                [
+                  { text: 'Vazgeç', style: 'cancel' },
+                  {
+                    text: 'Ayrıl',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await leaveRitual(ritualId, currentUserId, { safety: false, reason: 'sebepli' });
+                        Alert.alert('Ayrıldın', 'Sebepli çıkış kaydedildi.');
+                        navigation.goBack();
+                      } catch (e) {
+                        Alert.alert('Hata', e?.message || 'Ayrılamadın');
+                      }
+                    },
+                  },
+                ]
+              );
+            }}
+          >
+            <MaterialIcons name="exit-to-app" size={16} color="#b91c1c" />
+            <Text style={styles.leaveButtonText}>Sebepli ayrıl</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.leaveButton}
+            onPress={() => {
+              Alert.alert(
+                'W’den çık',
+                'Çıkış vedadır — geri giriş yok. Emin misin?',
+                [
+                  { text: 'Vazgeç', style: 'cancel' },
+                  {
+                    text: 'Çık',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await leaveRitual(ritualId, currentUserId, {
+                          safety: false,
+                          reason: 'window_farewell',
+                        });
+                        Alert.alert('Veda', 'Window’dan çıktın.');
+                        navigation.goBack();
+                      } catch (e) {
+                        Alert.alert('Hata', e?.message || 'Çıkılamadı');
+                      }
+                    },
+                  },
+                ]
+              );
+            }}
+          >
+            <MaterialIcons name="waving-hand" size={16} color="#b91c1c" />
+            <Text style={styles.leaveButtonText}>W’den çık</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.reportSafetyButton, !isDark && styles.reportSafetyButtonLight]}
@@ -1733,6 +1906,13 @@ export default function LiveRitualScreen({ route, navigation }) {
               <MaterialIcons name="videocam" size={16} color={ui.icon} />
               <Text style={[styles.memoryTypeButtonText, { color: ui.chipText }]}>video</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.memoryTypeButton, { backgroundColor: ui.chipBg, borderColor: ui.chipBorder }]}
+              onPress={openRuloPicker}
+            >
+              <MaterialIcons name="collections" size={16} color={ui.icon} />
+              <Text style={[styles.memoryTypeButtonText, { color: ui.chipText }]}>Rulo</Text>
+            </TouchableOpacity>
             {canCreateMemory ? (
               <>
                 <TouchableOpacity
@@ -1753,10 +1933,10 @@ export default function LiveRitualScreen({ route, navigation }) {
             ) : (
               <TouchableOpacity
                 style={[styles.memoryTypeButton, { backgroundColor: ui.chipBg, borderColor: ui.chipBorder }]}
-                onPress={handleSaveDraft}
+                onPress={openRuloPicker}
               >
                 <MaterialIcons name="drafts" size={16} color={ui.icon} />
-                <Text style={[styles.memoryTypeButtonText, { color: ui.chipText }]}>RULO taslak</Text>
+                <Text style={[styles.memoryTypeButtonText, { color: ui.chipText }]}>Rulo'dan gönder</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1777,27 +1957,30 @@ export default function LiveRitualScreen({ route, navigation }) {
           >
             <MaterialIcons name={selectedMemoryType ? "close" : "add"} size={24} color={ui.icon} />
           </TouchableOpacity>
-          {selectedImage && (selectedMemoryType === 'photo' || selectedMemoryType === 'video') && (
-            <View>
-              <View style={styles.selectedImageContainer}>
-                {selectedMemoryType === 'video' ? (
-                  <View style={[styles.selectedImagePreview, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#111' }]}>
-                    <MaterialIcons name="videocam" size={28} color="#fff" />
-                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>
-                      Video · max {VIDEO_MAX_S}sn
+          {showRuloPicker ? (
+            <View style={{ maxWidth: 180, marginRight: 8 }}>
+              {ruloLoading ? (
+                <ActivityIndicator size="small" color={ui.icon} />
+              ) : ruloItems.length === 0 ? (
+                <Text style={{ color: ui.chipText, fontSize: 11 }}>Rulo boş</Text>
+              ) : (
+                ruloItems.slice(0, 4).map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => handlePublishFromRulo(item)}
+                    style={{ paddingVertical: 4 }}
+                  >
+                    <Text style={{ color: ui.chipText, fontSize: 11 }} numberOfLines={1}>
+                      {item.caption || item.content || 'Rulo karesi'}
                     </Text>
-                  </View>
-                ) : (
-                  <Image source={{ uri: selectedImage }} style={styles.selectedImagePreview} />
-                )}
-              </View>
-              <View style={styles.memoryPreviewActions}>
-                <TouchableOpacity onPress={handleSendMemory}><Text style={styles.memoryPreviewAction}>Paylaş</Text></TouchableOpacity>
-                <TouchableOpacity onPress={handleSaveDraft}><Text style={styles.memoryPreviewAction}>Ruloya kaydet</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => { setSelectedImage(null); setSelectedMemoryType(null); setSelectedMediaMeta(null); }}><Text style={[styles.memoryPreviewAction, styles.memoryPreviewDelete]}>Sil</Text></TouchableOpacity>
-              </View>
+                  </TouchableOpacity>
+                ))
+              )}
+              <TouchableOpacity onPress={() => setShowRuloPicker(false)}>
+                <Text style={[styles.memoryPreviewAction, styles.memoryPreviewDelete]}>Kapat</Text>
+              </TouchableOpacity>
             </View>
-          )}
+          ) : null}
           <TextInput
             style={[styles.inputField, { backgroundColor: ui.inputBg, borderColor: ui.chipBorder, color: ui.inputText }]}
             placeholder={
@@ -2628,8 +2811,10 @@ const styles = StyleSheet.create({
   },
   safetyRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 8,
+    gap: 6,
   },
   leaveButton: {
     flexDirection: 'row',

@@ -22,6 +22,7 @@ import { navigateFromNotification } from './src/utils/notificationRouting';
 import websocketService from './src/services/websocket';
 import useAuthStore from './src/store/authStore';
 import useConfigStore from './src/store/configStore';
+import useLanguageStore from './src/store/languageStore';
 import { updateUserProfile } from './src/services/api';
 import { setVerificationPromptHandler, isUserVerified } from './src/utils/verificationGuard';
 import { handlePortalDeepLink, parsePortalLink } from './src/utils/portalDeepLink';
@@ -44,7 +45,6 @@ const linking = {
           Pulse: 'pulse',
           CityRhythm: 'city-rhythm',
           SocialPassport: 'social-passport',
-          Local: 'local',
         },
       },
       RitualDetail: 'ritual/:ritualId',
@@ -70,6 +70,7 @@ export default function App() {
 
   const { initialize, isAuthenticated, user, isLoading, updateUser, pendingVenueApply, clearPendingVenueApply } = useAuthStore();
   const initializeConfig = useConfigStore((s) => s.initializeConfig);
+  const initializeLanguage = useLanguageStore((s) => s.initializeLanguage);
   const publicConfig = useConfigStore((s) => s.config);
 
   // Set Sentry user context when logged in
@@ -163,7 +164,7 @@ export default function App() {
   // Initialize auth + public config on app start
   useEffect(() => {
     const initAuth = async () => {
-      await Promise.all([initialize(), initializeConfig()]);
+      await Promise.all([initialize(), initializeConfig(), initializeLanguage()]);
       setIsInitializing(false);
     };
     initAuth();

@@ -66,6 +66,14 @@ const REPORT_TYPE_LABELS = {
 };
 
 const SLA_HINT = 'SLA: güvenlik 2h · içerik 12h · genel 48h';
+const L_ACTIONS_ON_DEVICE = false;
+const WEB_OPS_MOD_PATH = '/admin/mod.html';
+
+function blockDeviceLAction() {
+  if (L_ACTIONS_ON_DEVICE) return false;
+  Alert.alert('Web Ops', `L-kararı ${WEB_OPS_MOD_PATH} üzerinde. App yalnız rapor + saha funnel.`);
+  return true;
+}
 
 export default function ModerationScreen() {
   const navigation = useNavigation();
@@ -178,6 +186,7 @@ export default function ModerationScreen() {
       return;
     }
     const targetUserId = report.target_id || report.reported_user_id;
+    if (blockDeviceLAction()) return;
     const needsFourEyes = ['L2a', 'L2b', 'L3', 'L4'].includes(level);
     const needsFounder = ['L3', 'L4'].includes(level);
     const secondId = String(secondModeratorId || '').trim() || null;
@@ -303,6 +312,7 @@ export default function ModerationScreen() {
   };
 
   const handleFalseReporter = () => {
+    if (blockDeviceLAction()) return;
     const reporterId = selectedReport?.reporter_id;
     if (!reporterId) {
       Alert.alert('Yok', 'Raporcu ID bulunamadı');
@@ -363,6 +373,7 @@ export default function ModerationScreen() {
   };
 
   const handleStatusUpdate = async (reportId, newStatus) => {
+    if (blockDeviceLAction()) return;
     try {
       setUpdating(true);
       await updateReportStatus(reportId, newStatus, currentUserId);
@@ -379,6 +390,7 @@ export default function ModerationScreen() {
   };
 
   const handleSuspendUser = () => {
+    if (blockDeviceLAction()) return;
     const userId = selectedReport?.reported_user_id;
     if (!userId) return;
     Alert.alert(
@@ -409,6 +421,7 @@ export default function ModerationScreen() {
   };
 
   const handleUnsuspendUser = () => {
+    if (blockDeviceLAction()) return;
     const userId = selectedReport?.reported_user_id;
     if (!userId) return;
     Alert.alert('Unsuspend user', 'Restore this user\'s access?', [
@@ -690,7 +703,8 @@ export default function ModerationScreen() {
                   }}
                 />
                 <View style={styles.modalActionsRow}>
-                  {['L0', 'L1', 'L2a', 'L2b', 'L3', 'L4'].map((lvl) => (
+                  {L_ACTIONS_ON_DEVICE ? (
+                    ['L0', 'L1', 'L2a', 'L2b', 'L3', 'L4'].map((lvl) => (
                     <TouchableOpacity
                       key={lvl}
                       style={[styles.actionButtonSmall, styles.resolveButton, { marginBottom: 6 }]}
@@ -699,7 +713,12 @@ export default function ModerationScreen() {
                     >
                       <Text style={styles.actionButtonText}>{lvl}</Text>
                     </TouchableOpacity>
-                  ))}
+                    ))
+                  ) : (
+                    <Text style={styles.detailLabel}>
+                      L-kararı web Ops: {WEB_OPS_MOD_PATH} · app’te aksiyon yok
+                    </Text>
+                  )}
                 </View>
                 {selectedReport.reporter_id ? (
                   <TouchableOpacity
@@ -833,6 +852,11 @@ export default function ModerationScreen() {
           ))}
         </ScrollView>
         <Text style={[styles.metaText, { paddingHorizontal: 4, marginVertical: 6 }]}>{SLA_HINT}</Text>
+        {!L_ACTIONS_ON_DEVICE ? (
+          <Text style={[styles.metaText, { paddingHorizontal: 4, marginBottom: 8 }]}>
+            L-kararı {WEB_OPS_MOD_PATH} · app yalnız rapor + funnel
+          </Text>
+        ) : null}
         {queueMode !== 'funnel' ? (
         <>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -1075,6 +1099,7 @@ export default function ModerationScreen() {
             <TouchableOpacity
               style={styles.reportCard}
               onPress={() => {
+                if (blockDeviceLAction()) return;
                 Alert.alert('Itiraz', item.reason || 'Itiraz', [
                   { text: 'Iptal', style: 'cancel' },
                   {

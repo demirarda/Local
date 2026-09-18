@@ -20,8 +20,10 @@ describe('FL + feedback window (son-part.md §4)', () => {
     expect(levelFromFbCount(8)).toBe('l3');
   });
 
-  test('IQ weights by FL level', () => {
-    expect(fbWeightFromLevel('l1')).toBe(1.0);
+  test('IQ weights by FL level (mühür-bazlı doğum 0.5 / tam-ses 1.0)', () => {
+    expect(fbWeightFromLevel('l1')).toBe(0.5);
+    expect(fbWeightFromLevel('l1', 1)).toBe(0.5);
+    expect(fbWeightFromLevel('l1', 2)).toBe(1.0);
     expect(fbWeightFromLevel('l2')).toBe(0.5);
     expect(fbWeightFromLevel('l3')).toBe(0.0);
     expect(fbWeightFromLevel('stranger')).toBe(0);
@@ -42,6 +44,16 @@ describe('FL + feedback window (son-part.md §4)', () => {
 
     const after = getFeedbackWindowInfo(ritual, new Date('2026-01-02T02:00:00Z'));
     expect(after.open).toBe(false);
+  });
+
+  test('§11 deadline SABİT — 24s live-window FB kapanışını uzatmaz', () => {
+    const ritual = {
+      start_time: new Date('2026-01-01T12:00:00Z'),
+      duration: 60,
+      live_window_hours: 24,
+      window_ends_at: new Date('2026-01-02T13:00:00Z'),
+    };
+    expect(getFeedbackClosesAt(ritual).toISOString()).toBe('2026-01-02T01:00:00.000Z');
   });
 
   test('countFreshFeedbackBetween excludes pre-friendship feedback via accepted_at join', async () => {

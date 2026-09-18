@@ -11,7 +11,8 @@ export function canAccessSection(role, section) {
     dashboard: ['founder', 'pm', 'host_lead', 'venue_lead', 'designer', 'developer'],
     projects: ['founder', 'pm', 'host_lead', 'venue_lead', 'designer', 'developer'],
     hosts: ['founder', 'pm', 'host_lead'],
-    venues: ['founder', 'pm', 'venue_lead'],
+    venues: ['founder', 'pm', 'venue_lead', 'venue_ops'],
+    mod: ['founder', 'pm', 'moderator'],
     screens: ['founder', 'pm', 'designer', 'developer'],
     bridge: ['founder', 'pm', 'host_lead', 'venue_lead'],
     team: ['founder', 'pm'],
@@ -21,7 +22,8 @@ export function canAccessSection(role, section) {
 
 export function getDefaultRoute(role) {
   if (role === 'host_lead') return '/hosts';
-  if (role === 'venue_lead') return '/venues';
+  if (role === 'venue_lead' || role === 'venue_ops') return '/venues';
+  if (role === 'moderator') return '/';
   if (role === 'designer') return '/screens';
   if (role === 'developer') return '/screens';
   return '/';

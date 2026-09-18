@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
-import { View, StyleSheet, NativeModules } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 // Main App Screens
 import PulseScreen from '../screens/PulseScreen';
@@ -48,7 +48,6 @@ import WaitingRoomScreen from '../screens/WaitingRoomScreen';
 import RitualCheckInScreen from '../screens/RitualCheckInScreen';
 import DSUserDashboardScreen from '../screens/DSUserDashboardScreen';
 import DSVenueProDashboardScreen from '../screens/DSVenueProDashboardScreen';
-import LocalScreen from '../screens/LocalScreen';
 import BadgeGalleryScreen from '../screens/BadgeGalleryScreen';
 import HostHistoryScreen from '../screens/HostHistoryScreen';
 import VenueCityPartnerScreen from '../screens/VenueCityPartnerScreen';
@@ -63,6 +62,7 @@ import VenueArchiveScreen from '../screens/VenueArchiveScreen';
 import VenueFloorPlanScreen from '../screens/VenueFloorPlanScreen';
 import VenueManagerScreen from '../screens/VenueManagerScreen';
 import VenueBusinessScreen from '../screens/VenueBusinessScreen';
+import SalesPocketScreen from '../screens/SalesPocketScreen';
 import ProfileAccessStateScreen from '../screens/ProfileAccessStateScreen';
 import LTE3EngineScreen from '../screens/LTE3EngineScreen';
 import GlossaryScreen from '../screens/GlossaryScreen';
@@ -92,6 +92,7 @@ import UniversityProfileScreen from '../screens/UniversityProfileScreen';
 import OnboardingUniversityEmailScreen from '../screens/OnboardingUniversityEmailScreen';
 import UP03L1AcquaintanceScreen from '../screens/UP03L1AcquaintanceScreen';
 import useThemeStore from '../store/themeStore';
+import useLanguageStore from '../store/languageStore';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -100,34 +101,12 @@ const PRIMARY_COLOR = '#f9a13d';
 const DARK_BACKGROUND = '#0a0a0a';
 const DARK_TAB_BG = 'rgba(24, 24, 27, 0.8)'; // zinc-900/80
 const DARK_TAB_BORDER = '#27272a'; // zinc-800
-const USE_MAPBOX_LOCAL = process.env.EXPO_PUBLIC_USE_MAPBOX_LOCAL === 'true';
 
-function resolveLocalTabComponent() {
-  if (!USE_MAPBOX_LOCAL) return LocalScreen;
-  const hasMapboxNative = Boolean(
-    NativeModules?.RNMBXModule ||
-      NativeModules?.RNMBXMapView ||
-      NativeModules?.RNMBXOfflineModule
-  );
-  if (!hasMapboxNative) {
-    return LocalScreen;
-  }
-  try {
-    // Lazy require prevents runtime crash when native module is unavailable (Expo Go / no rebuild).
-    return require('../screens/MapboxLocalScreen').default;
-  } catch (error) {
-    console.warn('Mapbox local screen unavailable, falling back to LocalScreen:', error?.message || error);
-    return LocalScreen;
-  }
-}
-
-// Main Tab Navigator — §17: tek ürün ekranı
+// Main Tab Navigator — Pulse · Create · Passport
 function MainTabs() {
-  const LocalTabComponent = resolveLocalTabComponent();
-
   return (
     <Tab.Navigator
-      // Custom bottom nav inside each tab (Pulse/Local/Create/Passport). Hide default TabBar.
+      // Custom bottom nav inside each tab (Pulse/Create/Passport). Hide default TabBar.
       tabBar={() => null}
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -153,28 +132,6 @@ function MainTabs() {
                 name="timeline" 
                 size={18} 
                 color={focused ? '#000' : 'rgba(161, 161, 170, 0.4)'} 
-              />
-            </View>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Local"
-        component={LocalTabComponent}
-        options={{
-          tabBarLabel: 'Local',
-          tabBarLabelStyle: {
-            fontSize: 10,
-            fontWeight: 'bold',
-            color: PRIMARY_COLOR,
-            marginTop: 4,
-          },
-          tabBarIcon: ({ focused }) => (
-            <View style={[styles.activeTabIconContainer, focused && styles.activeTabIconGlow]}>
-              <MaterialIcons
-                name="public"
-                size={18}
-                color={focused ? '#000' : 'rgba(161, 161, 170, 0.4)'}
               />
             </View>
           ),
@@ -215,10 +172,12 @@ function MainTabs() {
 // Root Navigator
 export default function AppNavigator({ isAuthenticated }) {
   const initializeTheme = useThemeStore((s) => s.initializeTheme);
+  const initializeLanguage = useLanguageStore((s) => s.initializeLanguage);
 
   useEffect(() => {
     initializeTheme();
-  }, [initializeTheme]);
+    initializeLanguage();
+  }, [initializeTheme, initializeLanguage]);
 
   return (
     <Stack.Navigator
@@ -484,6 +443,11 @@ export default function AppNavigator({ isAuthenticated }) {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="CitySelection"
+          component={CitySelectionScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="UniversityProfile"
           component={UniversityProfileScreen}
           options={{ headerShown: false }}
@@ -567,6 +531,11 @@ export default function AppNavigator({ isAuthenticated }) {
           name="MyRegulars"
           component={MyRegularsScreen}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SalesPocket"
+          component={SalesPocketScreen}
+          options={{ title: 'Satışlarım', headerBackTitle: 'Back' }}
         />
         <Stack.Screen
           name="CityRhythm"

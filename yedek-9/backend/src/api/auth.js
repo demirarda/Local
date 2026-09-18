@@ -12,6 +12,8 @@ import { enqueue } from '../services/queueSystem.js';
 import { sendError } from '../utils/errorResponse.js';
 import { getUserPenaltyStatus } from '../services/penaltyService.js';
 import { bindUniversityIdentityHash } from '../services/identityService.js';
+import { requireProductOps } from '../services/productOpsRoles.js';
+import { getRsViewState, resolveRsForViewer } from '../services/rsVisibility.js';
 
 const router = express.Router();
 
@@ -461,6 +463,14 @@ router.post('/login', async (req, res) => {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
+    const rsOwn = await getRsViewState([user.id]);
+    const rsResolved = resolveRsForViewer(
+      user.id,
+      user.id,
+      parseFloat(user.rs_score) || 5.0,
+      rsOwn
+    );
+
     res.json({
       success: true,
       data: {
@@ -471,7 +481,8 @@ router.post('/login', async (req, res) => {
           name: user.name,
           city: user.city,
           university: user.identity_track === 'identity' ? null : user.university,
-          rs_score: parseFloat(user.rs_score) || 5.0,
+          rs_score: rsResolved.rs_score,
+          rs_visible: rsResolved.rs_visible,
           email_verified: user.email_verified,
           identity_verified: Boolean(user.identity_verified),
           age_ok: Boolean(user.age_ok),
@@ -1230,6 +1241,14 @@ router.get('/me', authenticateToken, async (req, res) => {
       Boolean(user.email_verified) &&
       user.uni_label_visible !== false;
 
+    const rsOwn = await getRsViewState([user.id]);
+    const rsResolved = resolveRsForViewer(
+      user.id,
+      user.id,
+      parseFloat(user.rs_score) || 5.0,
+      rsOwn
+    );
+
     res.json({
       success: true,
       data: {
@@ -1238,7 +1257,8 @@ router.get('/me', authenticateToken, async (req, res) => {
         name: user.name,
         city: user.city,
         university: user.identity_track === 'identity' ? null : user.university,
-        rs_score: parseFloat(user.rs_score) || 5.0,
+        rs_score: rsResolved.rs_score,
+        rs_visible: rsResolved.rs_visible,
         email_verified: user.email_verified,
         identity_verified: Boolean(user.identity_verified),
         age_ok: Boolean(user.age_ok),
@@ -1319,21 +1339,11 @@ export function authenticateToken(req, res, next) {
   });
 }
 
-// Admin-only middleware (ADMIN_USER_IDS = comma-separated UUIDs, or ADMIN_EMAILS = comma-separated emails)
+// Product Ops gate — any founder/moderator/venue_ops/support/read_only (ADMIN_* → founder)
 export function requireAdmin(req, res, next) {
-  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
-  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  if (adminIds.length === 0 && adminEmails.length === 0) {
-    return res.status(403).json({ success: false, error: 'Admin access not configured' });
-  }
-  const userId = req.user?.userId;
-  const email = (req.user?.email || '').toLowerCase();
-  const allowedById = userId && adminIds.length > 0 && adminIds.includes(userId);
-  const allowedByEmail = email && adminEmails.length > 0 && adminEmails.includes(email);
-  if (!allowedById && !allowedByEmail) {
-    return res.status(403).json({ success: false, error: 'Admin access required' });
-  }
-  next();
+  return requireProductOps()(req, res, next);
 }
+
+export { requireProductOps } from '../services/productOpsRoles.js';
 
 export default router;

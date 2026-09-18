@@ -2,7 +2,7 @@
  * sonMD §2C affiliations API + §2Ağu-3 friends list helpers mount points
  */
 import express from 'express';
-import { authenticateToken, requireAdmin } from './auth.js';
+import { authenticateToken, requireProductOps } from './auth.js';
 import {
   assignBrandAdminAffiliation,
   listAffiliatedHosts,
@@ -29,7 +29,7 @@ router.get('/orgs/:orgKind/:orgId/hosts', authenticateToken, async (req, res) =>
 });
 
 // POST /api/affiliations/brand-admin — admin assigns BRAND_ADMIN
-router.post('/brand-admin', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/brand-admin', authenticateToken, requireProductOps('brand'), async (req, res) => {
   try {
     const { user_id, brand_id } = req.body || {};
     const result = await assignBrandAdminAffiliation({

@@ -54,7 +54,7 @@ describe('§9–§11 pct100', () => {
     expect(src).toContain("feeling === 'yellow' ? 'P2V_YELLOW'");
     expect(src).not.toMatch(/kind === 'P2V'\) key = feeling === 'red' \? 'P2V_RED' : 'P2V_GREEN'/);
     expect(src).toContain("feedback_type: 'p2z'");
-    expect(src).toContain('P2Z — Zone nasildi?');
+    expect(src).toContain("Zone'umu geliştir");
     expect(src).toContain("chipIdsFor('P2Z'");
   });
 

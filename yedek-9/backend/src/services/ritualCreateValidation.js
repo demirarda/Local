@@ -3,6 +3,13 @@
  */
 import LOCAL_CONFIG, { defaultLiveWindowHours } from '../config/localConfig.js';
 import pool from '../config/database.js';
+import {
+  assertPaidRAllowed,
+  assertSelfRezWorkingDay,
+  normalizeDoorAndEntry,
+  resolveSelfRezModeForStart,
+  venueWorkingDayBounds,
+} from './megaSpec.js';
 
 /** §2C — PUBLIC|FRIENDS discovery audience (not visibility) */
 export function normalizeRitualAudience(raw) {
@@ -71,10 +78,7 @@ export function feeDtoFromRow(row) {
 }
 
 /**
- * Yıldız A6 — start ufku.
- * Instant → INSTANT_MAX_LEAD (ayrı).
- * VEN_EVENT / event_group / brand-event → EVENT_MAX_AHEAD_D.
- * Diğer planned → PLANNED_MAX_AHEAD_D.
+ * EK-11 ufuk: custom/zone MAX_CREATE_HORIZON=30g · L-venue sınırsız · VEN-EVENT ≤60g.
  */
 export function assertStartHorizon({
   startDate,
@@ -82,6 +86,8 @@ export function assertStartHorizon({
   origin = null,
   eventGroupId = null,
   brandId = null,
+  locationType = null,
+  venueId = null,
   now = new Date(),
 } = {}) {
   if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {
@@ -98,9 +104,25 @@ export function assertStartHorizon({
     Boolean(eventGroupId) ||
     Boolean(brandId);
 
+  const loc = String(locationType || '').toLowerCase();
+  const venueUnlimited =
+    Boolean(venueId) &&
+    loc !== 'custom' &&
+    loc !== 'zone' &&
+    LOCAL_CONFIG.ritual.VENUE_RAF_HORIZON_UNLIMITED !== false &&
+    !isEvent;
+
+  if (venueUnlimited) {
+    return { ok: true, horizon: 'venue_unlimited', max_ahead_d: null };
+  }
+
   const maxDays = isEvent
     ? Number(LOCAL_CONFIG.ritual.EVENT_MAX_AHEAD_D ?? 60)
-    : Number(LOCAL_CONFIG.ritual.PLANNED_MAX_AHEAD_D ?? 21);
+    : Number(
+        LOCAL_CONFIG.ritual.MAX_CREATE_HORIZON_D ??
+          LOCAL_CONFIG.ritual.PLANNED_MAX_AHEAD_D ??
+          30
+      );
 
   const leadMs = startDate.getTime() - now.getTime();
   const maxMs = maxDays * 24 * 3600 * 1000;
@@ -124,9 +146,13 @@ export function assertStartHorizon({
 }
 
 /**
- * Self-rez 1/gün/mekan ⭐ — host × venue × gün.
+ * Self-rez 1/gün/mekan ⭐ — host × venue × çalışma-günü (EK-2 gece-yarısı reset YOK).
  */
-export async function assertSelfRezDailyCap(userId, venueId, { now = new Date(), client = pool } = {}) {
+export async function assertSelfRezDailyCap(
+  userId,
+  venueId,
+  { now = new Date(), client = pool, weeklyHours = null } = {}
+) {
   if (!userId || !venueId) return { ok: true, skipped: true };
 
   const cap = Number(LOCAL_CONFIG.ritual.SELF_REZ_PER_DAY_PER_VENUE ?? 1);
@@ -134,10 +160,18 @@ export async function assertSelfRezDailyCap(userId, venueId, { now = new Date(),
     return { ok: true, unlimited: true };
   }
 
-  const dayStart = new Date(now);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
+  let dayStart = new Date(now);
+  let dayEnd = new Date(now);
+  if (LOCAL_CONFIG.ritual.SELF_REZ_USES_WORKING_DAY !== false && weeklyHours) {
+    const bounds = venueWorkingDayBounds(weeklyHours, now);
+    if (!bounds.ok) return bounds;
+    dayStart = bounds.openAt;
+    dayEnd = bounds.closeAt;
+  } else {
+    dayStart.setHours(0, 0, 0, 0);
+    dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+  }
 
   const r = await client.query(
     `SELECT COUNT(*)::int AS n
@@ -162,6 +196,8 @@ export async function assertSelfRezDailyCap(userId, venueId, { now = new Date(),
   }
   return { ok: true, used, cap, remaining: cap - used };
 }
+
+export { assertPaidRAllowed, normalizeDoorAndEntry, resolveSelfRezModeForStart, assertSelfRezWorkingDay };
 
 export function validateRitualCreateParams({
   duration,

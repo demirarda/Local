@@ -40,6 +40,37 @@ export async function shouldAskEventGeneralRq(ritualId, client = pool) {
   return Number(subs.rows[0]?.c || 0) > 0;
 }
 
+/** E4: gecede maks-3 sub-RQ (aynı event_group kardeşleri) */
+export async function assertSubRqCap(ritualId, userId, client = pool) {
+  const max = Number(LOCAL_CONFIG.ritual?.SUB_FB_MAX ?? 3);
+  if (!ritualId || !userId || max <= 0) return { ok: true };
+  const ritual = await client.query(
+    `SELECT id, event_group_id FROM rituals WHERE id = $1`,
+    [ritualId]
+  );
+  const groupId = ritual.rows[0]?.event_group_id;
+  if (!groupId) return { ok: true };
+  const siblings = await client.query(
+    `SELECT COUNT(*)::int AS c
+     FROM feedback f
+     JOIN rituals r ON r.id = f.ritual_id
+     WHERE f.from_user_id = $1
+       AND r.event_group_id = $2
+       AND r.id IS DISTINCT FROM $3
+       AND f.feedback_type IN ('p2r', 'rq')`,
+    [userId, groupId, ritualId]
+  );
+  if (Number(siblings.rows[0]?.c || 0) >= max) {
+    return {
+      ok: false,
+      error: `Bu gecede en fazla ${max} sub-RQ`,
+      code: 'SUB_FB_MAX',
+      max,
+    };
+  }
+  return { ok: true, max };
+}
+
 export async function eventGeneralRqMeta(ritualId) {
   const ask = await shouldAskEventGeneralRq(ritualId);
   return {

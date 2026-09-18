@@ -769,23 +769,25 @@ export async function notifyFeedbackAvailable(userId, ritualData) {
     receivedFeedbackCount = 0;
   }
   const waitingCount = Math.max(0, approvedCount - 1 - receivedFeedbackCount);
-  let deadlineHours = 24;
+  let deadlineHours = Number(LOCAL_CONFIG.ritual?.FEEDBACK_FLOOR_HOURS || 12);
   if (ritualMeta?.start_time && ritualMeta?.duration) {
     const endAt = new Date(new Date(ritualMeta.start_time).getTime() + Number(ritualMeta.duration) * 60000);
-    const deadlineAt = new Date(endAt.getTime() + 24 * 3600000);
+    const floorH = Number(LOCAL_CONFIG.ritual?.FEEDBACK_FLOOR_HOURS || 12);
+    const deadlineAt = new Date(endAt.getTime() + floorH * 3600000);
     const diffMs = deadlineAt.getTime() - Date.now();
     deadlineHours = Math.max(1, Math.ceil(diffMs / 3600000));
   }
   return await sendNotificationToUser(
     userId,
-    'feedback_deadline',
-    'Geri Bildirim Son Tarihi',
-    `${ritualMeta?.title || ritualData?.title || 'Ritual'} · ${waitingCount} kişi bekliyor · ${deadlineHours}s'de son tarih · +IF uyarısı`,
+    'feedback_available',
+    'Gece kapandı',
+    'Kartların hazır',
     {
       ritual_id: ritualId,
       ritual_title: ritualMeta?.title || ritualData?.title,
       waiting_count: waitingCount,
       deadline_label: `${deadlineHours}s`,
+      screen: 'RitualFeedback',
     }
   );
 }
@@ -1070,9 +1072,9 @@ export async function notifyFeedbackClosing(userId, ritualData = {}) {
   return await sendNotificationToUser(
     userId,
     'feedback_closing',
-    'Feedback Kapaniyor',
-    `${ritualData.title || 'Ritual'} · geri bildirim Window bitiyor`,
-    { ritual_id: ritualData.id, screen: 'RitualDetail' }
+    'Kartların kapanıyor',
+    `${ritualData.title || 'Ritual'} · geri bildirim ~2 saat içinde kapanır`,
+    { ritual_id: ritualData.id, screen: 'RitualFeedback' }
   );
 }
 
@@ -1722,15 +1724,27 @@ export async function notifyVenueSlotOpened(venueId, { slotId, slotTitle, venueN
     payload: { slot_id: slotId, slot_title: slotTitle },
   });
   const ids = await listVenueBellFollowerIds(venueId);
+  const { resolveTierFromVenue } = await import('./venuePackageService.js');
+  const { followerPushAllowed } = await import('./megaPackages.js');
+  let v = { rows: [] };
+  try {
+    v = await pool.query(
+      `SELECT subscription_tier, pro_enabled, city_partner_enabled FROM venues WHERE id = $1`,
+      [venueId]
+    );
+  } catch (_e) {
+    /* optional — OPEN zil in-app kalır */
+  }
+  const pushOk = followerPushAllowed(resolveTierFromVenue(v.rows[0] || {}));
   let sent = 0;
   for (const uid of ids) {
     await sendNotificationToUser(
       uid,
       'venue_slot_opened',
-      'Slot açıldı',
-      slotTitle || venueName || 'Takip ettiğin mekanda yeni slot',
+      pushOk ? 'Yeni duyuru' : 'Raf açıldı',
+      slotTitle || venueName || 'Takip ettiğin mekanda yeni raf',
       { venue_id: venueId, slot_id: slotId, screen: 'VenueSlots' },
-      { pushEligible: true, skipSignal: true }
+      { pushEligible: pushOk, skipSignal: true }
     ).catch(() => {});
     sent += 1;
   }

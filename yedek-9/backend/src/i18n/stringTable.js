@@ -121,6 +121,12 @@ export const STRING_TABLE = {
     TR: 'Cinsel saldırı',
     open: false,
   },
+  guvenlik_bildir: {
+    key: 'guvenlik_bildir',
+    EN: 'Safety alert (not feedback)',
+    TR: 'Güvenlik bildir (FB değil)',
+    open: false,
+  },
 
   music_attr_spotify: {
     key: 'music_attr_spotify',

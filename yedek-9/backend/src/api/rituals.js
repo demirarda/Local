@@ -16,12 +16,13 @@ import {
   revealCheckinKeyword,
   getCheckinWindowInfo,
 } from '../services/checkinService.js';
-import { getRsPublicFlags, resolveRsForViewer } from '../services/rsVisibility.js';
+import { getRsViewState, resolveRsForViewer, maskRsScoreList } from '../services/rsVisibility.js';
 import LOCAL_CONFIG, {
   getGpsRadiusMeters,
   isWithinJoinGrace,
   freeCancelThresholdMinutes,
   defaultLiveWindowHours,
+  farDiscoveryWeight,
 } from '../config/localConfig.js';
 import {
   hasBlockedPeerOnRitual,
@@ -53,9 +54,13 @@ import {
   feeDtoFromRow,
   assertStartHorizon,
   assertSelfRezDailyCap,
+  assertSelfRezWorkingDay,
   isScheduledLocationType,
   normalizeRouteId,
   assertScheduledOneShot,
+  normalizeDoorAndEntry,
+  assertPaidRAllowed,
+  resolveSelfRezModeForStart,
 } from '../services/ritualCreateValidation.js';
 import { maybeRecordRepeatPinLead } from '../services/venueLeadService.js';
 import { computeRitualPulse } from '../services/pulseService.js';
@@ -187,8 +192,9 @@ async function calculateRitualRankingScore(ritual, viewerId, signals) {
     score += 0.08;
   }
   
-  // RS fit (if viewer has RS score, match with ritual context)
-  if (viewerId) {
+  // §9 FAR-0: RS keşfi etkilemez. Faz-1 zayıf · Faz-2+ tam.
+  const farW = farDiscoveryWeight();
+  if (viewerId && farW > 0) {
     try {
       const viewerQuery = await pool.query(
         'SELECT rs_score FROM users WHERE id = $1',
@@ -199,7 +205,7 @@ async function calculateRitualRankingScore(ritual, viewerId, signals) {
         // Higher RS users get slight boost for verified rituals
         if (signals.isHostVerified || signals.isVenueVerified) {
           const rsFit = (viewerRS - 5.0) / 5.0; // Normalize to -1 to 1, then scale
-          score += rsFit * 0.05; // Small boost for high RS users
+          score += rsFit * 0.05 * farW;
         }
       }
     } catch (error) {
@@ -535,9 +541,13 @@ router.get('/pulse', authenticateToken, async (req, res) => {
 
     // Optional city filter (legacy name) OR active_city scope (§12.5)
     if (city) {
-      query += ` AND u.city = $${paramIndex}`;
-      params.push(city);
-      paramIndex++;
+      const { cityNameScopeSql, foldCityName } = await import('../services/cityScope.js');
+      const scope = cityNameScopeSql(foldCityName(city), paramIndex);
+      if (scope.sql) {
+        query += scope.sql;
+        params.push(...scope.params);
+        paramIndex += scope.params.length;
+      }
     } else if (viewerId) {
       try {
         const { resolveActiveCityId, ritualCityFilterSql } = await import('../services/cityScope.js');
@@ -574,7 +584,9 @@ router.get('/pulse', authenticateToken, async (req, res) => {
     `;
 
     const result = await pool.query(query, params);
-    const rsPublicFlags = await getRsPublicFlags(result.rows.map((r) => r.host_id));
+    const rsPublicFlags = await getRsViewState(
+      [...result.rows.map((r) => r.host_id), viewerId].filter(Boolean)
+    );
 
     const grouped = {
       [TIME_STATE.LIVE_NOW]: [],
@@ -585,10 +597,10 @@ router.get('/pulse', authenticateToken, async (req, res) => {
 
     let viewerUniversity = null;
     let viewerRS = null;
-    if (viewer_id) {
+    if (viewerId) {
       const viewerResult = await pool.query(
         `SELECT university, rs_score FROM users WHERE id = $1 LIMIT 1`,
-        [viewer_id]
+        [viewerId]
       );
       viewerUniversity = viewerResult.rows[0]?.university || null;
       viewerRS = viewerResult.rows[0]?.rs_score != null ? parseFloat(viewerResult.rows[0].rs_score) : null;
@@ -794,7 +806,7 @@ router.get('/pulse', authenticateToken, async (req, res) => {
       const isVenueVerified = venueVerifiedResult.rows.length > 0;
 
       // Calculate ranking score
-      const rankingScore = await calculateRitualRankingScore(ritual, viewer_id, {
+      const rankingScore = await calculateRitualRankingScore(ritual, viewerId, {
         timeState,
         isHostVerified,
         isVenueVerified,
@@ -806,7 +818,8 @@ router.get('/pulse', authenticateToken, async (req, res) => {
         capacity: ritual.capacity,
       });
       const minRs = ritual.min_rs != null ? Number(ritual.min_rs) : null;
-      const rsLocked = minRs != null && viewerRS != null && viewerRS < minRs;
+      // §0 siyah-ayna: RS kapı değil — feed kilidi yok; RS yalnız sıralar.
+      const rsLocked = false;
       const specialOccasion =
         /\b(birthday|dogum gunu|anniversary|yildonumu|kutlama|celebration|mezuniyet|graduation)\b/i
           .test(String(ritual.title || ''));
@@ -841,7 +854,7 @@ router.get('/pulse', authenticateToken, async (req, res) => {
         duration: ritual.duration,
         capacity: ritual.capacity,
         min_rs: minRs,
-        viewer_rs_score: viewerRS,
+        viewer_rs_score: resolveRsForViewer(viewerId, viewerId, viewerRS, rsPublicFlags).rs_score,
         rs_locked: rsLocked,
         current_attendees: currentAttendees,
         occupancy_ratio: ritual.capacity > 0 ? currentAttendees / ritual.capacity : 0,
@@ -976,9 +989,13 @@ router.get('/map', authenticateToken, async (req, res) => {
     }
 
     if (city) {
-      queryParts.push(`AND u.city = $${idx}`);
-      params.push(city);
-      idx += 1;
+      const { cityNameScopeSql, foldCityName } = await import('../services/cityScope.js');
+      const scope = cityNameScopeSql(foldCityName(city), idx);
+      if (scope.sql) {
+        queryParts.push(scope.sql.trim());
+        params.push(...scope.params);
+        idx += scope.params.length;
+      }
     }
     if (lat && lng) {
       queryParts.push(`AND (
@@ -1054,8 +1071,10 @@ router.get('/venue-activity', async (req, res) => {
     `;
 
     if (city) {
-      query += ` AND (u.city = $${idx} OR EXISTS (SELECT 1 FROM venues v WHERE v.id = r.venue_id AND v.city = $${idx}))`;
-      params.push(city);
+      const { foldCityName, foldCitySql } = await import('../services/cityScope.js');
+      const folded = foldCityName(city);
+      query += ` AND (${foldCitySql('u.city')} = $${idx} OR EXISTS (SELECT 1 FROM venues v WHERE v.id = r.venue_id AND ${foldCitySql('v.city')} = $${idx}))`;
+      params.push(folded);
       idx++;
     }
 
@@ -1150,7 +1169,7 @@ router.get('/:id/public', async (req, res) => {
 
     const ritual = result.rows[0];
     const viewerId = req.query.viewer_id || null;
-    const rsFlags = await getRsPublicFlags([ritual.host_id]);
+    const rsFlags = await getRsViewState([ritual.host_id]);
     const hostRsResolved = resolveRsForViewer(
       viewerId,
       ritual.host_id,
@@ -1245,8 +1264,8 @@ router.get('/:id/public', async (req, res) => {
 // GET /api/rituals/:id - Get ritual details
 router.get('/:id', authenticateToken, async (req, res) => {
   const startTime = Date.now();
+  const { id } = req.params;
   try {
-    const { id } = req.params;
     logger.debug('Fetching ritual detail', { ritualId: id });
 
     // Optimized: Single query to get ritual with host info, venue (when linked), and attendee count
@@ -1442,7 +1461,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
       joined_at: p.joined_at // For "joined X min ago" display
     }));
 
-    const rsPublicFlags = await getRsPublicFlags([
+    const rsPublicFlags = await getRsViewState([
       ritual.host_id,
       ...participants.map((p) => p.id),
     ]);
@@ -1572,6 +1591,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const duration = Date.now() - startTime;
     console.log(`[RitualDetail] Completed in ${duration}ms for ritual ${id}`);
 
+    const cancelFreePct = LOCAL_CONFIG.ritual.CANCEL_FREE_THRESHOLD_PCT ?? 0.25;
     const coverUrl = pulseCoverImageUrl(ritual);
     const exactUnlocked =
       isHostViewer || isExactDetailsUnlocked(viewerAttendance, currentTime);
@@ -1585,6 +1605,21 @@ router.get('/:id', authenticateToken, async (req, res) => {
       chipBreakdown = await getPublicRitualChipBreakdown(id);
     } catch (_e) {
       /* best effort */
+    }
+
+    let rebuildOffer = null;
+    try {
+      const off = await pool.query(
+        `SELECT id, mode, claimed_by, created_at
+         FROM ritual_rebuild_offers
+         WHERE source_ritual_id = $1 AND claimed_by IS NULL
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [id]
+      );
+      rebuildOffer = off.rows[0] || null;
+    } catch (_e) {
+      /* schema optional */
     }
 
     res.json({
@@ -1647,6 +1682,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
           highlight_badges: hostHighlightedBadges,
         },
         host_id: ritual.host_id,
+        host_role_open: Boolean(ritual.host_role_open),
+        host_vacated_at: ritual.host_vacated_at || null,
+        host_label: ritual.venue_id ? 'REZİDAN' : 'HOST',
+        host_label_en: ritual.venue_id ? 'RESIDENT' : 'HOST',
+        host_kunya: ritual.venue_id
+          ? `REZİDAN: ${ritual.host_name || (ritual.host_role_open ? 'boşta' : '—')} · ${ritual.venue_name_from_venue || ritual.location_name || ''}${isVenueVerified ? ' ✓' : ''}`
+          : null,
+        rebuild_offer: rebuildOffer,
         is_host_verified: isHostVerified,
         is_venue_verified: isVenueVerified,
         participants: outerLayer ? [] : maskedParticipants,
@@ -1714,6 +1757,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
             }
           : null,
         last_memory: lastMemoryForViewer,
+        p2c_tag: await (async () => {
+          try {
+            const { getP2cArchiveTag } = await import('../services/p2cArchiveService.js');
+            return await getP2cArchiveTag(id);
+          } catch (_e) {
+            return null;
+          }
+        })(),
         social_signals: {
           friends_interested: friendsInterestedCount,
           total_interested: parseInt(socialSignals.total_interested, 10) || 0,
@@ -1872,6 +1923,13 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const userId = req.user.userId;
     const reason = String(req.body?.reason || req.query?.reason || 'host_cancel');
     const categoryLabel = req.body?.category || req.query?.category || null;
+    const rebuildMode = String(req.body?.rebuild_mode || req.query?.rebuild_mode || '').toLowerCase();
+    const resolvedRebuildMode =
+      reason === 'weather_cancel'
+        ? 'cancel_only'
+        : rebuildMode === 'rebuild_now'
+          ? 'rebuild_now'
+          : 'open_claim';
 
     // §2D birth_cancel — Instant ≤10dk · seal==1 · hard-delete
     if (reason === 'birth_cancel') {
@@ -1914,12 +1972,19 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     const { cancelRitualAsHost } = await import('../services/waveBSocial.js');
     const { notifyRitualCancelled } = await import('../services/notifications.js');
+    const { cancelWithRebuild } = await import('../services/megaLockFlows.js');
 
-    const cancelled = await cancelRitualAsHost({
+    const cancelled = await cancelWithRebuild({
       ritualId: id,
       hostId: userId,
-      reason,
-      categoryLabel,
+      mode: resolvedRebuildMode,
+      cancelFn: () =>
+        cancelRitualAsHost({
+          ritualId: id,
+          hostId: userId,
+          reason,
+          categoryLabel,
+        }),
     });
     if (!cancelled.ok) {
       return res.status(cancelled.status || 400).json({
@@ -1952,12 +2017,64 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         cancel_reason: cancelled.ritual.cancel_reason,
         penalty_free: cancelled.penalty_free,
         weather: cancelled.weather || null,
+        rebuild: cancelled.rebuild || null,
       });
     }
     return res.status(204).send();
   } catch (error) {
     console.error('Error cancelling ritual', error);
     return res.status(500).json({ success: false, error: 'Failed to cancel ritual' });
+  }
+});
+
+// POST /api/rituals/:id/vacate-host — V13 hostluk boşta, R yaşar
+router.post('/:id/vacate-host', authenticateToken, async (req, res) => {
+  try {
+    const { vacateHostRole } = await import('../services/megaLockFlows.js');
+    const result = await vacateHostRole({ ritualId: req.params.id, userId: req.user.userId });
+    if (!result.ok) return res.status(result.status || 400).json({ success: false, error: result.error });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to vacate host' });
+  }
+});
+
+// POST /api/rituals/:id/claim-host — V13 üstlen
+router.post('/:id/claim-host', authenticateToken, async (req, res) => {
+  try {
+    const { claimHostRole } = await import('../services/megaLockFlows.js');
+    const result = await claimHostRole({ ritualId: req.params.id, userId: req.user.userId });
+    if (!result.ok) {
+      return res.status(result.status || 400).json({
+        success: false,
+        error: result.error,
+        code: result.code,
+      });
+    }
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to claim host' });
+  }
+});
+
+// POST /api/rituals/:id/rebuild/claim — E6 ilk basan alır
+router.post('/:id/rebuild/claim', authenticateToken, async (req, res) => {
+  try {
+    const { claimRebuildOffer } = await import('../services/megaLockFlows.js');
+    const result = await claimRebuildOffer({
+      sourceRitualId: req.params.id,
+      userId: req.user.userId,
+    });
+    if (!result.ok) {
+      return res.status(result.status || 400).json({
+        success: false,
+        error: result.error,
+        code: result.code,
+      });
+    }
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to claim rebuild' });
   }
 });
 
@@ -2150,7 +2267,7 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
     }
 
     // Validation (venue_name now resolved above)
-    if (!title || !start_time || !duration || !capacity || !entry_type || !location_lat || !location_lng) {
+    if (!title || !start_time || !duration || !capacity || !location_lat || !location_lng) {
       return res.status(400).json({
         success: false,
         error: 'Missing required fields'
@@ -2181,7 +2298,19 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
       });
     }
 
-    if (!Object.values(ENTRY_TYPE).includes(entry_type)) {
+    const accountType = finalVenueId || req.body.account_type === 'business' ? 'business' : 'user';
+    const doorGate = normalizeDoorAndEntry(req.body.door || entry_type, { accountType });
+    if (!doorGate.ok) {
+      return res.status(400).json({
+        success: false,
+        error: doorGate.error,
+        code: doorGate.code,
+      });
+    }
+    const resolvedEntryType = doorGate.entry_type;
+    const resolvedDoor = doorGate.door;
+
+    if (!Object.values(ENTRY_TYPE).includes(resolvedEntryType)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid entry_type'
@@ -2255,9 +2384,15 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
     const openNote = typeof req.body.open_note === 'string' ? req.body.open_note.trim().slice(0, 280) : null;
 
     const resolvedWindowType =
-      window_type === 'open_forum' ? 'open_forum' : 'ephemeral';
+      window_type === 'ephemeral'
+        ? 'ephemeral'
+        : window_type === 'open_forum' || LOCAL_CONFIG.ritual.FORUM_DEFAULT_ON !== false
+          ? 'open_forum'
+          : 'ephemeral';
     const resolvedForumSurface =
-      forum_surface === 'whole_window' ? 'whole_window' : 'memories_only';
+      forum_surface === 'whole_window'
+        ? 'whole_window'
+        : 'memories_only';
 
     const rawLocationType = String(location_type || '').toLowerCase();
     const isHome =
@@ -2283,6 +2418,13 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
         code: oneShot.code,
       });
     }
+    if (resolvedLocationType === 'zone') {
+      const { assertZonePublicDoor } = await import('../services/megaZone.js');
+      const zDoor = assertZonePublicDoor(resolvedDoor);
+      if (!zDoor.ok) {
+        return res.status(400).json({ success: false, error: zDoor.error, code: zDoor.code });
+      }
+    }
     const resolvedDefinition = ['bos', 'kategori', 'tam', 'user_oneri'].includes(
       String(definition_level || '').toLowerCase()
     )
@@ -2304,10 +2446,38 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
     }
     const resolvedAudience = audienceParse.audience;
     const resolvedFee = feeParse.fee;
-
     const resolvedOrigin = req.body.origin === 'SLOT_PLANNED' || slot_id
       ? 'SLOT_PLANNED'
       : (req.body.origin === 'VEN_EVENT' ? 'VEN_EVENT' : 'WALK_IN');
+    if (resolvedFee) {
+      let venueTier = 'free';
+      if (finalVenueId) {
+        const { resolveTierFromVenue } = await import('../services/venuePackageService.js');
+        const vrow = await pool.query(
+          `SELECT subscription_tier, pro_enabled, city_partner_enabled FROM venues WHERE id = $1`,
+          [finalVenueId]
+        );
+        venueTier = resolveTierFromVenue(vrow.rows[0] || {});
+      }
+      const paidGate = assertPaidRAllowed({
+        fee: resolvedFee,
+        origin: resolvedOrigin,
+        venueTier,
+        venueId: finalVenueId,
+      });
+      if (!paidGate.ok) {
+        return res.status(403).json({
+          success: false,
+          error: paidGate.error,
+          code: paidGate.code,
+        });
+      }
+      if (!finalVenueId && (resolvedLocationType === 'zone' || req.body.zone_id)) {
+        const { takeRateForZone } = await import('../services/megaZone.js');
+        paidGate.take_rate = takeRateForZone();
+        req._zoneTakeRate = paidGate.take_rate;
+      }
+    }
 
     if (resolvedOrigin === 'VEN_EVENT') {
       if (!finalVenueId) {
@@ -2333,9 +2503,15 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
     const selfRezModes = Array.isArray(LOCAL_CONFIG.ritual.SELF_REZ_MODES)
       ? LOCAL_CONFIG.ritual.SELF_REZ_MODES
       : ['INSTANT', 'APPROVAL'];
-    const resolvedSelfRezMode = selfRezModeRaw && selfRezModes.includes(selfRezModeRaw)
+    let resolvedSelfRezMode = selfRezModeRaw && selfRezModes.includes(selfRezModeRaw)
       ? selfRezModeRaw
       : null;
+    if (resolvedSelfRezMode || slot_id) {
+      resolvedSelfRezMode = resolveSelfRezModeForStart({
+        startDate,
+        requestedMode: resolvedSelfRezMode || 'INSTANT',
+      });
+    }
     if (slot_id) {
       if (!resolvedSelfRezMode) {
         return res.status(400).json({
@@ -2367,6 +2543,8 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
         origin: resolvedOrigin,
         eventGroupId: req.body.event_group_id || null,
         brandId: req.body.brand_id || null,
+        locationType: resolvedLocationType,
+        venueId: finalVenueId,
       });
       if (!horizon.ok) {
         return res.status(400).json({
@@ -2387,7 +2565,20 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
           code: 'SELF_REZ_VENUE_REQUIRED',
         });
       }
-      const selfRezCap = await assertSelfRezDailyCap(authUserId, finalVenueId);
+      const hoursRow = await pool.query(
+        `SELECT weekly_hours FROM venues WHERE id = $1`,
+        [finalVenueId]
+      );
+      const weeklyHours = hoursRow.rows[0]?.weekly_hours || null;
+      const bufferGate = assertSelfRezWorkingDay({ weeklyHours, now: new Date() });
+      if (weeklyHours && !bufferGate.ok) {
+        return res.status(400).json({
+          success: false,
+          error: bufferGate.error,
+          code: bufferGate.code,
+        });
+      }
+      const selfRezCap = await assertSelfRezDailyCap(authUserId, finalVenueId, { weeklyHours });
       if (!selfRezCap.ok) {
         return res.status(429).json({
           success: false,
@@ -2512,7 +2703,7 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
       durMin,
       endDate,
       cap,
-      entry_type,
+      resolvedEntryType,
       gpsAnchor.location_lat,
       gpsAnchor.location_lng,
       authUserId,
@@ -2633,6 +2824,7 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
       newRitual.fee = resolvedFee;
       newRitual.has_fee = !!resolvedFee;
     }
+    if (req._zoneTakeRate) newRitual.take_rate = req._zoneTakeRate;
 
     // §12 — brand_id imza + window_visibility (DEFAULT CLOSED)
     try {
@@ -2924,6 +3116,9 @@ router.post('/:id/join', authenticateToken, requireIdentityVerified, async (req,
 
     if (existing.rows.length > 0) {
       const previous = existing.rows[0];
+      if (previous.window_left_at) {
+        return sendError(res, 403, 'WINDOW_FAREWELL', 'W’den çıkış vedadır — geri giriş yok');
+      }
       if (previous.status !== 'cancelled') {
         return sendError(res, 409, 'RITUAL_ALREADY_JOINED', 'Already joined this ritual');
       }
@@ -3039,12 +3234,14 @@ router.post('/:id/join', authenticateToken, requireIdentityVerified, async (req,
 
     // sonMD Sosyal §3: join engellenmez; yalnız blocklayan görür
     const blockedPeerWarning = await hasBlockedPeerOnRitual(authUserId, id).catch(() => false);
+    const { SYMMETRIC_BLOCK_COPY } = await import('../services/megaLaunchLocks.js');
 
     res.json({
       success: true,
       data: attendanceRow,
       rejoin: isRejoin,
       blocked_peer_warning: Boolean(blockedPeerWarning),
+      blocked_peer_copy: blockedPeerWarning ? SYMMETRIC_BLOCK_COPY : null,
     });
   } catch (error) {
     logger.error('Error joining ritual', { 
@@ -3189,6 +3386,7 @@ router.post('/:id/checkin', authenticateToken, async (req, res) => {
       keyword: rawCheckin,
       locationSuspect: Boolean(locationSuspect),
       nfcMarker: Boolean(nfcMarker),
+      rotatingCode: req.body?.rotating_code || req.body?.totem_code || null,
       openNote: typeof openNote === 'string' ? openNote.trim().slice(0, 280) : null,
       integritySignals: {
         mock_location: Boolean(mockLocation),
@@ -3281,6 +3479,68 @@ router.post('/:id/checkin/redeem-tag', authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/rituals/:id/ortak-an — VEN-EVENT organizatör kuyruğu (quiz|poll|announce)
+router.post('/:id/ortak-an', authenticateToken, async (req, res) => {
+  try {
+    const { ORTAK_AN_TYPES } = await import('../services/megaLaunchLocks.js');
+    const kind = String(req.body?.kind || req.body?.type || '').toLowerCase();
+    if (!ORTAK_AN_TYPES.includes(kind)) {
+      return res.status(400).json({ success: false, error: 'kind: quiz|poll|announce' });
+    }
+    const ritual = await pool.query(
+      `SELECT id, origin, host_id, venue_id FROM rituals WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!ritual.rows[0]) return res.status(404).json({ success: false, error: 'Ritual not found' });
+    if (String(ritual.rows[0].origin) !== 'VEN_EVENT') {
+      return res.status(422).json({ success: false, error: 'Ortak-an yalnız VEN-EVENT', code: 'WINDOW_TOOL_EVENT_ONLY' });
+    }
+    const ins = await pool.query(
+      `INSERT INTO event_ortak_an_cards (ritual_id, kind, payload, published_at, created_by)
+       VALUES ($1, $2, $3::jsonb, CASE WHEN $4 THEN NOW() ELSE NULL END, $5)
+       RETURNING *`,
+      [
+        req.params.id,
+        kind,
+        JSON.stringify(req.body?.payload || {}),
+        req.body?.publish !== false,
+        req.user.userId,
+      ]
+    );
+    return res.json({ success: true, data: ins.rows[0] });
+  } catch (error) {
+    if (String(error.code) === '42P01') {
+      return res.status(503).json({ success: false, error: 'ortak-an schema missing' });
+    }
+    return res.status(500).json({ success: false, error: 'Failed to queue ortak-an' });
+  }
+});
+
+// GET /api/rituals/:id/ortak-an — launch kuyruğu (yalnız VEN-EVENT)
+router.get('/:id/ortak-an', authenticateToken, async (req, res) => {
+  try {
+    const ritual = await pool.query(`SELECT id, origin FROM rituals WHERE id = $1`, [req.params.id]);
+    if (!ritual.rows[0]) return res.status(404).json({ success: false, error: 'Ritual not found' });
+    if (String(ritual.rows[0].origin) !== 'VEN_EVENT') {
+      return res.json({ success: true, data: { items: [], event_only: true } });
+    }
+    const rows = await pool.query(
+      `SELECT id, kind, payload, published_at, created_at
+       FROM event_ortak_an_cards
+       WHERE ritual_id = $1
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [req.params.id]
+    );
+    return res.json({ success: true, data: { items: rows.rows, event_only: true } });
+  } catch (error) {
+    if (String(error.code) === '42P01') {
+      return res.json({ success: true, data: { items: [], event_only: true } });
+    }
+    return res.status(500).json({ success: false, error: 'Failed to list ortak-an' });
+  }
+});
+
 // POST /api/rituals/:id/sub-seal/in — v2 §2 VEN_EVENT sub seat ownership
 router.post('/:id/sub-seal/in', authenticateToken, async (req, res) => {
   try {
@@ -3289,6 +3549,10 @@ router.post('/:id/sub-seal/in', authenticateToken, async (req, res) => {
       ritualId: req.params.id,
       userId: req.user.userId,
       subId: req.body?.sub_id,
+      channel: req.body?.channel || req.body?.seating_channel,
+      seatPrice: req.body?.seat_price ?? req.body?.price,
+      seatCap: req.body?.seat_cap ?? req.body?.seats,
+      roofTicketed: req.body?.roof_ticketed,
     });
     if (!result.ok) return res.status(result.status).json(result.body);
     return res.json({ success: true, data: result.data });
@@ -3350,9 +3614,10 @@ router.get('/:id/participants', authenticateToken, async (req, res) => {
        ORDER BY ra.created_at ASC`,
       [ritualId]
     );
+    const data = await maskRsScoreList(result.rows, viewerId, { idKey: 'id', scoreKey: 'rs_score' });
     return res.json({
       success: true,
-      data: result.rows,
+      data,
       participant_list_visible: true,
     });
   } catch (error) {

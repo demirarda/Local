@@ -22,6 +22,7 @@ router.post('/checkin', authenticateToken, requireIdentityVerified, async (req, 
       latitude,
       longitude,
       nfc_marker: nfcMarker,
+      rotating_code: req.body.rotating_code || req.body.totem_code,
       open_note: openNote,
       mock_location: mockLocation,
       play_integrity: playIntegrity,
@@ -52,6 +53,7 @@ router.post('/checkin', authenticateToken, requireIdentityVerified, async (req, 
       longitude,
       keyword: rawKw,
       nfcMarker: Boolean(nfcMarker),
+      rotatingCode: req.body.rotating_code || req.body.totem_code || null,
       localTagRedeem: Boolean(localTagRedeem),
       openNote: typeof openNote === 'string' ? openNote.trim().slice(0, 280) : null,
       locationSuspect: Boolean(locationSuspect) || Boolean(mockLocation),
@@ -89,7 +91,9 @@ router.post('/checkin', authenticateToken, requireIdentityVerified, async (req, 
     console.error('Error checking in:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to check in',
+      error: process.env.NODE_ENV === 'production'
+        ? 'Failed to check in'
+        : (error?.message || 'Failed to check in'),
     });
   }
 });
@@ -194,19 +198,37 @@ router.post('/leave', authenticateToken, async (req, res) => {
     const attendedDuration = (now - ritualStartTime) / 60000;
     const attendancePercentage = (attendedDuration / ritual.duration) * 100;
 
-    const updateQuery = `
-      UPDATE ritual_attendance
-      SET left_early_at = CURRENT_TIMESTAMP,
-          attendance_percentage = $3
-      WHERE ritual_id = $1 AND user_id = $2
-      RETURNING *
-    `;
-
-    const result = await pool.query(updateQuery, [
-      ritual_id,
-      userId,
-      Math.round(attendancePercentage),
-    ]);
+    const leaveKind = req.body?.safety
+      ? 'safety'
+      : req.body?.reason === 'window_farewell'
+        ? 'window_farewell'
+        : req.body?.reason
+          ? 'reason'
+          : 'reason';
+    const isWindowFarewell = leaveKind === 'window_farewell';
+    let result;
+    try {
+      result = await pool.query(
+        `UPDATE ritual_attendance
+         SET left_early_at = CURRENT_TIMESTAMP,
+             attendance_percentage = $3,
+             positive_rs_voided = CASE WHEN $5 THEN positive_rs_voided ELSE true END,
+             leave_kind = COALESCE(leave_kind, $4),
+             window_left_at = CASE WHEN $5 THEN CURRENT_TIMESTAMP ELSE window_left_at END
+         WHERE ritual_id = $1 AND user_id = $2
+         RETURNING *`,
+        [ritual_id, userId, Math.round(attendancePercentage), leaveKind, isWindowFarewell]
+      );
+    } catch (_e) {
+      result = await pool.query(
+        `UPDATE ritual_attendance
+         SET left_early_at = CURRENT_TIMESTAMP,
+             attendance_percentage = $3
+         WHERE ritual_id = $1 AND user_id = $2
+         RETURNING *`,
+        [ritual_id, userId, Math.round(attendancePercentage)]
+      );
+    }
 
     const lateJoinExemptMin = Number(LOCAL_CONFIG.ritual.LATE_JOIN_EXEMPT_MIN || 30);
     const joinedAt = attendanceCheck.rows[0]?.joined_at
@@ -232,6 +254,14 @@ router.post('/leave', authenticateToken, async (req, res) => {
           } catch (_e) {
             // best effort
           }
+        }
+      }
+      if (leaveKind === 'reason') {
+        try {
+          const { maybeEnqueueSilentExitReview } = await import('../services/modEngine.js');
+          await maybeEnqueueSilentExitReview(userId, ritual_id);
+        } catch (_e) {
+          /* best effort — tekrar-desen merdiven */
         }
       }
     }

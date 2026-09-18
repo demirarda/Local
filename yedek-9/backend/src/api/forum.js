@@ -80,7 +80,11 @@ router.post('/comments/:commentId/vote', authenticateToken, async (req, res) => 
     const { vote } = req.body;
     const result = await voteForumComment(req.params.commentId, req.user.userId, vote);
     if (!result.ok) {
-      return res.status(result.status || 400).json({ success: false, error: result.error });
+      return res.status(result.status || 400).json({
+        success: false,
+        error: result.error,
+        code: result.code || undefined,
+      });
     }
     return res.json({ success: true, data: result });
   } catch (e) {

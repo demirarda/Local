@@ -5,7 +5,10 @@ import {
   getZoneProfile,
   recordMarkerScan,
   createZone,
+  buildZoneLeague,
+  declareZoneFromCandidate,
 } from '../services/zoneService.js';
+import { sanitizeZonePublic } from '../services/megaZone.js';
 import { resolveActiveCityId } from '../services/cityScope.js';
 import {
   startSparkMeetup,
@@ -63,9 +66,18 @@ router.get('/', authenticateToken, async (req, res) => {
         params
       );
     }
-    res.json({ success: true, data: rows.rows });
+    res.json({ success: true, data: rows.rows.map((z) => sanitizeZonePublic(z)) });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/league', authenticateToken, async (req, res) => {
+  try {
+    const data = await buildZoneLeague({ weekStart: req.query.week || null });
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 

@@ -126,5 +126,39 @@ export async function claimCustomRitualAsVenue({ venueId, ritualId, managerId })
     details: { venue_id: venueId, distance_m: Math.round(dist) },
   });
 
-  return { ok: true, ritual: upd.rows[0], distance_m: Math.round(dist) };
+  return {
+    ok: true,
+    ritual: upd.rows[0],
+    distance_m: Math.round(dist),
+    retro_trust: false,
+    pin_strength: (await import('./megaLaunchLocks.js')).claimPinStrength(dist),
+  };
+}
+
+export async function disputeVenueClaim({ ritualId, hostId }) {
+  const r = await pool.query(
+    `SELECT id, host_id, claimed_by_venue_id, venue_id FROM rituals WHERE id = $1`,
+    [ritualId]
+  );
+  if (!r.rows[0]) return { ok: false, status: 404, error: 'Ritual not found' };
+  if (String(r.rows[0].host_id) !== String(hostId)) {
+    return { ok: false, status: 403, error: 'Only founding host can dispute' };
+  }
+  try {
+    await pool.query(
+      `INSERT INTO venue_claim_disputes (ritual_id, venue_id, host_id)
+       VALUES ($1, $2, $3)`,
+      [ritualId, r.rows[0].claimed_by_venue_id || r.rows[0].venue_id, hostId]
+    );
+  } catch (_e) {
+    /* table optional */
+  }
+  await pool.query(
+    `UPDATE rituals
+     SET venue_id = NULL, claimed_at = NULL, claimed_by_venue_id = NULL,
+         location_type = 'custom', updated_at = NOW()
+     WHERE id = $1 AND host_id = $2`,
+    [ritualId, hostId]
+  );
+  return { ok: true, silent: true, retro_trust: false };
 }

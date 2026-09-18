@@ -264,13 +264,13 @@ async function evaluateIntegritySignals({ userId, userLat, userLng, integrity = 
   const historyWindowMin = Number(cfg.HISTORY_WINDOW_MIN || 30);
   const recent = await pool.query(
     `SELECT checkin_gps_lat AS lat, checkin_gps_lng AS lng,
-            COALESCE(checkin_attempt_at, checkin_at, updated_at) AS ts
+            COALESCE(checkin_attempt_at, checkin_at, joined_at, created_at) AS ts
      FROM ritual_attendance
      WHERE user_id = $1
        AND checkin_gps_lat IS NOT NULL
        AND checkin_gps_lng IS NOT NULL
-       AND COALESCE(checkin_attempt_at, checkin_at, updated_at) >= NOW() - ($2::text || ' minutes')::interval
-     ORDER BY COALESCE(checkin_attempt_at, checkin_at, updated_at) DESC
+       AND COALESCE(checkin_attempt_at, checkin_at, joined_at, created_at) >= NOW() - ($2::text || ' minutes')::interval
+     ORDER BY COALESCE(checkin_attempt_at, checkin_at, joined_at, created_at) DESC
      LIMIT 1`,
     [userId, String(historyWindowMin)]
   );
@@ -311,6 +311,7 @@ export async function processCheckIn({
   locationSuspect = false,
   localTagRedeem = false,
   nfcMarker = false,
+  rotatingCode = null,
   openNote = null,
   integritySignals = null,
   digitalPaste = false,
@@ -387,6 +388,21 @@ export async function processCheckIn({
   const ritual = ritualResult.rows[0];
   const now = new Date();
   const windowInfo = getCheckinWindowInfo(ritual, now);
+  const tableOpenEarly =
+    Boolean(ritual.checkin_keyword) || Boolean(ritual.first_sealed_at);
+  if (ritual.venue_id && !tableOpenEarly) {
+    const { assertVenueTotemDoor } = await import('./megaLockFlows.js');
+    const door = assertVenueTotemDoor({
+      venueId: ritual.venue_id,
+      tableOpen: false,
+      nfc: Boolean(nfcMarker),
+      rotatingCode: rotatingCode || keyword,
+      nowMs: now.getTime(),
+    });
+    if (!door.ok) {
+      return { ok: false, status: 403, body: { success: false, error: door.error, code: door.code } };
+    }
+  }
 
   if (manualApproved) {
     return {
@@ -503,10 +519,25 @@ export async function processCheckIn({
   const tableOpen =
     Boolean(ritual.checkin_keyword) || Boolean(ritual.first_sealed_at);
   const codeBanned = Boolean(ritual.first_sealed_at) && !ritual.checkin_keyword;
+  if (!tableOpen && String(ritual.location_type || '').toLowerCase() === 'zone') {
+    const { assertZoneFirstSeal } = await import('./megaZone.js');
+    const zSeal = assertZoneFirstSeal({
+      gpsOk: !gpsT1Fail && !gpsFail,
+      totemTap: Boolean(nfcMarker),
+    });
+    if (!zSeal.ok) {
+      return {
+        ok: false,
+        status: 403,
+        body: { success: false, error: zSeal.error, code: zSeal.code },
+      };
+    }
+  }
   const expectedKw = ritual.checkin_keyword ? String(ritual.checkin_keyword).trim() : '';
   const gotRaw = keyword != null ? String(keyword).trim() : '';
   const got = nfcMarker && tableOpen && expectedKw ? expectedKw : gotRaw;
-  const isFirstSealAttempt = !tableOpen && !got && !nfcMarker;
+  const isZoneLoc = String(ritual.location_type || '').toLowerCase() === 'zone';
+  const isFirstSealAttempt = !tableOpen && (isZoneLoc ? Boolean(nfcMarker) : (!got && !nfcMarker));
 
   // sonMD §1/C4: dijital paste/DM ile kod → yasak (LOCAL-TAG/NFC fiziksel yol)
   // Client flag + sunucu heuristik (süper-hızlı tam-kod = paste/autofill şüphesi)
@@ -803,6 +834,13 @@ export async function processCheckIn({
       await client.query('COMMIT');
 
       try {
+        const { applySealCreditDrop } = await import('./venueMembershipService.js');
+        await applySealCreditDrop({ userId, venueId: ritual.venue_id });
+      } catch (_e) {
+        /* non-fatal */
+      }
+
+      try {
         const { snapshotFeedbackEligibility } = await import('./waveBSocial.js');
         await snapshotFeedbackEligibility(ritualId, userId);
       } catch (_e) {
@@ -848,7 +886,7 @@ export async function processCheckIn({
         await maybeHandoverMovingAnchorOwner(ritualId, userId).catch(() => {});
       }
 
-      if (aisStatus === 'late' && ritual.host_id && String(ritual.host_id) !== String(userId)) {
+      if ((aisStatus === 'late' || aisStatus === 'deep_late') && ritual.host_id && String(ritual.host_id) !== String(userId)) {
         const userR = await pool.query(`SELECT name FROM users WHERE id = $1`, [userId]);
         notifyLateArrivalJoin(ritual.host_id, {
           ritualData: { id: ritual.id, title: ritual.title },

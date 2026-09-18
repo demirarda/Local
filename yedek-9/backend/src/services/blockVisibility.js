@@ -1,7 +1,8 @@
 /**
  * Block visibility — sonMD Sosyal §3
  * Block = tam içerik duvarı (keşif / forum / LW memory / mesaj).
- * Join engellenmez; yalnız blocklayan "bu masada blokladığın biri var" uyarısını görür.
+ * Join engellenmez; iki tarafa da AYNI simetrik-anonim cümle.
+ * "engelledin/engellendin" UI'da geçmez.
  */
 import pool from '../config/database.js';
 
@@ -64,7 +65,10 @@ export async function hasBlockedPeerOnRitual(viewerId, ritualId) {
   const result = await pool.query(
     `SELECT 1
      FROM ritual_attendance ra
-     JOIN blocks b ON b.blocker_id = $1 AND b.blocked_user_id = ra.user_id
+     JOIN blocks b ON (
+          (b.blocker_id = $1 AND b.blocked_user_id = ra.user_id)
+       OR (b.blocked_user_id = $1 AND b.blocker_id = ra.user_id)
+     )
      WHERE ra.ritual_id = $2
        AND ra.status NOT IN ('cancelled', 'no_show', 'left')
      LIMIT 1`,

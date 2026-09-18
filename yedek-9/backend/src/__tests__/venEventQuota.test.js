@@ -23,7 +23,7 @@ describe('VEN-EVENT aylık tavan ⭐ open_empty', () => {
   });
 
   test('horizon configs present', () => {
-    expect(LOCAL_CONFIG.ritual.PLANNED_MAX_AHEAD_D).toBe(21);
+    expect(LOCAL_CONFIG.ritual.PLANNED_MAX_AHEAD_D).toBe(30);
     expect(LOCAL_CONFIG.ritual.EVENT_MAX_AHEAD_D).toBe(60);
   });
 });

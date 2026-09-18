@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LOCAL — Mekan başvurusu</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #111; margin: 0; }
+    main { max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    p.sub { color: #666; font-size: 14px; line-height: 1.45; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #e8e8e8; border-radius: 8px; font: inherit; }
+    textarea { min-height: 72px; }
+    button { margin-top: 16px; padding: 12px 16px; border: 0; border-radius: 8px; background: #111; color: #fff; font-weight: 600; cursor: pointer; }
+    button.ghost { background: #fff; color: #111; border: 1px solid #ddd; margin-right: 8px; }
+    .card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 16px; margin-top: 16px; }
+    .err { color: #b91c1c; font-size: 13px; }
+    .ok { color: #15803d; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Mekan başvurusu</h1>
+    <p class="sub">Aynı taslak telefonda da durur. Foto buradan yükle (min 5) · VAT veya belge · onay sonrası <a href="/venue/panel.html">panel</a>.</p>
+    <div id="auth" class="card">
+      <label>E-posta</label>
+      <input id="email" type="email" autocomplete="username" />
+      <label>Şifre</label>
+      <input id="password" type="password" autocomplete="current-password" />
+      <button id="loginBtn" type="button">Giriş yap</button>
+      <p id="authMsg" class="err"></p>
+    </div>
+    <div id="form" class="card" hidden>
+      <p id="formMsg"></p>
+      <label>İşletme ünvanı</label><input id="business_name" />
+      <label>Mekan adı</label><input id="venue_name" />
+      <label>Şehir</label><input id="city" />
+      <label>Adres</label><input id="address" />
+      <label>Google Maps linki</label><input id="maps_url" />
+      <label>Fotoğraflar (min 5 — dosya yükle)</label>
+      <input id="photo_files" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+      <p id="photo_status" class="sub"></p>
+      <textarea id="photo_urls" hidden></textarea>
+      <label>İşletme kanıtı (not)</label><textarea id="proof_notes"></textarea>
+      <label>Belge (PDF/foto — AB dışı VAT veya VIES yoksa zorunlu)</label>
+      <input id="proof_file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
+      <input id="proof_url" type="hidden" />
+      <p id="proof_status" class="sub"></p>
+      <label>VAT / VIES</label><input id="vies_vat" placeholder="IT00743110157" />
+      <label>Hafta içi kapanış</label><input id="weekday_close" value="23:00" />
+      <label>Hafta sonu kapanış</label><input id="weekend_close" value="00:00" />
+      <label>Sosyal link (tek, opsiyonel)</label><input id="social_url" />
+      <label><input id="commitment" type="checkbox" /> Taahhüdü okudum ve kabul ediyorum</label>
+      <p class="sub">LOCAL mekan ortağı olarak doğruluğu, fiziksel mekânı ve kullanıcı güvenliğini taahhüt ederim.</p>
+      <button class="ghost" id="draftBtn" type="button">Taslak kaydet</button>
+      <button id="submitBtn" type="button">Başvuruyu gönder</button>
+    </div>
+  </main>
+  <script src="/venue/common.js"></script>
+  <script>
+    var V = window.VenueWeb;
+    function token() { return V.token(); }
+    function headers() { return V.headers(); }
+    function weekly() {
+      var wd = document.getElementById('weekday_close').value || '23:00';
+      var we = document.getElementById('weekend_close').value || '00:00';
+      return {
+        mon: { open: '09:00', close: wd, closed: false },
+        tue: { open: '09:00', close: wd, closed: false },
+        wed: { open: '09:00', close: wd, closed: false },
+        thu: { open: '09:00', close: wd, closed: false },
+        fri: { open: '09:00', close: we, closed: false },
+        sat: { open: '10:00', close: we, closed: false },
+        sun: { open: '10:00', close: wd, closed: false }
+      };
+    }
+    function payload() {
+      var photos = document.getElementById('photo_urls').value.split(/[\n,]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      return {
+        business_name: document.getElementById('business_name').value,
+        venue_name: document.getElementById('venue_name').value,
+        city: document.getElementById('city').value,
+        address: document.getElementById('address').value,
+        maps_url: document.getElementById('maps_url').value,
+        photo_urls: photos,
+        proof_notes: document.getElementById('proof_notes').value,
+        proof_url: document.getElementById('proof_url').value || null,
+        vies_vat: document.getElementById('vies_vat').value,
+        social_url: document.getElementById('social_url').value,
+        weekly_hours: weekly(),
+        commitment_accepted: document.getElementById('commitment').checked,
+        commitment_text: 'LOCAL mekan ortağı olarak doğruluğu, fiziksel mekânı ve kullanıcı güvenliğini taahhüt ederim.'
+      };
+    }
+    function fill(app) {
+      if (!app) return;
+      document.getElementById('business_name').value = app.business_name || '';
+      document.getElementById('venue_name').value = app.venue_name || '';
+      document.getElementById('city').value = app.city || '';
+      document.getElementById('address').value = app.address || '';
+      document.getElementById('maps_url').value = app.maps_url || '';
+      document.getElementById('photo_urls').value = (app.photo_urls || []).join('\n');
+      document.getElementById('proof_notes').value = app.proof_notes === 'draft' ? '' : (app.proof_notes || '');
+      document.getElementById('proof_url').value = app.proof_url || '';
+      document.getElementById('vies_vat').value = app.vies_vat || '';
+      document.getElementById('social_url').value = app.social_url || '';
+      document.getElementById('commitment').checked = Boolean(app.commitment_accepted);
+      var hours = app.weekly_hours || {};
+      if (hours.mon && hours.mon.close) document.getElementById('weekday_close').value = hours.mon.close;
+      if (hours.sat && hours.sat.close) document.getElementById('weekend_close').value = hours.sat.close;
+      var locked = app.status === 'pending' || app.status === 'approved';
+      document.getElementById('submitBtn').disabled = locked;
+      document.getElementById('draftBtn').disabled = locked;
+      var msg = document.getElementById('formMsg');
+      if (app.status === 'pending') { msg.className = 'ok'; msg.textContent = 'Başvurun incelemede.'; }
+      else if (app.status === 'approved') {
+        msg.className = 'ok';
+        msg.innerHTML = 'Onaylandı — <a href="/venue/panel.html">web paneli</a> veya app vitrin.';
+      }
+      else if (app.status === 'draft') { msg.className = 'ok'; msg.textContent = 'Taslak. Web veya telefondan devam et.'; }
+      else if (app.status === 'rejected') { msg.className = 'err'; msg.textContent = 'Red: ' + (app.reviewer_note || ''); }
+    }
+    async function showForm() {
+      document.getElementById('auth').hidden = true;
+      document.getElementById('form').hidden = false;
+      var res = await fetch('/api/venues/applications/me', { headers: headers() });
+      var json = await res.json();
+      fill(json.data);
+    }
+    document.getElementById('loginBtn').onclick = async function () {
+      var msg = document.getElementById('authMsg');
+      msg.textContent = '';
+      try {
+        var res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+          })
+        });
+        var json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Giriş başarısız');
+        localStorage.setItem(V.TOKEN_KEY, json.data?.token || json.token);
+        await showForm();
+      } catch (e) { msg.textContent = e.message; }
+    };
+    document.getElementById('draftBtn').onclick = async function () {
+      var msg = document.getElementById('formMsg');
+      try {
+        var res = await fetch('/api/venues/applications/me/draft', {
+          method: 'PUT', headers: headers(), body: JSON.stringify(payload())
+        });
+        var json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Taslak kaydedilemedi');
+        msg.className = 'ok';
+        msg.textContent = 'Taslak kaydedildi — telefondan da açabilirsin.';
+      } catch (e) { msg.className = 'err'; msg.textContent = e.message; }
+    };
+    document.getElementById('submitBtn').onclick = async function () {
+      var msg = document.getElementById('formMsg');
+      try {
+        var res = await fetch('/api/venues/applications', {
+          method: 'POST', headers: headers(), body: JSON.stringify(payload())
+        });
+        var json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Gönderilemedi');
+        msg.className = 'ok';
+        msg.textContent = 'Başvuru gönderildi. LOCAL ekibi inceleyecek.';
+      } catch (e) { msg.className = 'err'; msg.textContent = e.message; }
+    };
+    document.getElementById('photo_files').onchange = async function () {
+      var st = document.getElementById('photo_status');
+      var files = Array.from(this.files || []);
+      var urls = document.getElementById('photo_urls').value.split(/[\n,]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      st.textContent = 'Yükleniyor…';
+      try {
+        for (var i = 0; i < files.length; i++) {
+          urls.push(await V.uploadVenueFile(files[i], 'photo'));
+        }
+        document.getElementById('photo_urls').value = urls.join('\n');
+        st.className = 'ok';
+        st.textContent = urls.length + ' foto yüklendi.';
+      } catch (e) {
+        st.className = 'err';
+        st.textContent = e.message;
+      }
+    };
+    document.getElementById('proof_file').onchange = async function () {
+      var st = document.getElementById('proof_status');
+      var file = (this.files || [])[0];
+      if (!file) return;
+      st.textContent = 'Yükleniyor…';
+      try {
+        var url = await V.uploadVenueFile(file, 'proof');
+        document.getElementById('proof_url').value = url;
+        st.className = 'ok';
+        st.textContent = 'Belge yüklendi.';
+      } catch (e) {
+        st.className = 'err';
+        st.textContent = e.message;
+      }
+    };
+    if (token()) showForm().catch(function () {});
+  </script>
+</body>
+</html>

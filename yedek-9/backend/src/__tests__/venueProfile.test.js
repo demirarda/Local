@@ -32,4 +32,11 @@ describe('venue profile vitrin (F5 §9.1)', () => {
     expect(LOCKED_SECTION_IDS).toContain('floor_plan');
     expect(LOCKED_SECTION_IDS).toContain('archive_full');
   });
+
+  test('§7 sicil helper is exported', async () => {
+    const { canSeeFulfillmentSicil } = await import('../services/venueProfileService.js');
+    expect(canSeeFulfillmentSicil({ canManage: true, venue: { subscription_tier: 'hakim' } })).toBe(
+      true
+    );
+  });
 });

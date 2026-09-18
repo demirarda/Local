@@ -2,6 +2,7 @@ import express from 'express';
 import pool from '../config/database.js';
 import { authenticateToken } from './auth.js';
 import { sendError } from '../utils/errorResponse.js';
+import { getRsViewState, resolveRsForViewer } from '../services/rsVisibility.js';
 
 const router = express.Router();
 
@@ -154,14 +155,24 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const baseUrl = process.env.API_PUBLIC_URL || (req.protocol + '://' + req.get('host'));
     const { listCountMeta } = await import('../services/followerCountPolicy.js');
-    const rows = result.rows.map(row => ({
+    const viewerId = req.user.userId;
+    const publicFlags = await getRsViewState(result.rows.map((row) => row.user_id));
+    const rows = result.rows.map(row => {
+      const rsResolved = resolveRsForViewer(
+        viewerId,
+        row.user_id,
+        row.user_rs_score != null ? parseFloat(row.user_rs_score) : null,
+        publicFlags
+      );
+      return {
         id: row.id,
         user: {
           id: row.user_id,
           name: row.user_name,
           city: row.user_city,
           university: row.user_university,
-          rs_score: row.user_rs_score != null ? parseFloat(row.user_rs_score) : null,
+          rs_score: rsResolved.rs_score,
+          rs_visible: rsResolved.rs_visible,
           avatar_url: row.user_avatar_url
             ? (/^https?:\/\//i.test(row.user_avatar_url)
                 ? row.user_avatar_url
@@ -176,7 +187,8 @@ router.get('/', authenticateToken, async (req, res) => {
         brand_id: row.brand_id || null,
         is_host_verified: !!row.is_host_verified,
         created_at: row.created_at
-      }));
+      };
+    });
     res.json({
       success: true,
       data: rows,

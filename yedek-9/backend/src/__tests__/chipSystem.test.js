@@ -10,11 +10,11 @@ import {
 } from '../services/chipService.js';
 
 describe('chip system §10 / E2.8', () => {
-  test('RQ sets match locked counts (3 per color)', () => {
-    expect(LOCAL_CONFIG.chip.SETS.RQ_GREEN).toHaveLength(3);
-    expect(LOCAL_CONFIG.chip.SETS.RQ_YELLOW).toHaveLength(3);
-    expect(LOCAL_CONFIG.chip.SETS.RQ_RED).toHaveLength(3);
-    expect(LOCAL_CONFIG.chip.RQ_OPTIONS_PER_COLOR).toBe(3);
+  test('RQ sets match locked counts (5 per color, min-4)', () => {
+    expect(LOCAL_CONFIG.chip.SETS.RQ_GREEN).toHaveLength(5);
+    expect(LOCAL_CONFIG.chip.SETS.RQ_YELLOW).toHaveLength(5);
+    expect(LOCAL_CONFIG.chip.SETS.RQ_RED).toHaveLength(5);
+    expect(LOCAL_CONFIG.chip.RQ_OPTIONS_PER_COLOR).toBe(5);
     expect(LOCAL_CONFIG.chip.P2V_OPTIONS_PER_COLOR).toBe(5);
   });
 
@@ -32,15 +32,16 @@ describe('chip system §10 / E2.8', () => {
     );
   });
 
-  test('single select + rotate defaults', () => {
-    expect(LOCAL_CONFIG.chip.SINGLE_SELECT).toBe(true);
+  test('max 2 chip select (RQ/P2V)', () => {
+    expect(LOCAL_CONFIG.chip.SINGLE_SELECT).toBe(false);
+    expect(LOCAL_CONFIG.chip.MAX_CHIP_SELECT).toBe(2);
     expect(LOCAL_CONFIG.chip.ROTATE).toBe(true);
     expect(LOCAL_CONFIG.chip.PUBLIC_MIN_N).toBe(10);
   });
 
   test('chipsForFeeling returns route + shuffled list', () => {
     const chips = chipsForFeeling('RQ', 'yellow');
-    expect(chips).toHaveLength(3);
+    expect(chips).toHaveLength(5);
     expect(chips[0]).toHaveProperty('id');
     expect(chips[0]).toHaveProperty('route');
   });
@@ -52,8 +53,8 @@ describe('chip system §10 / E2.8', () => {
     expect(routeForChip('rq_g_1')).toBe('host_private');
   });
 
-  test('validateChipSelection rejects P2P chips and invalid ids', () => {
-    expect(validateChipSelection({ feedbackType: 'p2p', chipId: 'rq_g_1' }).ok).toBe(false);
+  test('validateChipSelection accepts P2P chips and rejects invalid ids', () => {
+    expect(validateChipSelection({ feedbackType: 'p2p', chipId: 'p2p_g_1', q1_comfort: 'green' }).ok).toBe(true);
     expect(
       validateChipSelection({
         feedbackType: 'p2r',
@@ -90,13 +91,23 @@ describe('chip system §10 / E2.8', () => {
       }).ok
     ).toBe(false);
     expect(validateChipSelection({ feedbackType: 'p2r', chipId: null }).ok).toBe(true);
+    expect(
+      validateChipSelection({
+        feedbackType: 'rq_event',
+        chipId: 'e_g_1',
+        p2r_feeling: 'green',
+      }).ok
+    ).toBe(true);
   });
 
   test('public config exposes sets', () => {
     const cfg = getChipPublicConfig();
-    expect(cfg.single_select).toBe(true);
-    expect(cfg.sets.RQ_GREEN).toHaveLength(3);
-    expect(cfg.no_chips_for).toContain('p2p');
+    expect(cfg.single_select).toBe(false);
+    expect(cfg.max_chip_select).toBe(2);
+    expect(cfg.sets.RQ_GREEN).toHaveLength(5);
+    expect(cfg.no_chips_for).toContain('p2host');
+    expect(cfg.no_chips_for).not.toContain('p2p');
+    expect(cfg.no_chips_for).not.toContain('rq_event');
     expect(cfg.top_chip_ritual_min_distinct).toBe(3);
   });
 

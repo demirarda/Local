@@ -122,7 +122,7 @@ export default function CityRhythmHtmlContent({
         <TextInput
           value={searchQuery}
           onChangeText={onSearchChange}
-          placeholder="Ritual ara (Enter → Local World)"
+          placeholder="Ritual ara"
           placeholderTextColor={isDark ? '#94a3b8' : '#a3a3a3'}
           style={[styles.searchInput, isDark && styles.searchInputDark]}
           returnKeyType="search"
@@ -171,7 +171,7 @@ export default function CityRhythmHtmlContent({
           !loading ? (
             <View style={styles.emptyWrap}>
               <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>Bu filtrede Ritual yok</Text>
-              <Text style={styles.emptySub}>Sehrindeki acik Ritual bulunamadi. Local World haritasina bakabilirsin.</Text>
+              <Text style={styles.emptySub}>Sehrindeki acik Ritual bulunamadi.</Text>
               {String(searchQuery || '').trim() ? (
                 <TouchableOpacity
                   style={styles.nominateEmptyBtn}

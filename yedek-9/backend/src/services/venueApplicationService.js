@@ -4,6 +4,8 @@
 import pool from '../config/database.js';
 import LOCAL_CONFIG from '../config/localConfig.js';
 import { notifyVenueApplicationResult } from './notifications.js';
+import { closingTimeFromWeeklyHours, normalizeWeeklyHours } from './venueRoleService.js';
+import { assertApplicationProof, checkVatNumber } from './viesCheckService.js';
 
 const ONBOARDING_STEPS = LOCAL_CONFIG.venue.ONBOARDING_STEPS;
 
@@ -44,6 +46,11 @@ export function validateApplicationPayload(body = {}) {
     '';
   const socialUrl = body.social_url ? String(body.social_url).trim().slice(0, 500) : null;
   const viesVat = body.vies_vat ? String(body.vies_vat).trim().slice(0, 32) : null;
+  const weeklyHours = normalizeWeeklyHours(body.weekly_hours || body.hours);
+  const closingTime = closingTimeFromWeeklyHours(weeklyHours);
+  if (!closingTime) {
+    return { ok: false, error: 'weekly_hours zorunlu (kapanış saati — Gece Raporu)' };
+  }
   return {
     ok: true,
     data: {
@@ -65,8 +72,101 @@ export function validateApplicationPayload(body = {}) {
       commitment_text: String(commitmentText).slice(0, 2000),
       vies_vat: viesVat,
       photo_urls: photoUrls,
+      weekly_hours: weeklyHours,
+      closing_time: closingTime,
     },
   };
+}
+
+function pickPartialApplication(body = {}) {
+  const photoUrls = Array.isArray(body.photo_urls)
+    ? body.photo_urls.map((u) => String(u).trim()).filter(Boolean).slice(0, 20)
+    : [];
+  const weeklyHours = body.weekly_hours || body.hours
+    ? normalizeWeeklyHours(body.weekly_hours || body.hours)
+    : {};
+  return {
+    business_name: String(body.business_name || 'Taslak').trim().slice(0, 255) || 'Taslak',
+    venue_name: String(body.venue_name || 'Taslak').trim().slice(0, 255) || 'Taslak',
+    city: String(body.city || '—').trim().slice(0, 100) || '—',
+    address: body.address ? String(body.address).trim() : null,
+    location_lat: body.location_lat != null ? Number(body.location_lat) : null,
+    location_lng: body.location_lng != null ? Number(body.location_lng) : null,
+    category: body.category ? String(body.category).trim() : null,
+    description: body.description ? String(body.description).trim().slice(0, 2000) : null,
+    proof_notes: String(body.proof_notes || '').trim().slice(0, 4000) || 'draft',
+    proof_url: body.proof_url ? String(body.proof_url).trim() : null,
+    contact_email: body.contact_email ? String(body.contact_email).trim() : null,
+    contact_phone: body.contact_phone ? String(body.contact_phone).trim() : null,
+    maps_url: body.maps_url ? String(body.maps_url).trim().slice(0, 1000) : null,
+    social_url: body.social_url ? String(body.social_url).trim().slice(0, 500) : null,
+    commitment_accepted: Boolean(body.commitment_accepted),
+    commitment_text: String(body.commitment_text || '').slice(0, 2000) || null,
+    vies_vat: body.vies_vat ? String(body.vies_vat).trim().slice(0, 32) : null,
+    photo_urls: photoUrls,
+    weekly_hours: weeklyHours,
+    closing_time: Object.keys(weeklyHours).length ? closingTimeFromWeeklyHours(weeklyHours) : null,
+  };
+}
+
+export async function saveVenueApplicationDraft(userId, payload) {
+  const pending = await pool.query(
+    `SELECT id, status FROM venue_applications WHERE user_id = $1 AND status IN ('pending','draft') LIMIT 1`,
+    [userId]
+  );
+  if (pending.rows[0]?.status === 'pending') {
+    return { ok: false, status: 409, error: 'You already have a pending venue application' };
+  }
+  const existingOwner = await pool.query(
+    `SELECT 1 FROM venue_managers WHERE user_id = $1 AND role = 'owner' LIMIT 1`,
+    [userId]
+  );
+  if (existingOwner.rows.length > 0) {
+    return { ok: false, status: 409, error: 'You already manage a venue' };
+  }
+  const d = pickPartialApplication(payload);
+  if (pending.rows[0]?.status === 'draft') {
+    const r = await pool.query(
+      `UPDATE venue_applications SET
+         business_name=$2, venue_name=$3, city=$4, address=$5,
+         location_lat=$6, location_lng=$7, category=$8, description=$9,
+         proof_notes=$10, proof_url=$11, contact_email=$12, contact_phone=$13,
+         maps_url=$14, social_url=$15, commitment_accepted=$16, commitment_text=$17,
+         vies_vat=$18, photo_urls=$19::jsonb, weekly_hours=$20::jsonb, closing_time=$21,
+         updated_at=NOW()
+       WHERE id=$1 RETURNING *`,
+      [
+        pending.rows[0].id,
+        d.business_name, d.venue_name, d.city, d.address,
+        d.location_lat, d.location_lng, d.category, d.description,
+        d.proof_notes, d.proof_url, d.contact_email, d.contact_phone,
+        d.maps_url, d.social_url, d.commitment_accepted, d.commitment_text,
+        d.vies_vat, JSON.stringify(d.photo_urls || []), JSON.stringify(d.weekly_hours || {}),
+        d.closing_time,
+      ]
+    );
+    return { ok: true, application: r.rows[0], draft: true };
+  }
+  const r = await pool.query(
+    `INSERT INTO venue_applications (
+       user_id, business_name, venue_name, city, address,
+       location_lat, location_lng, category, description,
+       proof_notes, proof_url, contact_email, contact_phone,
+       maps_url, social_url, commitment_accepted, commitment_text, vies_vat, photo_urls,
+       weekly_hours, closing_time, status, onboarding_step
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb,$20::jsonb,$21,'draft','application_submitted')
+     RETURNING *`,
+    [
+      userId,
+      d.business_name, d.venue_name, d.city, d.address,
+      d.location_lat, d.location_lng, d.category, d.description,
+      d.proof_notes, d.proof_url, d.contact_email, d.contact_phone,
+      d.maps_url, d.social_url, d.commitment_accepted, d.commitment_text,
+      d.vies_vat, JSON.stringify(d.photo_urls || []), JSON.stringify(d.weekly_hours || {}),
+      d.closing_time,
+    ]
+  );
+  return { ok: true, application: r.rows[0], draft: true };
 }
 
 export async function submitVenueApplication(userId, payload) {
@@ -90,39 +190,56 @@ export async function submitVenueApplication(userId, payload) {
   }
 
   const d = valid.data;
+  const viesResult = await checkVatNumber(d.vies_vat);
+  const proof = assertApplicationProof({
+    vies_vat: d.vies_vat,
+    proof_url: d.proof_url,
+    viesResult,
+  });
+  if (!proof.ok) return { ok: false, status: 400, error: proof.error };
+
+  const draft = await pool.query(
+    `SELECT id FROM venue_applications WHERE user_id = $1 AND status = 'draft' LIMIT 1`,
+    [userId]
+  );
+  const viesOk = viesResult.ok === true ? true : viesResult.ok === false ? false : null;
+  const viesError = viesResult.error || null;
+  const values = [
+    d.business_name, d.venue_name, d.city, d.address,
+    d.location_lat, d.location_lng, d.category, d.description,
+    d.proof_notes, d.proof_url, d.contact_email, d.contact_phone,
+    d.maps_url, d.social_url, d.commitment_accepted, d.commitment_text,
+    d.vies_vat, JSON.stringify(d.photo_urls || []), JSON.stringify(d.weekly_hours || {}),
+    d.closing_time, viesOk, viesError,
+  ];
+  if (draft.rows.length > 0) {
+    const r = await pool.query(
+      `UPDATE venue_applications SET
+         business_name=$2, venue_name=$3, city=$4, address=$5,
+         location_lat=$6, location_lng=$7, category=$8, description=$9,
+         proof_notes=$10, proof_url=$11, contact_email=$12, contact_phone=$13,
+         maps_url=$14, social_url=$15, commitment_accepted=$16, commitment_text=$17,
+         vies_vat=$18, photo_urls=$19::jsonb, weekly_hours=$20::jsonb, closing_time=$21,
+         vies_ok=$22, vies_error=$23, vies_checked_at=NOW(),
+         status='pending', onboarding_step='application_submitted', updated_at=NOW()
+       WHERE id=$1 RETURNING *`,
+      [draft.rows[0].id, ...values]
+    );
+    return { ok: true, application: r.rows[0], vies: viesResult };
+  }
   const r = await pool.query(
     `INSERT INTO venue_applications (
        user_id, business_name, venue_name, city, address,
        location_lat, location_lng, category, description,
        proof_notes, proof_url, contact_email, contact_phone,
        maps_url, social_url, commitment_accepted, commitment_text, vies_vat, photo_urls,
-       status, onboarding_step
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb,'pending','application_submitted')
+       weekly_hours, closing_time, vies_ok, vies_error, vies_checked_at, status, onboarding_step
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb,$20::jsonb,$21,$22,$23,NOW(),'pending','application_submitted')
      RETURNING *`,
-    [
-      userId,
-      d.business_name,
-      d.venue_name,
-      d.city,
-      d.address,
-      d.location_lat,
-      d.location_lng,
-      d.category,
-      d.description,
-      d.proof_notes,
-      d.proof_url,
-      d.contact_email,
-      d.contact_phone,
-      d.maps_url,
-      d.social_url,
-      d.commitment_accepted,
-      d.commitment_text,
-      d.vies_vat,
-      JSON.stringify(d.photo_urls || []),
-    ]
+    [userId, ...values]
   );
 
-  return { ok: true, application: r.rows[0] };
+  return { ok: true, application: r.rows[0], vies: viesResult };
 }
 
 export async function getMyVenueApplication(userId) {
@@ -142,7 +259,7 @@ export async function withdrawVenueApplication(userId) {
   const r = await pool.query(
     `UPDATE venue_applications
      SET status = 'withdrawn', updated_at = NOW()
-     WHERE user_id = $1 AND status = 'pending'
+     WHERE user_id = $1 AND status IN ('pending', 'draft')
      RETURNING *`,
     [userId]
   );
@@ -155,11 +272,13 @@ export async function withdrawVenueApplication(userId) {
 export async function listVenueApplications({ status = 'pending', limit = 50, offset = 0 } = {}) {
   const lim = Math.min(Number(limit) || 50, 100);
   const off = Math.max(Number(offset) || 0, 0);
+  if (status === 'draft') return [];
   const r = await pool.query(
     `SELECT va.*, u.name AS applicant_name, u.email AS applicant_email
      FROM venue_applications va
      JOIN users u ON u.id = va.user_id
-     WHERE ($1::text IS NULL OR va.status::text = $1)
+     WHERE va.status::text <> 'draft'
+       AND ($1::text IS NULL OR va.status::text = $1)
      ORDER BY va.created_at ASC
      LIMIT $2 OFFSET $3`,
     [status || null, lim, off]
@@ -185,9 +304,13 @@ export async function approveVenueApplication(applicationId, reviewerId, { revie
       return { ok: false, status: 400, error: 'Application is not pending' };
     }
 
+    const weeklyHours = app.weekly_hours && typeof app.weekly_hours === 'object'
+      ? app.weekly_hours
+      : {};
+    const closingTime = app.closing_time || closingTimeFromWeeklyHours(weeklyHours);
     const venueR = await client.query(
-      `INSERT INTO venues (name, city, address, location_lat, location_lng, description, owner_user_id, subscription_tier, maps_url, social_url, photo_urls, commitment_accepted_at, vies_ok, vies_checked_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'free', $8, $9, $10::jsonb, NOW(), $11, CASE WHEN $12::text IS NOT NULL THEN NOW() ELSE NULL END)
+      `INSERT INTO venues (name, city, address, location_lat, location_lng, description, owner_user_id, subscription_tier, maps_url, social_url, photo_urls, commitment_accepted_at, vies_ok, vies_checked_at, weekly_hours, closing_time)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'free', $8, $9, $10::jsonb, NOW(), $11, CASE WHEN $12::text IS NOT NULL THEN NOW() ELSE NULL END, $13::jsonb, $14)
        ON CONFLICT (name, city) DO UPDATE SET
          address = COALESCE(EXCLUDED.address, venues.address),
          location_lat = COALESCE(EXCLUDED.location_lat, venues.location_lat),
@@ -197,6 +320,8 @@ export async function approveVenueApplication(applicationId, reviewerId, { revie
          maps_url = COALESCE(EXCLUDED.maps_url, venues.maps_url),
          social_url = COALESCE(EXCLUDED.social_url, venues.social_url),
          photo_urls = COALESCE(EXCLUDED.photo_urls, venues.photo_urls),
+         weekly_hours = COALESCE(EXCLUDED.weekly_hours, venues.weekly_hours),
+         closing_time = COALESCE(EXCLUDED.closing_time, venues.closing_time),
          updated_at = NOW()
        RETURNING *`,
       [
@@ -210,8 +335,10 @@ export async function approveVenueApplication(applicationId, reviewerId, { revie
         app.maps_url || null,
         app.social_url || null,
         JSON.stringify(app.photo_urls || []),
-        app.vies_vat ? true : null,
+        app.vies_ok == null ? (app.vies_vat ? true : null) : app.vies_ok,
         app.vies_vat || null,
+        JSON.stringify(weeklyHours || {}),
+        closingTime,
       ]
     );
     const venue = venueR.rows[0];

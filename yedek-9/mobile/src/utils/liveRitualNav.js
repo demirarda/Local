@@ -1,15 +1,20 @@
 import useThemeStore from '../store/themeStore';
 
 export function getLiveRitualRouteName() {
-  return useThemeStore.getState().mode === 'dark' ? 'LiveRitualDark' : 'LiveRitual';
+  return 'LiveRitual';
+}
+
+export function liveRitualParams(params = {}) {
+  const forceDark = useThemeStore.getState().mode === 'dark';
+  return forceDark ? { ...params, forceDark: true } : { ...params };
 }
 
 export function navigateToLiveRitual(navigation, params = {}) {
   if (!navigation?.navigate) return;
-  navigation.navigate(getLiveRitualRouteName(), params);
+  navigation.navigate(getLiveRitualRouteName(), liveRitualParams(params));
 }
 
 export function replaceWithLiveRitual(navigation, params = {}) {
   if (!navigation?.replace) return;
-  navigation.replace(getLiveRitualRouteName(), params);
+  navigation.replace(getLiveRitualRouteName(), liveRitualParams(params));
 }

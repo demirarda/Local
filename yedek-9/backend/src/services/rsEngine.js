@@ -12,8 +12,15 @@ import {
   blendCf,
   applyNoPeerEngagementGate,
   computeTruthSignalFromComponents,
+  ifLateFromCount,
+  applyIfModL3,
+  applyIfPeerRedHeavy,
+  clampDayPositiveDelta,
+  applyFarToDelta,
+  farPhase,
 } from '../config/localConfig.js';
 import { getFeedbackClosesAt } from './feedbackWindow.js';
+import { getPlacementCompleteMap } from './rsVisibility.js';
 import {
   getDiversityMultiplierFromState,
   calculateNContextScore,
@@ -21,7 +28,7 @@ import {
 } from './antiGaming.js';
 import { updateDsForUser } from './dsEngine.js';
 import { notifyMaturationUpgrade, notifyRSChange } from './notifications.js';
-import { logScoreEvent } from './scoreEventService.js';
+import { logScoreEvent, logRsPipelineScoreEvents } from './scoreEventService.js';
 
 export { RS_CONSTANTS };
 
@@ -39,7 +46,8 @@ function feedbackRowWeight(row) {
     return Number(row.rs_weight);
   }
   if (row.friendship_level) {
-    return fbWeightFromLevel(row.friendship_level);
+    const seals = row.co_seal_count != null ? Number(row.co_seal_count) : null;
+    return fbWeightFromLevel(row.friendship_level, seals);
   }
   return 1.0;
 }
@@ -58,9 +66,10 @@ async function sharedRitualCount(userId, otherUserId) {
   return r.rows[0]?.c ?? 0;
 }
 
-/** Valid live-window attendance per LTE-3 §3 */
+/** Sealed table presence — RS runs after close; status is rarely still `confirmed`. */
 function isLiveWindowStatus(status) {
-  return status === 'confirmed';
+  const s = String(status || '');
+  return s !== 'no_show' && s !== 'cancelled';
 }
 
 async function getRitualGroupQAverage(ritualId) {
@@ -103,35 +112,82 @@ async function countUniqueRatersLast5Rituals(userId, excludeRitualId) {
 }
 
 async function calculateIQ(ritualId, userId, completedRitualsBefore) {
-  const fb = await pool.query(
-    `SELECT f.from_user_id, f.q1_comfort, f.q2_energy, f.rs_weight, f.friendship_level
-     FROM feedback f
-     WHERE f.ritual_id = $1 AND f.to_user_id = $2
-       AND f.feedback_type IN ('p2p', 'p2host')`,
+  const eligible = await pool.query(
+    `SELECT ra.user_id
+     FROM ritual_attendance ra
+     INNER JOIN friendships fr ON fr.status = 'accepted'
+       AND (
+         (fr.requester_id = $2 AND fr.receiver_id = ra.user_id)
+         OR (fr.receiver_id = $2 AND fr.requester_id = ra.user_id)
+       )
+     WHERE ra.ritual_id = $1
+       AND ra.user_id <> $2
+       AND ra.checkin_at IS NOT NULL
+       AND COALESCE(ra.checkin_phase, 'sealed') = 'sealed'
+       AND ra.status NOT IN ('no_show', 'cancelled')`,
     [ritualId, userId]
   );
+  const eligibleIds = eligible.rows.map((r) => String(r.user_id));
+  const eligibleCount = eligibleIds.length;
+
+  if (eligibleCount === 0) {
+    return { IQ_r: null, conf: 0, n: 0, IQ_raw: null, eligibleCount: 0, iq_null: true };
+  }
+
+  let fb;
+  try {
+    fb = await pool.query(
+      `SELECT f.from_user_id, f.q1_comfort, f.q2_energy, f.rs_weight, f.friendship_level,
+              fr.co_seal_count
+       FROM feedback f
+       LEFT JOIN friendships fr ON fr.status = 'accepted'
+         AND (
+           (fr.requester_id = f.from_user_id AND fr.receiver_id = f.to_user_id)
+           OR (fr.receiver_id = f.from_user_id AND fr.requester_id = f.to_user_id)
+         )
+       WHERE f.ritual_id = $1 AND f.to_user_id = $2
+         AND f.feedback_type IN ('p2p', 'p2host')
+         AND f.from_user_id = ANY($3::uuid[])`,
+      [ritualId, userId, eligibleIds]
+    );
+  } catch (_e) {
+    fb = await pool.query(
+      `SELECT f.from_user_id, f.q1_comfort, f.q2_energy, f.rs_weight, f.friendship_level
+       FROM feedback f
+       WHERE f.ritual_id = $1 AND f.to_user_id = $2
+         AND f.feedback_type IN ('p2p', 'p2host')
+         AND f.from_user_id = ANY($3::uuid[])`,
+      [ritualId, userId, eligibleIds]
+    );
+  }
 
   const weightedAvgs = [];
   for (const row of fb.rows) {
     const fromId = row.from_user_id;
     const att = await pool.query(
-      `SELECT status FROM ritual_attendance WHERE ritual_id = $1 AND user_id = $2`,
+      `SELECT status, checkin_at FROM ritual_attendance WHERE ritual_id = $1 AND user_id = $2`,
       [ritualId, fromId]
     );
     if (att.rows.length === 0 || !isLiveWindowStatus(att.rows[0].status)) continue;
+    if (!att.rows[0].checkin_at) continue;
 
     const w = feedbackRowWeight(row);
     if (w <= 0) continue;
 
-    const q1 = row.q1_comfort != null ? normalizeAnswer(row.q1_comfort) : 0.5;
-    const q2 = row.q2_energy != null ? normalizeAnswer(row.q2_energy) : 0.5;
-    weightedAvgs.push({ avg: (q1 + q2) / 2, w });
+    const q1 = row.q1_comfort != null ? normalizeAnswer(row.q1_comfort) : null;
+    const q2 = row.q2_energy != null ? normalizeAnswer(row.q2_energy) : null;
+    if (q1 == null && q2 == null) continue;
+    const avg = q1 != null && q2 != null ? (q1 + q2) / 2 : (q1 ?? q2);
+    weightedAvgs.push({ avg, w });
   }
 
   const n = weightedAvgs.length;
+  if (n === 0) {
+    return { IQ_r: null, conf: 0, n: 0, IQ_raw: null, eligibleCount, iq_null: true };
+  }
+
   let conf = 0;
-  if (n === 0) conf = 0;
-  else if (n === 1) conf = 0.5;
+  if (n === 1) conf = 0.5;
   else if (n === 2) conf = 0.75;
   else conf = 1.0;
 
@@ -140,18 +196,11 @@ async function calculateIQ(ritualId, userId, completedRitualsBefore) {
     conf = Math.max(0, conf - LOCAL_CONFIG.rs.DIVERSITY_REQ_PENALTY);
   }
 
-  if (n === 0) {
-    if (completedRitualsBefore < 5) {
-      const proxy = await getRitualGroupQAverage(ritualId);
-      return { IQ_r: proxy, conf: 0, n: 0 };
-    }
-    return { IQ_r: 0.5, conf: 0, n: 0 };
-  }
-
+  const weightSum = weightedAvgs.reduce((a, x) => a + x.w, 0);
   const weightedSum = weightedAvgs.reduce((a, x) => a + x.avg * x.w, 0);
-  const IQ_raw = n > 0 ? weightedSum / n : 0.5;
-  const IQ_r = blendIqFromRaw(IQ_raw, n, conf);
-  return { IQ_r, conf, n, IQ_raw };
+  const IQ_raw = weightSum > 0 ? weightedSum / weightSum : null;
+  const IQ_r = IQ_raw == null ? null : blendIqFromRaw(IQ_raw, n, conf);
+  return { IQ_r, conf, n, IQ_raw, eligibleCount, iq_null: false };
 }
 
 async function calculateCF(ritualId, userId) {
@@ -244,8 +293,11 @@ async function calculateMemory(ritualId, userId) {
     `SELECT 1 FROM memories
      WHERE ritual_id = $1 AND user_id = $2
        AND (
-         memory_type IN ('pulse', 'ritual', 'quote')
-         OR type IN ('pulse', 'quote', 'photo', 'media')
+         memory_type IN ('pulse', 'ritual', 'quote', 'playlist', 'song', 'photo', 'video', 'media')
+         OR type::text IN ('pulse', 'quote', 'photo', 'media', 'playlist', 'song', 'video', 'text', 'voice')
+         OR spotify_playlist_url IS NOT NULL
+         OR content_url IS NOT NULL
+         OR COALESCE(content_text, content, '') <> ''
        )
      LIMIT 1`,
     [ritualId, userId]
@@ -305,7 +357,27 @@ async function hasFl12RaterAtRitual(ritualId, userId) {
   return r.rows.length > 0;
 }
 
-async function calculateIF(ritualId, userId) {
+/** §1 MOD-L3 — aktif full_suspend L3 varsa IF=1.0. Tablo yoksa fail-open. */
+async function hasActiveModL3(userId) {
+  try {
+    const r = await pool.query(
+      `SELECT 1
+       FROM mod_sanctions
+       WHERE user_id = $1
+         AND level = 'L3'
+         AND active = true
+         AND (ends_at IS NULL OR ends_at > NOW())
+       LIMIT 1`,
+      [userId]
+    );
+    return r.rows.length > 0;
+  } catch (e) {
+    if (e?.code === '42P01' || e?.code === '42703') return false;
+    throw e;
+  }
+}
+
+async function calculateIF(ritualId, userId, { noPeerPath = false } = {}) {
   let ifScore = 0.0;
   const attendanceResult = await pool.query(
     `SELECT status, checkin_at, checkin_attempt_at, attendance_percentage, left_early_at, ais_score
@@ -320,7 +392,10 @@ async function calculateIF(ritualId, userId) {
     `SELECT start_time, duration FROM rituals WHERE id = $1`,
     [ritualId]
   );
-  if (ritualQuery.rows.length === 0) return ifScore;
+  if (ritualQuery.rows.length === 0) {
+    const hasL3 = await hasActiveModL3(userId);
+    return applyIfModL3(ifScore, hasL3);
+  }
 
   const ritualStartTime = new Date(ritualQuery.rows[0].start_time);
   const ritualDuration = ritualQuery.rows[0].duration || 60;
@@ -328,20 +403,47 @@ async function calculateIF(ritualId, userId) {
 
   // §6 TEK KÖPRÜ: late IF, deneme/AIS mühüründen; pending tanık gecikmesi sayılmaz.
   const aisResult = aisFromAttendanceRow(attendance, ritualStartTime, ritualDuration);
-  if (aisResult?.status === 'late') {
-    ifScore += LOCAL_CONFIG.rs.IF_LATE_SLICE;
+  const isLateSlice = aisResult?.status === 'late' || aisResult?.status === 'deep_late';
+  if (isLateSlice) {
+    const windowDays = LOCAL_CONFIG.rs.IF_LATE_WINDOW_DAYS || 30;
+    const lateHist = await pool.query(
+      `SELECT COUNT(*)::int AS c
+       FROM ritual_attendance ra
+       JOIN rituals r ON r.id = ra.ritual_id
+       WHERE ra.user_id = $1
+         AND ra.ritual_id <> $2
+         AND ra.ais_score IS NOT NULL
+         AND ra.ais_score > 0
+         AND ra.ais_score < $3
+         AND r.start_time > NOW() - ($4 || ' days')::interval`,
+      [userId, ritualId, LOCAL_CONFIG.checkin.AIS_REDUCED, String(windowDays)]
+    );
+    const priorLate = Number(lateHist.rows[0]?.c || 0);
+    ifScore += ifLateFromCount(priorLate + 1);
   } else if (!aisResult && !checkInTime) {
     ifScore += LOCAL_CONFIG.rs.IF_LATE_SLICE;
   }
 
   if (attendance.left_early_at != null) {
-    let pct = attendance.attendance_percentage;
-    if (pct == null && checkInTime) {
-      const ritualEndTime = new Date(ritualStartTime.getTime() + ritualDuration * 60000);
-      const attendedDuration = (Math.min(Date.now(), ritualEndTime.getTime()) - checkInTime) / 60000;
-      pct = (attendedDuration / ritualDuration) * 100;
+    const priorLeaves = await pool.query(
+      `SELECT COUNT(*)::int AS c
+       FROM ritual_attendance
+       WHERE user_id = $1
+         AND ritual_id <> $2
+         AND left_early_at IS NOT NULL
+         AND left_early_at > NOW() - INTERVAL '30 days'`,
+      [userId, ritualId]
+    );
+    const n = Number(priorLeaves.rows[0]?.c || 0);
+    if (n >= 1) {
+      let pct = attendance.attendance_percentage;
+      if (pct == null && checkInTime) {
+        const ritualEndTime = new Date(ritualStartTime.getTime() + ritualDuration * 60000);
+        const attendedDuration = (Math.min(Date.now(), ritualEndTime.getTime()) - checkInTime) / 60000;
+        pct = (attendedDuration / ritualDuration) * 100;
+      }
+      if (pct != null && pct < 30) ifScore += 0.15;
     }
-    if (pct != null && pct < 30) ifScore += 0.15;
   }
 
   if (
@@ -358,6 +460,7 @@ async function calculateIF(ritualId, userId) {
        AND feedback_type IN ('p2p', 'p2host')`,
     [ritualId, userId]
   );
+  let redHeavy = false;
   if (peerFb.rows.length > 0) {
     let redSignals = 0;
     let totalSignals = 0;
@@ -368,12 +471,13 @@ async function calculateIF(ritualId, userId) {
         if (row[field] === 'red') redSignals += 1;
       }
     }
-    if (totalSignals > 0 && redSignals / totalSignals >= 0.5) {
-      ifScore += LOCAL_CONFIG.rs.IF_FEEDBACK_RED_HEAVY;
-    }
+    redHeavy = totalSignals > 0 && redSignals / totalSignals >= 0.5;
   }
+  ifScore = applyIfPeerRedHeavy(ifScore, { noPeerPath, redHeavy });
 
-  return Math.min(Math.max(ifScore, 0), 1.0);
+  const capped = Math.min(Math.max(ifScore, 0), 1.0);
+  const hasL3 = await hasActiveModL3(userId);
+  return applyIfModL3(capped, hasL3);
 }
 
 async function calculateTruthSignal(ritualId, userId, completedRitualsBefore) {
@@ -384,11 +488,21 @@ async function calculateTruthSignal(ritualId, userId, completedRitualsBefore) {
   const cf = await calculateCF(ritualId, userId);
   const { CF_r } = cf;
   const M_r = await calculateMemory(ritualId, userId);
-  const IF_r = await calculateIF(ritualId, userId);
+  const IF_r = await calculateIF(ritualId, userId, { noPeerPath: iq.iq_null === true });
+
+  const rq = await pool.query(
+    `SELECT 1 FROM feedback
+     WHERE ritual_id = $1 AND from_user_id = $2
+       AND feedback_type IN ('p2r', 'rq')
+       AND (p2r_feeling IS NOT NULL OR r1_self IS NOT NULL)
+     LIMIT 1`,
+    [ritualId, userId]
+  );
+  const hasRq = rq.rows.length > 0;
 
   const { P_r, T_r, S_r } = computeTruthSignalFromComponents({
     A_r,
-    IQ_r: iq.IQ_r,
+    IQ_r: iq.iq_null ? null : iq.IQ_r,
     CF_r,
     M_r,
     IF_r,
@@ -405,6 +519,7 @@ async function calculateTruthSignal(ritualId, userId, completedRitualsBefore) {
     IF_r,
     iqMeta: iq,
     cfMeta: cf,
+    hasRq,
   };
 }
 
@@ -460,10 +575,18 @@ export async function updateRSForRitual(ritualId, userId) {
   const userQuery = await pool.query('SELECT rs_score, solo_ceiling_lifted FROM users WHERE id = $1', [userId]);
   if (userQuery.rows.length === 0) throw new Error('User not found');
 
-  const attRow = await pool.query(
-    `SELECT status FROM ritual_attendance WHERE ritual_id = $1 AND user_id = $2`,
-    [ritualId, userId]
-  );
+  let attRow;
+  try {
+    attRow = await pool.query(
+      `SELECT status, positive_rs_voided FROM ritual_attendance WHERE ritual_id = $1 AND user_id = $2`,
+      [ritualId, userId]
+    );
+  } catch (_e) {
+    attRow = await pool.query(
+      `SELECT status FROM ritual_attendance WHERE ritual_id = $1 AND user_id = $2`,
+      [ritualId, userId]
+    );
+  }
   if (attRow.rows.length === 0) {
     return { skipped: true, reason: 'no_attendance' };
   }
@@ -531,26 +654,64 @@ export async function updateRSForRitual(ritualId, userId) {
   } = pipeline;
 
   const bcTrend = pipelineInput.bcTrend;
-  const hasPeerFeedback = Number(ts.cfMeta?.peerCount || 0) > 0;
-  const noPeerPath = !hasPeerFeedback;
+  const answeredPeers = Number(ts.iqMeta?.n || 0);
+  const noPeerPath = ts.iqMeta?.iq_null === true || answeredPeers <= 0;
   const hasR1 = !!ts.cfMeta?.hasR1;
   const hasMemory = Number(ts.M_r) > 0;
+  const hasRq = !!ts.hasRq;
   const dampener = LOCAL_CONFIG.rs.no_peer.NO_PEER_DAMPENER;
   const ceiling = LOCAL_CONFIG.rs.no_peer.NO_PEER_CEILING;
-  let noPeerDelta = noPeerPath ? deltaFinal * dampener : deltaFinal;
+  let noPeerDelta = deltaFinal;
+  if (noPeerPath && noPeerDelta > 0) {
+    noPeerDelta *= dampener;
+  }
   const deltaBeforeEngagement = noPeerDelta;
-  noPeerDelta = applyNoPeerEngagementGate(noPeerDelta, { noPeerPath, hasR1, hasMemory });
+  noPeerDelta = applyNoPeerEngagementGate(noPeerDelta, {
+    noPeerPath,
+    hasR1,
+    hasMemory,
+    hasRq,
+  });
   const engagementBlocked =
-    noPeerPath && deltaBeforeEngagement > 0 && noPeerDelta === 0 && !(hasR1 || hasMemory);
-  // DB column: solo_ceiling_lifted (legacy name) — no_peer tavan bayrağı
+    noPeerPath &&
+    deltaBeforeEngagement > 0 &&
+    noPeerDelta === 0 &&
+    !(hasR1 || hasMemory || hasRq);
   const ceilingApplied = noPeerPath && !userQuery.rows[0].solo_ceiling_lifted;
 
-  if (hasPeerFeedback && !userQuery.rows[0].solo_ceiling_lifted) {
+  if (answeredPeers > 0 && !userQuery.rows[0].solo_ceiling_lifted) {
     await pool.query(
       `UPDATE users SET solo_ceiling_lifted = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
       [userId]
     );
   }
+
+  noPeerDelta = applyFarToDelta(noPeerDelta);
+
+  if (attRow.rows[0]?.positive_rs_voided && noPeerDelta > 0) {
+    noPeerDelta = 0;
+  }
+
+  const dayCapIn = noPeerDelta;
+  let dayUsedToday = 0;
+  if (noPeerDelta > 0) {
+    const todayPos = await pool.query(
+      `SELECT COALESCE(SUM(delta), 0)::float AS s
+       FROM rs_delta_history
+       WHERE user_id = $1
+         AND delta > 0
+         AND created_at::date = CURRENT_DATE
+         AND (bypass_reason IS NULL)`,
+      [userId]
+    );
+    dayUsedToday = Number(todayPos.rows[0]?.s || 0);
+    noPeerDelta = clampDayPositiveDelta(noPeerDelta, dayUsedToday);
+  }
+  const dayCap = {
+    delta_in: dayCapIn,
+    delta_out: noPeerDelta,
+    used_today: dayUsedToday,
+  };
 
   let newRS = Math.max(
     RS_CONSTANTS.MIN,
@@ -612,6 +773,15 @@ export async function updateRSForRitual(ritualId, userId) {
     console.error('rs_delta_history insert failed:', e.message);
   }
 
+  await logRsPipelineScoreEvents({
+    userId,
+    ritualId,
+    ritualIndex,
+    iqMeta: ts.iqMeta,
+    pipeline,
+    dayCap,
+  });
+
   await logScoreEvent({
     userId,
     ritualId,
@@ -634,6 +804,9 @@ export async function updateRSForRitual(ritualId, userId) {
       engagement_blocked: engagementBlocked,
       has_r1: hasR1,
       has_memory: hasMemory,
+      has_rq: hasRq,
+      iq_null: !!ts.iqMeta?.iq_null,
+      far_phase: LOCAL_CONFIG.rs.far?.PHASE ?? 0,
       pipeline_kind: pipelineKind,
     },
   });
@@ -692,12 +865,24 @@ export async function updateRSForRitual(ritualId, userId) {
     evaluatorCount = 0;
   }
 
-  await notifyRSChange(userId, {
-    ritual_id: ritualId,
-    ritual_title: ritualTitle,
-    delta: `${appliedDelta >= 0 ? '+' : ''}${Number(appliedDelta).toFixed(2).replace('.', ',')}`,
-    evaluator_count: evaluatorCount,
-  }).catch(() => {});
+  // §9 FAR-0 + placement: RS kimseye (kendine bile) görünmez — değişim bildirimi yok
+  let ownerMaySeeRs = farPhase() >= 1;
+  if (ownerMaySeeRs) {
+    try {
+      const placement = await getPlacementCompleteMap([userId]);
+      ownerMaySeeRs = placement.get(String(userId)) === true;
+    } catch (_e) {
+      ownerMaySeeRs = false;
+    }
+  }
+  if (ownerMaySeeRs) {
+    await notifyRSChange(userId, {
+      ritual_id: ritualId,
+      ritual_title: ritualTitle,
+      delta: `${appliedDelta >= 0 ? '+' : ''}${Number(appliedDelta).toFixed(2).replace('.', ',')}`,
+      evaluator_count: evaluatorCount,
+    }).catch(() => {});
+  }
 
   if ([5, 10, 20, 30].includes(ritualIndex)) {
     await notifyMaturationUpgrade(userId, {

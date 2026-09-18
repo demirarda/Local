@@ -1,13 +1,15 @@
 /**
- * Social Passport — son-part.md §8.1 (memory + badge + quote only)
+ * Social Passport — son-part.md §8.1 (memory + badge + quote)
+ * §9: R1 yalnız sahibinin arşiv-katmanında (bu endpoint /me).
  */
 import pool from '../config/database.js';
+import { getOwnerR1Archive } from './r1ArchiveService.js';
 
 export async function getPassportEntries(userId, { limit = 50, offset = 0 } = {}) {
   const lim = Math.min(Number(limit) || 50, 100);
   const off = Math.max(Number(offset) || 0, 0);
 
-  const [memories, badges, quotes] = await Promise.all([
+  const [memories, badges, quotes, r1Archive] = await Promise.all([
     pool.query(
       `SELECT
          m.id,
@@ -65,6 +67,7 @@ export async function getPassportEntries(userId, { limit = 50, offset = 0 } = {}
        LIMIT $2`,
       [userId, lim]
     ),
+    getOwnerR1Archive(userId, { limit: lim, offset: off }),
   ]);
 
   const entries = [
@@ -79,6 +82,14 @@ export async function getPassportEntries(userId, { limit = 50, offset = 0 } = {}
     }
   }
 
+  for (const row of r1Archive.entries || []) {
+    entries.push({
+      ...row,
+      passport_eligible: true,
+      entry_type: 'r1',
+    });
+  }
+
   entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   return {
@@ -88,7 +99,8 @@ export async function getPassportEntries(userId, { limit = 50, offset = 0 } = {}
       memories: memories.rows.length,
       badges: badges.rows.length,
       quotes: quotes.rows.length,
+      r1: (r1Archive.entries || []).length,
     },
-    note: 'Passport-pure: comments and reposts are excluded per son-part.md §8.1',
+    note: 'Passport-pure: comments and reposts are excluded per son-part.md §8.1. R1 is owner-archive only.',
   };
 }

@@ -2,7 +2,7 @@
  * Venue nominations API — LOCAL v2 §8
  */
 import express from 'express';
-import { authenticateToken, requireAdmin } from './auth.js';
+import { authenticateToken, requireProductOps } from './auth.js';
 import {
   nominateVenue,
   listNominations,
@@ -25,12 +25,12 @@ router.post('/', authenticateToken, async (req, res) => {
   return res.json({ success: true, data: result.nomination });
 });
 
-router.get('/', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/', authenticateToken, requireProductOps('nominations'), async (req, res) => {
   const result = await listNominations({ status: req.query.status, limit: req.query.limit });
   return res.json({ success: true, data: result.nominations });
 });
 
-router.patch('/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.patch('/:id', authenticateToken, requireProductOps('nominations'), async (req, res) => {
   const result = await setNominationStatus(req.params.id, req.body.status || 'reviewed');
   if (!result.ok) return res.status(result.status || 400).json({ success: false, error: result.error });
   return res.json({ success: true, data: result.nomination });

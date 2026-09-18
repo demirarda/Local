@@ -1,8 +1,11 @@
 /**
- * Chip + FB copy — 🔒 KİLİTLİ (founder, 2026-08-10)
- * RQ (3/renk) ve P2V (5/renk) metinleri LOCAL_Sosyal_Urun_Temelleri.md §9 seed'inden birebir.
- * Keys match localConfig.chip.SETS. Sync: backend + mobile stringTable.
+ * Chip + FB copy — LOCAL_FB_Soru_Agaci_v2 kilitli fiiller.
+ * Niyet-beyanı yok. Keys = localConfig.chip.SETS. Sync: backend + mobile.
  */
+function c(key, EN, TR) {
+  return { key, EN, TR, open: false };
+}
+
 export const CHIP_COPY_STUBS = {
   fb_event_general_q: {
     key: 'fb_event_general_q',
@@ -11,94 +14,198 @@ export const CHIP_COPY_STUBS = {
   },
   fb_rq_table_q: {
     key: 'fb_rq_table_q',
-    EN: 'How was this table?',
-    TR: 'Bu masa nasıldı?',
+    EN: 'How did this table go?',
+    TR: 'Bu masa nasıl geçti?',
   },
   fb_rq_ritual_q: {
     key: 'fb_rq_ritual_q',
     EN: 'How was this Ritual?',
     TR: 'Bu Ritual nasıldı?',
   },
-
-  // RQ 🟢 — sohbet aktı · masa dengeliydi · tekrar isterim
-  rq_g_1: { key: 'rq_g_1', EN: 'Conversation flowed', TR: 'Sohbet aktı', open: false },
-  rq_g_2: { key: 'rq_g_2', EN: 'Table felt balanced', TR: 'Masa dengeliydi', open: false },
-  rq_g_3: { key: 'rq_g_3', EN: 'I would do it again', TR: 'Tekrar isterim', open: false },
-  // RQ 🟡 — geç ısındı · küçük gruplara bölündük · tanımdan biraz farklıydı
-  rq_y_1: { key: 'rq_y_1', EN: 'Took time to warm up', TR: 'Geç ısındı', open: false },
-  rq_y_2: {
-    key: 'rq_y_2',
-    EN: 'Split into smaller groups',
-    TR: 'Küçük gruplara bölündük',
-    open: false,
+  fb_k1_q: {
+    key: 'fb_k1_q',
+    EN: 'How did you feel at the table with X?',
+    TR: 'X ile aynı masada kendini nasıl hissettin?',
   },
-  rq_y_3: {
-    key: 'rq_y_3',
-    EN: 'A bit different from the description',
-    TR: 'Tanımdan biraz farklıydı',
-    open: false,
+  fb_k2_q: {
+    key: 'fb_k2_q',
+    EN: 'How did X join the table flow?',
+    TR: 'X masanın akışına nasıl katıldı?',
   },
-  // RQ 🔴 — tanım yanılttı · tek ses baskındı · kadro uyumsuzdu
-  rq_r_1: { key: 'rq_r_1', EN: 'The description misled', TR: 'Tanım yanılttı', open: false },
-  rq_r_2: { key: 'rq_r_2', EN: 'One voice dominated', TR: 'Tek ses baskındı', open: false },
-  rq_r_3: { key: 'rq_r_3', EN: 'Group chemistry was off', TR: 'Kadro uyumsuzdu', open: false },
-
-  // P2V 🟢 — mekan sahiplendi · servis akıcıydı · fiyatına değdi · ortam tam masalıktı · personel sıcaktı
-  p2v_g_1: { key: 'p2v_g_1', EN: 'Venue owned the night', TR: 'Mekan sahiplendi', open: false },
-  p2v_g_2: { key: 'p2v_g_2', EN: 'Service flowed', TR: 'Servis akıcıydı', open: false },
-  p2v_g_3: { key: 'p2v_g_3', EN: 'Worth the price', TR: 'Fiyatına değdi', open: false },
-  p2v_g_4: {
-    key: 'p2v_g_4',
-    EN: 'Atmosphere fit a table night',
-    TR: 'Ortam tam masalıktı',
-    open: false,
+  fb_p2c_q: {
+    key: 'fb_p2c_q',
+    EN: 'Was the meeting spot suitable?',
+    TR: 'Buluşma için yer uygun muydu?',
   },
-  p2v_g_5: { key: 'p2v_g_5', EN: 'Staff was warm', TR: 'Personel sıcaktı', open: false },
-  // P2V 🟡 — servis yavaştı · yer dardı · biraz gürültülüydü · fiyat yüksekti · masa geç hazırlandı
-  p2v_y_1: { key: 'p2v_y_1', EN: 'Service was slow', TR: 'Servis yavaştı', open: false },
-  p2v_y_2: { key: 'p2v_y_2', EN: 'Space felt tight', TR: 'Yer dardı', open: false },
-  p2v_y_3: { key: 'p2v_y_3', EN: 'A bit noisy', TR: 'Biraz gürültülüydü', open: false },
-  p2v_y_4: { key: 'p2v_y_4', EN: 'Price felt high', TR: 'Fiyat yüksekti', open: false },
-  p2v_y_5: { key: 'p2v_y_5', EN: 'Table was ready late', TR: 'Masa geç hazırlandı', open: false },
-  // P2V 🔴 — servis sorunluydu · gürültüden konuşamadık · temizlik zayıftı · ücret sürpriziydi · masa hazır değildi
-  p2v_r_servis: {
-    key: 'p2v_r_servis',
-    EN: 'Service had problems',
-    TR: 'Servis sorunluydu',
-    open: false,
+  fb_p2z_q: {
+    key: 'fb_p2z_q',
+    EN: 'How did this zone serve your meetup?',
+    TR: 'Bu zone buluşmana nasıl hizmet etti?',
   },
-  p2v_r_gurultu: {
-    key: 'p2v_r_gurultu',
-    EN: 'Too loud to talk',
-    TR: 'Gürültüden konuşamadık',
-    open: false,
+  fb_p2v_q: {
+    key: 'fb_p2v_q',
+    EN: 'How was the venue?',
+    TR: 'Mekan nasıldı?',
   },
-  p2v_r_temizlik: {
-    key: 'p2v_r_temizlik',
-    EN: 'Cleanliness was weak',
-    TR: 'Temizlik zayıftı',
-    open: false,
-  },
-  p2v_r_ucret: {
-    key: 'p2v_r_ucret',
-    EN: 'Surprise charge',
-    TR: 'Ücret sürpriziydi',
-    open: false,
-  },
-  p2v_r_masa: {
-    key: 'p2v_r_masa',
-    EN: 'Table was not ready',
-    TR: 'Masa hazır değildi',
-    open: false,
+  fb_safety: {
+    key: 'fb_safety',
+    EN: 'Report safety',
+    TR: 'Güvenlik bildir',
   },
 
-  // P2Z — sonMD §9'da ayrı seed yok; P2V desenine göre kilitlendi (2026-08-10)
-  p2z_g_1: { key: 'p2z_g_1', EN: 'Zone felt right', TR: 'Zone uygundu', open: false },
-  p2z_g_2: { key: 'p2z_g_2', EN: 'Easy to find', TR: 'Kolay bulundu', open: false },
-  p2z_y_1: { key: 'p2z_y_1', EN: 'Marker was vague', TR: 'Marker belirsizdi', open: false },
-  p2z_y_2: { key: 'p2z_y_2', EN: 'Zone was crowded', TR: 'Zone kalabalıktı', open: false },
-  p2z_r_1: { key: 'p2z_r_1', EN: 'Wrong spot', TR: 'Yanlış nokta', open: false },
-  p2z_r_marker: { key: 'p2z_r_marker', EN: 'Marker was missing', TR: 'Marker yoktu', open: false },
+  // R · masa
+  rq_g_1: c('rq_g_1', 'Conversation flowed naturally', 'sohbet doğal aktı'),
+  rq_g_2: c('rq_g_2', 'Participation spread evenly', 'katılım dengeli yayıldı'),
+  rq_g_3: c('rq_g_3', 'The topic went deeper', 'konu derinleşti'),
+  rq_g_4: c('rq_g_4', 'Planned flow held', 'planlanan akış tuttu'),
+  rq_g_5: c('rq_g_5', 'Time was used well', 'zaman iyi kullanıldı'),
+  rq_y_1: c('rq_y_1', 'Topic kept scattering', 'konu sık dağıldı'),
+  rq_y_2: c('rq_y_2', 'Tempo dropped', 'tempo düştü'),
+  rq_y_3: c('rq_y_3', 'Wrapped early', 'erken tamamlandı'),
+  rq_y_4: c('rq_y_4', 'Participation stayed uneven', 'katılım dengesiz kaldı'),
+  rq_y_5: c('rq_y_5', 'Capacity was strained', 'kapasite zorlandı'),
+  rq_r_1: c('rq_r_1', 'Tension grew', 'gerilim büyüdü'),
+  rq_r_2: c('rq_r_2', 'Talk stayed with one person', 'konuşma tek kişide kaldı'),
+  rq_r_3: c('rq_r_3', 'Sales pressure showed up', 'satış baskısı oluştu'),
+  rq_r_4: c('rq_r_4', 'The plan was not applied', 'plan uygulanamadı'),
+  rq_r_5: c('rq_r_5', 'The table broke up early', 'masa erken dağıldı'),
+
+  // V · mekan
+  p2v_g_1: c('p2v_g_1', 'Table was ready', 'masa hazırdı'),
+  p2v_g_2: c('p2v_g_2', 'Staff paid attention', 'ekip ilgilendi'),
+  p2v_g_3: c('p2v_g_3', 'Service arrived on time', 'servis zamanında geldi'),
+  p2v_g_4: c('p2v_g_4', 'Space allowed conversation', 'ortam konuşmaya elverdi'),
+  p2v_g_5: c('p2v_g_5', 'Stated conditions held', 'duyurulan koşullar tuttu'),
+  p2v_y_1: c('p2v_y_1', 'Service ran late', 'servis gecikti'),
+  p2v_y_2: c('p2v_y_2', 'It stayed noisy', 'ortam gürültülü kaldı'),
+  p2v_y_3: c('p2v_y_3', 'Table felt tight', 'masa dar geldi'),
+  p2v_y_4: c('p2v_y_4', 'Venue got crowded', 'mekan kalabalıklaştı'),
+  p2v_y_5: c('p2v_y_5', 'Light/air was weak', 'ışık/hava yetersiz kaldı'),
+  p2v_r_servis: c('p2v_r_servis', 'Staff stayed uninterested', 'ekip ilgisiz kaldı'),
+  p2v_r_gurultu: c('p2v_r_gurultu', 'Entry condition changed', 'giriş koşulu değişti'),
+  p2v_r_temizlik: c('p2v_r_temizlik', 'Cleaning slipped', 'temizlik aksadı'),
+  p2v_r_ucret: c('p2v_r_ucret', 'Undisclosed charge appeared', 'bildirilmemiş ücret çıktı'),
+  p2v_r_masa: c('p2v_r_masa', 'Reservation could not be found', 'rezervasyon bulunamadı'),
+
+  // P2Z
+  p2z_g_1: c('p2z_g_1', 'Totem was easy to find', 'totem kolay bulundu'),
+  p2z_g_2: c('p2z_g_2', 'Space was enough for the meetup', 'alan buluşmaya yetti'),
+  p2z_g_3: c('p2z_g_3', 'Seating was comfortable', 'oturma rahattı'),
+  p2z_g_4: c('p2z_g_4', 'The zone felt alive', 'zone canlıydı'),
+  p2z_g_5: c('p2z_g_5', 'Signs were clear', 'işaretler netti'),
+  p2z_y_1: c('p2z_y_1', 'Totem was hard to find', 'totem zor bulundu'),
+  p2z_y_2: c('p2z_y_2', 'Seating was limited', 'oturma sınırlıydı'),
+  p2z_y_3: c('p2z_y_3', 'Light was weak', 'ışık zayıftı'),
+  p2z_y_4: c('p2z_y_4', 'Shade/shelter was scarce', 'gölge/korunak azdı'),
+  p2z_y_5: c('p2z_y_5', 'Crowd kept swinging', 'kalabalık dalgalıydı'),
+  p2z_r_totem: c('p2z_r_totem', 'Totem did not work', 'totem çalışmadı'),
+  p2z_r_1: c('p2z_r_1', 'The area was unusable', 'alan kullanılamaz haldeydi'),
+  p2z_r_guvenlik: c('p2z_r_guvenlik', 'Safety feeling broke', 'güvenlik hissi bozuldu'),
+  p2z_r_temizlik: c('p2z_r_temizlik', 'Cleanliness was poor', 'temizlik kötüydü'),
+  p2z_r_erisim: c('p2z_r_erisim', 'Access was blocked', 'erişim engellendi'),
+  p2z_r_marker: c('p2z_r_marker', 'Marker was missing', 'Marker yoktu'),
+  p2z_r_oturma: c('p2z_r_oturma', 'Seating / sign was unclear', 'Oturma/işaret belirsizdi'),
+
+  // P2C
+  p2c_g_1: c('p2c_g_1', 'Easy to find', 'kolay bulundu'),
+  p2c_g_2: c('p2c_g_2', 'Gathered comfortably', 'rahatça toplanıldı'),
+  p2c_g_3: c('p2c_g_3', 'Allowed conversation', 'konuşmaya elverdi'),
+  p2c_g_4: c('p2c_g_4', 'The group fit the space', 'grup alana sığdı'),
+  p2c_g_5: c('p2c_g_5', 'Access was smooth', 'erişim sorunsuzdu'),
+  p2c_y_1: c('p2c_y_1', 'Took time to find', 'bulması zaman aldı'),
+  p2c_y_2: c('p2c_y_2', 'Seating stayed limited', 'oturma sınırlı kaldı'),
+  p2c_y_3: c('p2c_y_3', 'Noise rose', 'gürültü arttı'),
+  p2c_y_4: c('p2c_y_4', 'Weather affected it', 'hava koşulu etkiledi'),
+  p2c_y_5: c('p2c_y_5', 'Travel ran long', 'ulaşım uzadı'),
+  p2c_r_1: c('p2c_r_1', 'A safety issue formed', 'güvenlik sorunu oluştu'),
+  p2c_r_2: c('p2c_r_2', 'The space could not be used', 'alan kullanılamadı'),
+  p2c_r_3: c('p2c_r_3', 'Access closed', 'erişim kapandı'),
+  p2c_r_4: c('p2c_r_4', 'Crowd blocked the meetup', 'kalabalık buluşmayı engelledi'),
+  p2c_r_5: c('p2c_r_5', 'Cleanliness stayed weak', 'temizlik yetersiz kaldı'),
+
+  // K1 Q1
+  p2p_g_1: c('p2p_g_1', 'Opened conversation space', 'konuşma alanı açtı'),
+  p2p_g_2: c('p2p_g_2', 'Listened carefully', 'dikkatle dinledi'),
+  p2p_g_3: c('p2p_g_3', 'Respected boundaries', 'sınırları gözetti'),
+  p2p_g_4: c('p2p_g_4', 'Included others', 'başkalarını dahil etti'),
+  p2p_g_5: c('p2p_g_5', 'Softened tension', 'gerilimi yumuşattı'),
+  p2p_y_1: c('p2p_y_1', 'Joined the talk little', 'sohbete az katıldı'),
+  p2p_y_2: c('p2p_y_2', 'Joined late', 'geç dahil oldu'),
+  p2p_y_3: c('p2p_y_3', 'Kept distance', 'mesafeyi korudu'),
+  p2p_y_4: c('p2p_y_4', 'Dropped out now and then', 'ara ara koptu'),
+  p2p_y_5: c('p2p_y_5', 'Turned to the phone often', 'sıkça telefona döndü'),
+  p2p_r_1: c('p2p_r_1', 'Interrupted often', 'sık sık söz kesti'),
+  p2p_r_2: c('p2p_r_2', 'Overpowered the talk', 'konuşmayı bastırdı'),
+  p2p_r_3: c('p2p_r_3', 'Kept pushing', 'ısrarını sürdürdü'),
+  p2p_r_4: c('p2p_r_4', 'Pressed a personal boundary', 'kişisel sınırı zorladı'),
+  p2p_r_5: c('p2p_r_5', 'Escalated tension', 'gerilimi tırmandırdı'),
+
+  // K2 Q2
+  k2_g_1: c('k2_g_1', 'Followed the flow', 'akışı takip etti'),
+  k2_g_2: c('k2_g_2', 'Contributed at the right time', 'doğru anda katkı verdi'),
+  k2_g_3: c('k2_g_3', 'Brought others into the talk', 'başkalarını sohbete kattı'),
+  k2_g_4: c('k2_g_4', 'Moved the topic forward', 'konuyu ileri taşıdı'),
+  k2_g_5: c('k2_g_5', 'Balanced the energy', 'enerjiyi dengeledi'),
+  k2_y_1: c('k2_y_1', 'Joined the flow late', 'akışa geç katıldı'),
+  k2_y_2: c('k2_y_2', 'Dropped out now and then', 'ara ara koptu'),
+  k2_y_3: c('k2_y_3', 'Contribution stayed limited', 'katkısı sınırlı kaldı'),
+  k2_y_4: c('k2_y_4', 'Tempo shifted', 'temposu değişti'),
+  k2_y_5: c('k2_y_5', 'Kept the talk going long', 'konuşmayı uzattı'),
+  k2_r_1: c('k2_r_1', 'Kept breaking the flow', 'akışı sürekli böldü'),
+  k2_r_2: c('k2_r_2', 'Pulled the topic to themselves', 'konuyu kendine çekti'),
+  k2_r_3: c('k2_r_3', 'Made joining harder', 'katılımı zorlaştırdı'),
+  k2_r_4: c('k2_r_4', 'Scattered the shared rhythm', 'ortak ritmi dağıttı'),
+  k2_r_5: c('k2_r_5', 'Steered the table off purpose', 'masa amacını saptırdı'),
+
+  // E event
+  e_g_1: c('e_g_1', 'Flow was good', 'akış iyiydi'),
+  e_g_2: c('e_g_2', 'Shared moment was strong', 'ortak-an güçlüydü'),
+  e_g_3: c('e_g_3', 'Tables flowed', 'masalar aktı'),
+  e_g_4: c('e_g_4', 'Organization held', 'organizasyon tuttu'),
+  e_g_5: c('e_g_5', 'Stage/sound was good', 'sahne/ses iyiydi'),
+  e_y_1: c('e_y_1', 'It was crowded', 'kalabalıktı'),
+  e_y_2: c('e_y_2', 'Breaks ran long', 'aralar uzadı'),
+  e_y_3: c('e_y_3', 'Started late', 'geç başladı'),
+  e_y_4: c('e_y_4', 'Hard to change spots', 'yer değiştirmek zordu'),
+  e_r_1: c('e_r_1', 'Organization slipped', 'organizasyon aksadı'),
+  e_r_2: c('e_r_2', 'A promise did not hold', 'vaat tutmadı'),
+  e_r_3: c('e_r_3', 'Door got messy', 'kapı karıştı'),
+  e_r_4: c('e_r_4', 'Ticket problem', 'bilet sorunu'),
+  e_r_5: c('e_r_5', 'Safety issue', 'güvenlik sorunu'),
+
+  // S seller
+  s_g_1: c('s_g_1', 'Delivered the promised service', 'vaat edilen hizmeti sundu'),
+  s_g_2: c('s_g_2', 'Started on time', 'zamanında başladı'),
+  s_g_3: c('s_g_3', 'Answered questions', 'soruları yanıtladı'),
+  s_g_4: c('s_g_4', 'Stayed attentive throughout', 'süreç boyunca ilgilendi'),
+  s_g_5: c('s_g_5', 'Completed delivery', 'teslimatı tamamladı'),
+  s_y_1: c('s_y_1', 'Ran shorter than planned', 'planlanandan kısa sürdü'),
+  s_y_2: c('s_y_2', 'Capacity was strained', 'kapasite zorlandı'),
+  s_y_3: c('s_y_3', 'Content diverged from expectation', 'içerik beklentiden ayrıştı'),
+  s_y_4: c('s_y_4', 'Started late', 'geç başladı'),
+  s_y_5: c('s_y_5', 'Communication stayed slow', 'iletişim yavaş kaldı'),
+  s_r_1: c('s_r_1', 'One-sided cancel/delay', 'tek taraflı iptal/erteleme'),
+  s_r_2: c('s_r_2', 'Did not deliver what was promised', 'vaat edileni sunmadı'),
+  s_r_3: c('s_r_3', 'Undisclosed charge', 'bildirilmemiş ücret'),
+  s_r_4: c('s_r_4', 'Gave no support', 'destek vermedi'),
+  s_r_5: c('s_r_5', 'Stalled the refund', 'iade sürecini aksattı'),
+
+  // VR
+  vr_g_1: c('vr_g_1', 'Kept the agreed time', 'kararlaştırılan saate uydu'),
+  vr_g_2: c('vr_g_2', 'Headcount matched the reservation', 'kişi sayısı rezervasyonla eşleşti'),
+  vr_g_3: c('vr_g_3', 'Coordinated with staff', 'ekiple koordinasyon kurdu'),
+  vr_g_4: c('vr_g_4', 'Left the space tidy', 'alanı düzenli bıraktı'),
+  vr_g_5: c('vr_g_5', 'Completed payment', 'ödemeyi tamamladı'),
+  vr_y_1: c('vr_y_1', 'Started late', 'geç başladı'),
+  vr_y_2: c('vr_y_2', 'Headcount changed', 'kişi sayısı değişti'),
+  vr_y_3: c('vr_y_3', 'Stayed longer than planned', 'planlanandan uzun kaldı'),
+  vr_y_4: c('vr_y_4', 'Setup request changed', 'kurulum talebi değişti'),
+  vr_y_5: c('vr_y_5', 'Communication lagged', 'iletişim gecikti'),
+  vr_r_1: c('vr_r_1', 'Broke a venue rule', 'mekan kuralını ihlal etti'),
+  vr_r_2: c('vr_r_2', 'Payment stayed unresolved', 'ödeme çözümsüz kaldı'),
+  vr_r_3: c('vr_r_3', 'Damaged the space', 'alana zarar verdi'),
+  vr_r_4: c('vr_r_4', 'A verifiable complaint formed', 'doğrulanabilir şikayet oluştu'),
+  vr_r_5: c('vr_r_5', 'Did not follow closing guidance', 'kapanış yönlendirmesine uymadı'),
 
   followers_row: {
     key: 'followers_row',

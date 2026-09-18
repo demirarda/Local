@@ -12,6 +12,7 @@ import {
   getHostBanConfig,
   getLateCancelRsPenalty,
   getNoShowRsPenalty,
+  isPromiseCoolMixHit,
 } from '../config/localConfig.js';
 
 describe('penalties (son-part.md §7)', () => {
@@ -90,5 +91,41 @@ describe('penalties (son-part.md §7)', () => {
     expect(LOCAL_CONFIG.ritual.GRACE_MINUTES).toBe(10);
     expect(LOCAL_CONFIG.rs.CAP_NEG).toBe(0.15);
     expect(LOCAL_CONFIG.rs.BYPASS_CAP_NEG).toBe(0.2);
+  });
+
+  test('§5 söz-soğuma karışımı: late-cancel kilit-öncesi · no-show start-civarı', () => {
+    const start = '2026-06-01T12:00:00Z';
+    expect(
+      isPromiseCoolMixHit({
+        eventType: 'late_cancel',
+        eventAt: '2026-06-01T10:30:00Z',
+        startAt: start,
+        nearHours: 2,
+      })
+    ).toBe(true);
+    expect(
+      isPromiseCoolMixHit({
+        eventType: 'late_cancel',
+        eventAt: '2026-06-01T09:00:00Z',
+        startAt: start,
+        nearHours: 2,
+      })
+    ).toBe(false);
+    expect(
+      isPromiseCoolMixHit({
+        eventType: 'no_show',
+        eventAt: '2026-06-01T12:20:00Z',
+        startAt: start,
+        nearHours: 2,
+      })
+    ).toBe(true);
+    expect(
+      isPromiseCoolMixHit({
+        eventType: 'no_show',
+        eventAt: '2026-06-01T15:00:00Z',
+        startAt: start,
+        nearHours: 2,
+      })
+    ).toBe(false);
   });
 });

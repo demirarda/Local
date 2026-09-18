@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import useAuthStore from '../store/authStore';
+import LanguageToggle from '../components/LanguageToggle';
+import useT from '../i18n/useT';
 
 const PRIMARY = '#000000';
 const BACKGROUND_LIGHT = '#FFFFFF';
@@ -28,6 +30,7 @@ const PLACEHOLDER_LIGHT = '#9CA3AF';
 const PLACEHOLDER_DARK = '#A1A1AA';
 
 export default function LoginScreen({ navigation, route }) {
+  const t = useT();
   const [email, setEmail] = useState(route?.params?.email || '');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -129,21 +132,21 @@ export default function LoginScreen({ navigation, route }) {
         </View>
 
         <View style={styles.header}>
-          <Text style={[styles.title, { color: textPrimary }]}>LOCAL'e Hos Geldin</Text>
+          <Text style={[styles.title, { color: textPrimary }]}>{t('auth_welcome')}</Text>
           <Text style={[styles.tagline, { color: textMuted }]}>
-            Gercek anlarda gercek baglantilar...
+            {t('auth_tagline')}
           </Text>
-          <Text style={[styles.subtitle, { color: textMuted }]}>Devam etmek icin giris yap</Text>
+          <Text style={[styles.subtitle, { color: textMuted }]}>{t('auth_continue_login')}</Text>
         </View>
 
         {/* Email Input */}
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: textPrimary }]}>E-posta</Text>
+          <Text style={[styles.label, { color: textPrimary }]}>{t('auth_email')}</Text>
           <View style={[styles.inputContainer, { borderColor }]}>
             <MaterialIcons name="mail" size={22} color={placeholder} style={styles.inputIcon} />
             <TextInput
               style={[styles.input, { color: textPrimary }]}
-              placeholder="e-posta@ornek.com"
+              placeholder={t('auth_email_placeholder')}
               placeholderTextColor={placeholder}
               value={email}
               onChangeText={setEmail}
@@ -156,12 +159,12 @@ export default function LoginScreen({ navigation, route }) {
 
         {/* Password Input */}
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: textPrimary }]}>Sifre</Text>
+          <Text style={[styles.label, { color: textPrimary }]}>{t('auth_password')}</Text>
           <View style={[styles.inputContainer, { borderColor }]}>
             <MaterialIcons name="lock" size={22} color={placeholder} style={styles.inputIcon} />
             <TextInput
               style={[styles.input, { color: textPrimary }]}
-              placeholder="Sifreni gir"
+              placeholder={t('auth_password_placeholder')}
               placeholderTextColor={placeholder}
               value={password}
               onChangeText={setPassword}
@@ -189,7 +192,7 @@ export default function LoginScreen({ navigation, route }) {
             style={styles.forgotPasswordLink}
           >
             <Text style={[styles.forgotPasswordText, { color: textPrimary }]}>
-              Sifremi Unuttum
+              {t('auth_forgot')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -209,7 +212,7 @@ export default function LoginScreen({ navigation, route }) {
             )}
           </TouchableOpacity>
           <Text style={[styles.rememberText, { color: textMuted }]}>
-            Bu cihazda girisimi acik tut
+            {t('auth_remember')}
           </Text>
         </View>
 
@@ -227,7 +230,7 @@ export default function LoginScreen({ navigation, route }) {
           {loading ? (
             <ActivityIndicator color={buttonText} />
           ) : (
-            <Text style={[styles.loginButtonText, { color: buttonText }]}>Giris Yap</Text>
+            <Text style={[styles.loginButtonText, { color: buttonText }]}>{t('auth_login')}</Text>
           )}
         </TouchableOpacity>
 
@@ -238,20 +241,21 @@ export default function LoginScreen({ navigation, route }) {
         {/* Register Link */}
         <View style={styles.registerContainer}>
           <Text style={[styles.registerText, { color: textMuted }]}>
-            Hesabin yok mu?{' '}
+            {t('auth_no_account')}{' '}
           </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={[styles.registerLink, { color: textPrimary }]}>Kayit Ol</Text>
+            <Text style={[styles.registerLink, { color: textPrimary }]}>{t('auth_register')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: placeholder }]}>
-            Giris yaparak su metinleri kabul edersin:{'\n'}
-            <Text style={styles.footerLink}>Kullanim Kosullari</Text> ve <Text style={styles.footerLink}>Gizlilik Politikasi</Text>
+            {t('auth_footer')}{'\n'}
+            <Text style={styles.footerLink}>{t('auth_terms')}</Text> {t('auth_and')} <Text style={styles.footerLink}>{t('auth_privacy_policy')}</Text>
           </Text>
         </View>
+        <LanguageToggle style={{ marginTop: 24 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

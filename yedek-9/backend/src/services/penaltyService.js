@@ -8,6 +8,7 @@ import LOCAL_CONFIG, {
   isFreeCancelWindow,
   isWithinJoinGrace,
   requiresReplacement,
+  isPromiseCoolMixHit,
 } from '../config/localConfig.js';
 import { enqueue } from './queueSystem.js';
 import {
@@ -29,11 +30,20 @@ export {
 };
 
 export async function getUserPenaltyStatus(userId) {
-  const r = await pool.query(
-    `SELECT penalty_suspended_until, host_ban_until, suspended_at
-     FROM users WHERE id = $1`,
-    [userId]
-  );
+  let r;
+  try {
+    r = await pool.query(
+      `SELECT penalty_suspended_until, host_ban_until, suspended_at, promise_cooled_until
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+  } catch (_e) {
+    r = await pool.query(
+      `SELECT penalty_suspended_until, host_ban_until, suspended_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+  }
   if (r.rows.length === 0) return null;
   const row = r.rows[0];
   const now = new Date();
@@ -45,6 +55,9 @@ export async function getUserPenaltyStatus(userId) {
       row.penalty_suspended_until != null && new Date(row.penalty_suspended_until) > now,
     is_host_banned: row.host_ban_until != null && new Date(row.host_ban_until) > now,
     is_admin_suspended: row.suspended_at != null,
+    is_promise_cooled:
+      row.promise_cooled_until != null && new Date(row.promise_cooled_until) > now,
+    promise_cooled_until: row.promise_cooled_until,
   };
 }
 
@@ -60,6 +73,14 @@ export async function assertCanJoinRitual(userId) {
       code: 'PENALTY_SUSPENDED',
       message: 'No-show askısı aktif — Rituale katılamazsın.',
       until: status.penalty_suspended_until,
+    };
+  }
+  if (status.is_promise_cooled) {
+    return {
+      ok: false,
+      code: 'PROMISE_COOLED',
+      message: 'Kilide-yakın kaçış deseni — yeni söz veremezsin.',
+      until: status.promise_cooled_until,
     };
   }
   return { ok: true };
@@ -85,6 +106,14 @@ export async function assertCanHostRitual(userId) {
       code: 'HOST_BANNED',
       message: 'Host-ban aktif — Ritual açamazsın.',
       until: status.host_ban_until,
+    };
+  }
+  if (status.is_promise_cooled) {
+    return {
+      ok: false,
+      code: 'PROMISE_COOLED',
+      message: 'Kilide-yakın kaçış deseni — yeni söz veremezsin.',
+      until: status.promise_cooled_until,
     };
   }
   try {
@@ -142,6 +171,51 @@ async function recordPenaltyEvent({
     [userId, ritualId, eventType, strike, rsDelta, suspensionHours, hostBanHours]
   );
   await syncBypassCounters(userId);
+}
+
+/** Kilide-yakın (<2s) late-cancel / start-civarı no-show karışımı → X saat yeni söz yok. RS'e dokunmaz. */
+export async function countPromiseCoolHits(userId) {
+  const cfg = LOCAL_CONFIG.penalties.PROMISE_COOL || {};
+  const nearH = Number(cfg.LOCK_NEAR_HOURS || 2);
+  const r = await pool.query(
+    `SELECT pe.event_type, pe.created_at, rit.start_time
+     FROM penalty_events pe
+     LEFT JOIN rituals rit ON rit.id = pe.ritual_id
+     WHERE pe.user_id = $1
+       AND pe.event_type IN ('late_cancel', 'no_show')
+       AND pe.created_at > NOW() - ($2 || ' days')::interval
+       AND rit.start_time IS NOT NULL`,
+    [userId, String(ROLLING_DAYS)]
+  );
+  return r.rows.filter((row) =>
+    isPromiseCoolMixHit({
+      eventType: row.event_type,
+      eventAt: row.created_at,
+      startAt: row.start_time,
+      nearHours: nearH,
+    })
+  ).length;
+}
+
+export async function maybeApplyPromiseCool(userId) {
+  const cfg = LOCAL_CONFIG.penalties.PROMISE_COOL || {};
+  const nNeed = Number(cfg.N || 3);
+  const coolH = Number(cfg.COOL_HOURS || 24);
+  const hits = await countPromiseCoolHits(userId);
+  if (hits < nNeed) return { applied: false, hits };
+  try {
+    await pool.query(
+      `UPDATE users
+       SET promise_cooled_until = GREATEST(COALESCE(promise_cooled_until, NOW()), NOW())
+           + ($2 || ' hours')::interval,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [userId, coolH]
+    );
+  } catch (_e) {
+    return { applied: false, skipped: 'column_missing', hits };
+  }
+  return { applied: true, hours: coolH, hits };
 }
 
 export async function applyParticipationSuspension(userId, hours) {
@@ -626,6 +700,7 @@ export async function afterNoShowPenalty(userId, ritualId, strike, rsDelta) {
     await applyParticipationSuspension(userId, suspensionHours);
     notifyPenaltySuspension(userId, { ritualId, hours: suspensionHours }).catch(() => {});
   }
+  await maybeApplyPromiseCool(userId).catch(() => {});
 }
 
 export async function afterLateCancelPenalty(userId, ritualId, strike, rsDelta) {
@@ -637,6 +712,7 @@ export async function afterLateCancelPenalty(userId, ritualId, strike, rsDelta) 
     rsDelta,
   });
   notifyPenaltyWarning(userId, { ritualId, eventType: 'late_cancel', strike }).catch(() => {});
+  await maybeApplyPromiseCool(userId).catch(() => {});
 }
 
 export async function afterHostNoShowPenalty(userId, ritualId, strike, rsDelta) {

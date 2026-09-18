@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 
 /**
  * ZONE-EVENT şemsiye kartı — concept layer uses Ritual (not street "masa")
  */
 export default function EventGroupUmbrellaCard({ umbrella, onOpenTable, onPress }) {
   const [expanded, setExpanded] = useState(false);
+  useLanguageStore((s) => s.lang);
   if (!umbrella) return null;
   const tables = umbrella.tables || [];
   const n = umbrella.table_count || tables.length;
@@ -23,7 +25,7 @@ export default function EventGroupUmbrellaCard({ umbrella, onOpenTable, onPress 
         <Text style={styles.eyebrow}>ZONE-EVENT</Text>
         <Text style={styles.label}>{umbrella.label || umbrella.name}</Text>
         <Text style={styles.meta}>
-          {t('event_group_ritual_count', 'tr', { n })} · {umbrella.joined || 0}/
+          {t('event_group_ritual_count', { n })} · {umbrella.joined || 0}/
           {umbrella.capacity || 0}
           {umbrella.suggest_other_tables ? ' · dolu Ritual var' : ''}
         </Text>

@@ -33,6 +33,7 @@ describe('RS sanity simulation (post-F6)', () => {
     const report = runAllSanitySimulations();
     expect(report.total).toBeGreaterThan(0);
     expect(Array.isArray(report.results)).toBe(true);
+    expect(report.iq_weight_band.band).toEqual([0.35, 0.4]);
   });
 });
 

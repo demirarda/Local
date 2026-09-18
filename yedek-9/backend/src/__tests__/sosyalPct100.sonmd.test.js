@@ -65,6 +65,11 @@ describe('Sosyal Ürün Temelleri %100 gaps', () => {
     expect(src).not.toContain('▼ {Number(downvotes)');
   });
 
+  test('§8 self-vote forbidden on own memory', () => {
+    const src = readFileSync(join(root, 'src/api/memories.js'), 'utf8');
+    expect(src).toContain('SELF_VOTE_FORBIDDEN');
+  });
+
   test('users API exposes delete account route', () => {
     const src = readFileSync(join(root, 'src/api/users.js'), 'utf8');
     expect(src).toContain("router.delete('/:id/account'");

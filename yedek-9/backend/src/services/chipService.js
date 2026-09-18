@@ -4,20 +4,26 @@
  */
 import pool from '../config/database.js';
 import LOCAL_CONFIG from '../config/localConfig.js';
+import { auraWordForChip } from '../i18n/auraCopyMap.js';
+import { p2zChipLane } from './megaZone.js';
+import { assertChipPair } from './megaFb.js';
 
 const FEELINGS = new Set(['green', 'yellow', 'red']);
 
-/** RQ / P2V / P2Z — her renk kendi seti (P2V sarı = P2V_YELLOW) */
+/** RQ / P2V / P2Z / P2C / P2P(K1) / K2 / E / S / VR */
 export function chipSetKey(kind, feeling) {
   const k = String(kind || 'RQ').toUpperCase();
   const f = String(feeling || '').toLowerCase();
-  if (k === 'P2V') {
-    return f === 'red' ? 'P2V_RED' : f === 'yellow' ? 'P2V_YELLOW' : 'P2V_GREEN';
-  }
-  if (k === 'P2Z') {
-    return f === 'red' ? 'P2Z_RED' : f === 'yellow' ? 'P2Z_YELLOW' : 'P2Z_GREEN';
-  }
-  return f === 'red' ? 'RQ_RED' : f === 'yellow' ? 'RQ_YELLOW' : 'RQ_GREEN';
+  const suffix = f === 'red' ? 'RED' : f === 'yellow' ? 'YELLOW' : 'GREEN';
+  if (k === 'P2V') return `P2V_${suffix}`;
+  if (k === 'P2Z') return `P2Z_${suffix}`;
+  if (k === 'P2C') return `P2C_${suffix}`;
+  if (k === 'P2P' || k === 'K1') return `P2P_${suffix}`;
+  if (k === 'K2') return `K2_${suffix}`;
+  if (k === 'E') return `E_${suffix}`;
+  if (k === 'S') return `S_${suffix}`;
+  if (k === 'VR') return `VR_${suffix}`;
+  return `RQ_${suffix}`;
 }
 
 export function chipsForFeeling(kind, feeling) {
@@ -50,26 +56,43 @@ export function allKnownChipIds() {
   return ids;
 }
 
-/** P2P/P2H chips yok — yalnızca RQ(P2R) / P2V / P2Z */
 export function chipKindForFeedbackType(feedbackType) {
   const t = String(feedbackType || '').toLowerCase();
   if (t === 'p2v' || t === 'p2m') return 'P2V';
   if (t === 'p2z') return 'P2Z';
+  if (t === 'p2c') return 'P2C';
+  if (t === 'p2s' || t === 'seller') return 'S';
+  if (t === 'vr') return 'VR';
+  if (t === 'rq_event') return 'E';
+  if (t === 'p2p' || t === 'p2host') {
+    return LOCAL_CONFIG.chip?.P2P_ENABLED !== false ? 'P2P' : null;
+  }
   if (t === 'p2r' || t === 'rq') return 'RQ';
-  if (t === 'rq_event') return null; // gece-geneli: chip yok (tek ek soru)
   return null;
 }
 
-export function feelingForChipContext({ feedbackType, p2r_feeling, p2v_feeling, r1_self } = {}) {
+export function feelingForChipContext({
+  feedbackType,
+  p2r_feeling,
+  p2v_feeling,
+  r1_self,
+  q1_comfort,
+  q2_energy,
+  axis,
+} = {}) {
   const kind = chipKindForFeedbackType(feedbackType);
+  if (axis === 'q2' || kind === 'K2') return q2_energy || null;
   if (kind === 'P2V') return p2v_feeling || null;
-  if (kind === 'RQ' || kind === 'P2Z') return p2r_feeling || r1_self || null;
+  if (kind === 'P2P') return q1_comfort || p2r_feeling || r1_self || null;
+  if (kind === 'RQ' || kind === 'P2Z' || kind === 'P2C' || kind === 'E' || kind === 'S' || kind === 'VR') {
+    return p2r_feeling || p2v_feeling || r1_self || null;
+  }
   return null;
 }
 
 /**
  * Validate optional chip_id for feedback type + feeling.
- * Skip (null/empty) always OK. P2P/P2H must not carry chips.
+ * Skip (null/empty) always OK. P2H (host) carries no chips; P2P chips are on (EK-26).
  */
 export function validateChipSelection({
   feedbackType,
@@ -77,22 +100,29 @@ export function validateChipSelection({
   p2r_feeling,
   p2v_feeling,
   r1_self,
+  q1_comfort,
+  q2_energy,
+  axis,
+  chipId2,
 } = {}) {
   const raw = chipId != null ? String(chipId).trim() : '';
   if (!raw) return { ok: true, chip_id: null, chip_route: null };
 
-  const kind = chipKindForFeedbackType(feedbackType);
+  const kind = axis === 'q2' ? 'K2' : chipKindForFeedbackType(feedbackType);
   if (!kind) {
-    return { ok: false, error: 'P2P/P2H chip kabul edilmez' };
+    return { ok: false, error: 'Bu feedback tipinde chip yok' };
   }
   const feeling = feelingForChipContext({
     feedbackType,
     p2r_feeling,
     p2v_feeling,
     r1_self,
+    q1_comfort,
+    q2_energy,
+    axis,
   });
   if (!feeling || !FEELINGS.has(feeling)) {
-    return { ok: false, error: 'Chip icin once 🟢🟡🔴 secilmeli' };
+    return { ok: false, error: 'Chip icin once kategori secilmeli' };
   }
   const allowed = new Set(LOCAL_CONFIG.chip?.SETS?.[chipSetKey(kind, feeling)] || []);
   if (!allowed.has(raw)) {
@@ -100,6 +130,23 @@ export function validateChipSelection({
   }
   if (LOCAL_CONFIG.chip?.SINGLE_SELECT !== false && raw.includes(',')) {
     return { ok: false, error: 'Tek chip secimi' };
+  }
+  if (chipId2) {
+    const pair = assertChipPair({ feeling, chipIds: [raw, chipId2] });
+    if (!pair.ok) return pair;
+    const allowed2 = new Set([
+      ...(LOCAL_CONFIG.chip?.SETS?.[chipSetKey(kind, feeling)] || []),
+      ...(LOCAL_CONFIG.chip?.SETS?.[chipSetKey(kind, 'yellow')] || []),
+      ...(feeling === 'yellow'
+        ? [
+            ...(LOCAL_CONFIG.chip?.SETS?.[chipSetKey(kind, 'green')] || []),
+            ...(LOCAL_CONFIG.chip?.SETS?.[chipSetKey(kind, 'red')] || []),
+          ]
+        : []),
+    ]);
+    if (!allowed2.has(String(chipId2))) {
+      return { ok: false, error: 'Gecersiz ikinci chip' };
+    }
   }
   return { ok: true, chip_id: raw, chip_route: routeForChip(raw) };
 }
@@ -117,9 +164,11 @@ export async function upsertFeedbackChipStats(venueId, chipId, feeling) {
   );
 }
 
-/** Ops route → zone bakım telemetrisi (iskele) */
+/** Ops route → zone bakım kuyruğu */
 export async function recordOpsChipTelemetry({ chipId, ritualId, userId } = {}) {
-  if (routeForChip(chipId) !== 'ops') return;
+  const route = routeForChip(chipId);
+  const lane = p2zChipLane(chipId);
+  if (lane !== 'ops' && route !== 'ops' && route !== 'zone_ops') return;
   try {
     await pool.query(
       `INSERT INTO score_events (user_id, event_type, delta, meta, created_at)
@@ -130,10 +179,22 @@ export async function recordOpsChipTelemetry({ chipId, ritualId, userId } = {}) 
           chip_id: chipId,
           ritual_id: ritualId || null,
           route: 'ops',
-          note: 'zone bakım telemetrisi (marker)',
+          note: 'ZONE-OPS (totem/oturma/işaret/temizlik)',
         }),
       ]
     ).catch(() => {});
+    if (ritualId) {
+      const z = await pool.query(`SELECT zone_id FROM rituals WHERE id = $1`, [ritualId]);
+      if (z.rows[0]?.zone_id) {
+        const { enqueueZoneOps } = await import('./zoneService.js');
+        await enqueueZoneOps({
+          zoneId: z.rows[0].zone_id,
+          ritualId,
+          chipId,
+          userId,
+        });
+      }
+    }
   } catch (_e) {
     /* optional table */
   }
@@ -145,7 +206,16 @@ function aggregateChipRows(rows) {
   for (const row of rows || []) {
     const id = row.chip_id;
     if (!id) continue;
-    if (!byChip[id]) byChip[id] = { chip_id: id, green: 0, yellow: 0, red: 0, total: 0 };
+    if (!byChip[id]) {
+      byChip[id] = {
+        chip_id: id,
+        label: auraWordForChip(id),
+        green: 0,
+        yellow: 0,
+        red: 0,
+        total: 0,
+      };
+    }
     const f = String(row.feeling || '').toLowerCase();
     const n = Number(row.count) || 0;
     if (f === 'green') byChip[id].green += n;
@@ -311,13 +381,16 @@ export async function getYellowChipCalibration({ days = 30 } = {}) {
 export function getChipPublicConfig() {
   return {
     single_select: LOCAL_CONFIG.chip?.SINGLE_SELECT !== false,
+    max_chip_select: Number(LOCAL_CONFIG.chip?.MAX_CHIP_SELECT) || 2,
     rotate: Boolean(LOCAL_CONFIG.chip?.ROTATE),
     public_min_n: LOCAL_CONFIG.chip?.PUBLIC_MIN_N || 10,
     top_chip_ritual_min_distinct: LOCAL_CONFIG.chip?.TOP_CHIP_RITUAL_MIN_DISTINCT || 3,
     sets: LOCAL_CONFIG.chip?.SETS || {},
     routes: LOCAL_CONFIG.chip?.ROUTES || {},
-    /** P2P/P2H chip yok */
-    no_chips_for: ['p2p', 'p2host'],
+    /** EK-26 P2P-CHIP KESİN — p2host (self) hâlâ yok */
+    no_chips_for: LOCAL_CONFIG.chip?.P2P_ENABLED === false ? ['p2p', 'p2host'] : ['p2host'],
     fiyat_open: true,
+    min_chips_per_branch: Number(LOCAL_CONFIG.chip?.MIN_CHIPS_PER_BRANCH ?? 4),
+    p2p_max_people: Number(LOCAL_CONFIG.chip?.P2P_MAX_PEOPLE ?? 2),
   };
 }

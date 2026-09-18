@@ -12,25 +12,26 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { searchDiscovery } from '../services/api';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 
 const PRIMARY = '#f9a13d';
 const TEXT = '#1a1a1a';
 const MUTED = '#6b6b6b';
 const BORDER = '#e5e5e0';
 
-const TAB_LABELS = {
-  all: 'Tümü',
-  rituals: t('rituals'),
-  series: 'Seriler',
-  slots: 'Slotlar',
-  venues: 'Mekanlar',
-  zones: "Zone'lar",
-  people: 'Kişiler',
-  memories: 'Memories',
-  forum: 'Forum',
-  category: 'Kategori',
-  location: 'Konum',
-  brands: 'Brand',
+const TAB_KEYS = {
+  all: 'search_tab_all',
+  rituals: 'rituals',
+  series: 'search_tab_series',
+  slots: 'search_tab_slots',
+  venues: 'search_tab_venues',
+  zones: 'search_tab_zones',
+  people: 'search_tab_people',
+  memories: 'tab_memories',
+  forum: 'search_tab_forum',
+  category: 'search_tab_category',
+  location: 'search_tab_location',
+  brands: 'search_tab_brands',
 };
 
 function navigateResult(navigation, item, { onCategory } = {}) {
@@ -84,10 +85,11 @@ function navigateResult(navigation, item, { onCategory } = {}) {
 }
 
 export default function SearchScreen({ navigation }) {
+  const lang = useLanguageStore((s) => s.lang);
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState('all');
   const [results, setResults] = useState([]);
-  const [tabs, setTabs] = useState(Object.keys(TAB_LABELS));
+  const [tabs, setTabs] = useState(Object.keys(TAB_KEYS));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -139,14 +141,14 @@ export default function SearchScreen({ navigation }) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabs}
         >
-          {tabs.map((t) => (
+          {tabs.map((tabKey) => (
             <TouchableOpacity
-              key={t}
-              style={[styles.tab, tab === t && styles.tabActive]}
-              onPress={() => setTab(t)}
+              key={tabKey}
+              style={[styles.tab, tab === tabKey && styles.tabActive]}
+              onPress={() => setTab(tabKey)}
             >
-              <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-                {TAB_LABELS[t] || t}
+              <Text style={[styles.tabText, tab === tabKey && styles.tabTextActive]}>
+                {TAB_KEYS[tabKey] ? t(TAB_KEYS[tabKey]) : tabKey}
               </Text>
             </TouchableOpacity>
           ))}
@@ -155,7 +157,7 @@ export default function SearchScreen({ navigation }) {
         {loading ? <ActivityIndicator color={PRIMARY} style={{ marginVertical: 8 }} /> : null}
       </View>
     ),
-    [navigation, query, tab, tabs, error, loading, runSearch]
+    [navigation, query, tab, tabs, error, loading, runSearch, lang]
   );
 
   const applyCategoryFilter = useCallback((item) => {
@@ -167,7 +169,7 @@ export default function SearchScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     const metaBits = [];
-    if (item.kind) metaBits.push(TAB_LABELS[item.kind] || item.kind);
+    if (item.kind) metaBits.push(TAB_KEYS[item.kind] ? t(TAB_KEYS[item.kind]) : item.kind);
     if (item.meta?.joinable) metaBits.push('girebilirsin');
     if (item.meta?.tier) metaBits.push(item.meta.tier);
     if (item.meta?.lane) metaBits.push(item.meta.lane === 'live_24h' ? 'canlı 24s' : 'arşiv');

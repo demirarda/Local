@@ -13,6 +13,7 @@ import {
   packagePrice,
 } from './venuePackageService.js';
 import { isStripeEnabled, createPackageCheckoutSession } from './stripePayments.js';
+import { hasMinRole } from './venueRoleService.js';
 
 const REQUEST_STATUS_LABELS = {
   pending: 'Onay bekliyor',
@@ -38,17 +39,8 @@ function presentPackageRequest(row) {
   };
 }
 
-async function isVenueManager(userId, venueId, email = '') {
-  if (!userId) return false;
-  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (adminIds.includes(String(userId))) return true;
-  if (email && adminEmails.includes(String(email).toLowerCase())) return true;
-  const r = await pool.query(
-    `SELECT 1 FROM venue_managers WHERE venue_id = $1 AND user_id = $2 LIMIT 1`,
-    [venueId, userId]
-  );
-  return r.rows.length > 0;
+async function isVenueManager(userId, venueId, email = '', minRole = 'staff') {
+  return hasMinRole(userId, venueId, minRole, email);
 }
 
 export function buildPackageCatalog(venue = {}) {
@@ -64,7 +56,8 @@ export async function getVenueBusiness(venueId, viewerUserId, viewerEmail = '') 
   );
   if (r.rows.length === 0) return { ok: false, status: 404, error: 'Venue not found' };
   const venue = r.rows[0];
-  const canManage = await isVenueManager(viewerUserId, venueId, viewerEmail);
+  const canManage = await isVenueManager(viewerUserId, venueId, viewerEmail, 'manager');
+  const canBilling = await isVenueManager(viewerUserId, venueId, viewerEmail, 'owner');
   const sales = await evaluateSalesTrigger(venueId).catch(() => ({ unlocked: Boolean(venue.sales_unlocked_at) }));
   const tier = resolveTierFromVenue(venue);
   return {
@@ -73,6 +66,7 @@ export async function getVenueBusiness(venueId, viewerUserId, viewerEmail = '') 
       venue_id: venue.id,
       venue_name: venue.name,
       can_manage: canManage,
+      can_billing: canBilling,
       packages: buildPackageCatalog({ ...venue, sales_unlocked_at: sales.unlocked ? venue.sales_unlocked_at || new Date().toISOString() : null }),
       sales_trigger: sales,
       featured_event_card: venue.featured_event_card || null,
@@ -85,7 +79,7 @@ export async function getVenueBusiness(venueId, viewerUserId, viewerEmail = '') 
 }
 
 export async function updateVenueBusinessNotes(venueId, userId, { manager_notes } = {}, email = '') {
-  const allowed = await isVenueManager(userId, venueId, email);
+  const allowed = await isVenueManager(userId, venueId, email, 'manager');
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed' };
   const cur = await pool.query(`SELECT package_stub FROM venues WHERE id = $1`, [venueId]);
   if (cur.rows.length === 0) return { ok: false, status: 404, error: 'Venue not found' };
@@ -101,7 +95,7 @@ export async function updateVenueBusinessNotes(venueId, userId, { manager_notes 
 }
 
 export async function requestVenuePackageUpgrade(venueId, userId, tierId, { note } = {}, email = '') {
-  const allowed = await isVenueManager(userId, venueId, email);
+  const allowed = await isVenueManager(userId, venueId, email, 'owner');
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed' };
   const tier = normalizeTierId(tierId);
   const stub = LOCAL_CONFIG.venue.PACKAGES_STUB || {};
@@ -161,6 +155,14 @@ export async function requestVenuePackageUpgrade(venueId, userId, tierId, { note
  * aktivasyon Stripe webhook veya admin onayı ile olur.
  */
 export async function createVenuePackageCheckout(venueId, userId, tierId, { note } = {}, email = '') {
+  const allowed = await hasMinRole(userId, venueId, 'owner', email);
+  if (!allowed) {
+    const { assertUserCannotBuyVenuePackage } = await import('./megaLaunchLocks.js');
+    return {
+      ...assertUserCannotBuyVenuePackage('user'),
+      status: 403,
+    };
+  }
   const upgrade = await requestVenuePackageUpgrade(venueId, userId, tierId, { note }, email);
   if (!upgrade.ok) return upgrade;
 
@@ -247,7 +249,7 @@ export async function createVenuePackageCheckout(venueId, userId, tierId, { note
 }
 
 export async function listVenuePackageRequests(venueId, userId, email = '') {
-  const allowed = await isVenueManager(userId, venueId, email);
+  const allowed = await isVenueManager(userId, venueId, email, 'owner');
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed' };
   const r = await pool.query(
     `SELECT id, from_tier, to_tier, status, stripe_session_id, note, created_at, updated_at
@@ -321,6 +323,10 @@ export async function activateVenuePackageTier(venueId, tierId) {
 
   const proEnabled = tier === 'operator' || tier === 'hakim';
   const cityPartner = tier === 'hakim';
+  const { customFigurOnLandmark } = await import('./megaPackages.js');
+  const figur = customFigurOnLandmark(tier)
+    ? { figur_design_started_at: new Date().toISOString(), figur_ship: 'included' }
+    : {};
 
   const upd = await pool.query(
     `UPDATE venues
@@ -330,7 +336,13 @@ export async function activateVenuePackageTier(venueId, tierId) {
          package_stub = $5::jsonb
      WHERE id = $1
      RETURNING *`,
-    [venueId, tier, proEnabled, cityPartner, JSON.stringify(nextStub)]
+    [
+      venueId,
+      tier,
+      proEnabled,
+      cityPartner,
+      JSON.stringify({ ...nextStub, ...figur }),
+    ]
   );
 
   await pool.query(
@@ -344,13 +356,13 @@ export async function activateVenuePackageTier(venueId, tierId) {
 }
 
 export async function requestAddonSlot(venueId, userId, { qty } = {}, email = '') {
-  const allowed = await isVenueManager(userId, venueId, email);
+  const allowed = await isVenueManager(userId, venueId, email, 'owner');
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed' };
   return purchaseAddonSlot(venueId, { qty });
 }
 
 export async function requestTakeover(venueId, userId, { dayType, included } = {}, email = '') {
-  const allowed = await isVenueManager(userId, venueId, email);
+  const allowed = await isVenueManager(userId, venueId, email, 'owner');
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed' };
   const result = await startVenueTakeover(venueId, { dayType, included });
   if (result.ok) {

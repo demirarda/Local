@@ -5,6 +5,7 @@
  */
 import crypto from 'crypto';
 import pool from '../config/database.js';
+import LOCAL_CONFIG from '../config/localConfig.js';
 import { getActiveKycProvider, looksLikeRawMediaBlob } from './kycProvider.js';
 import { getLiveCredentials, verifyKycWebhookSignature } from './kycLiveClient.js';
 import { identityStatusPayload } from '../utils/identityPresentation.js';
@@ -16,6 +17,127 @@ export function hashUniversityEmailIdentity(email) {
   const normalized = String(email || '').trim().toLowerCase();
   if (!normalized || !normalized.includes('@')) return null;
   return crypto.createHash('sha256').update(`local-uni-v1|${normalized}`).digest('hex');
+}
+
+/**
+ * §5 AT-10 — silmede merdiveni hash'e yaz (30g fotoğraf). user_id kopar ki yeniden-doğum bağlansın.
+ */
+export async function snapshotDisciplineToIdentityHash(db, userId) {
+  if (!userId) return;
+  const rolling = Number(LOCAL_CONFIG.penalties?.ROLLING_DAYS || 30);
+  await db.query(
+    `UPDATE identity_hashes ih
+     SET discipline_rs = CASE
+           WHEN u.rs_score IS NOT NULL AND u.rs_score < 5 THEN u.rs_score
+           ELSE ih.discipline_rs
+         END,
+         no_show_count = COALESCE((
+           SELECT COUNT(*)::int FROM penalty_events pe
+           WHERE pe.user_id = $1
+             AND pe.event_type = 'no_show'
+             AND pe.created_at > NOW() - ($2 || ' days')::interval
+         ), 0),
+         late_cancel_count = COALESCE((
+           SELECT COUNT(*)::int FROM penalty_events pe
+           WHERE pe.user_id = $1
+             AND pe.event_type = 'late_cancel'
+             AND pe.created_at > NOW() - ($2 || ' days')::interval
+         ), 0),
+         discipline_events = COALESCE((
+           SELECT jsonb_agg(jsonb_build_object(
+             'event_type', pe.event_type,
+             'strike', pe.strike,
+             'rs_delta', pe.rs_delta,
+             'created_at', pe.created_at
+           ) ORDER BY pe.created_at)
+           FROM penalty_events pe
+           WHERE pe.user_id = $1
+             AND pe.event_type IN ('no_show', 'late_cancel')
+             AND pe.created_at > NOW() - ($2 || ' days')::interval
+         ), '[]'::jsonb),
+         user_id = NULL
+     FROM users u
+     WHERE ih.user_id = $1 AND u.id = $1`,
+    [userId, String(rolling)]
+  );
+}
+
+async function restoreDisciplineFromHash(userId, identityHash) {
+  if (!userId || !identityHash) return;
+  const rolling = Number(LOCAL_CONFIG.penalties?.ROLLING_DAYS || 30);
+  try {
+    const disc = await pool.query(
+      `SELECT discipline_rs, no_show_count, late_cancel_count
+       FROM identity_hashes WHERE identity_hash = $1`,
+      [identityHash]
+    );
+    const d = disc.rows[0];
+    if (!d) return;
+    if (d.discipline_rs != null && Number(d.discipline_rs) < 5) {
+      await pool.query(
+        `UPDATE users SET rs_score = $2, updated_at = NOW() WHERE id = $1`,
+        [userId, Number(d.discipline_rs)]
+      );
+    }
+    if (d.no_show_count || d.late_cancel_count) {
+      await pool.query(
+        `INSERT INTO user_rs_bypass_state (user_id, no_show_count, late_cancel_count, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET
+           no_show_count = GREATEST(user_rs_bypass_state.no_show_count, EXCLUDED.no_show_count),
+           late_cancel_count = GREATEST(user_rs_bypass_state.late_cancel_count, EXCLUDED.late_cancel_count),
+           updated_at = NOW()`,
+        [userId, Number(d.no_show_count || 0), Number(d.late_cancel_count || 0)]
+      );
+    }
+  } catch (_e) {
+    /* pre-migration */
+    return;
+  }
+  try {
+    const discEvents = await pool.query(
+      `SELECT discipline_events FROM identity_hashes WHERE identity_hash = $1`,
+      [identityHash]
+    );
+    const raw = discEvents.rows[0]?.discipline_events;
+    let list = [];
+    if (Array.isArray(raw)) list = raw;
+    else if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) list = parsed;
+      } catch (_e) {
+        list = [];
+      }
+    }
+    const cutoff = Date.now() - rolling * 24 * 3600 * 1000;
+    for (const ev of list) {
+      const createdAt = ev?.created_at ? new Date(ev.created_at) : null;
+      if (!createdAt || Number.isNaN(createdAt.getTime()) || createdAt.getTime() < cutoff) continue;
+      const eventType = String(ev.event_type || '');
+      if (eventType !== 'no_show' && eventType !== 'late_cancel') continue;
+      await pool.query(
+        `INSERT INTO penalty_events (user_id, ritual_id, event_type, strike, rs_delta, created_at)
+         SELECT $1, NULL, $2, $3, $4, $5::timestamptz
+         WHERE NOT EXISTS (
+           SELECT 1 FROM penalty_events pe
+           WHERE pe.user_id = $1
+             AND pe.ritual_id IS NULL
+             AND pe.event_type = $2
+             AND ABS(EXTRACT(EPOCH FROM (pe.created_at - $5::timestamptz))) < 1
+         )`,
+        [
+          userId,
+          eventType,
+          Number(ev.strike) || 1,
+          ev.rs_delta != null ? Number(ev.rs_delta) : null,
+          createdAt.toISOString(),
+        ]
+      );
+    }
+  } catch (_e) {
+    /* discipline_events kolonu yoksa merdiven sayacı yine yazıldı */
+  }
 }
 
 export async function bindUniversityIdentityHash(userId, email) {
@@ -40,6 +162,7 @@ export async function bindUniversityIdentityHash(userId, email) {
        SET user_id = COALESCE(identity_hashes.user_id, EXCLUDED.user_id)`,
     [identityHash, userId]
   );
+  await restoreDisciplineFromHash(userId, identityHash);
   return { ok: true, identity_hash: identityHash };
 }
 
@@ -221,6 +344,7 @@ export async function completeIdentityVerification(
        SET user_id = COALESCE(identity_hashes.user_id, EXCLUDED.user_id)`,
     [result.identity_hash, userId]
   );
+  await restoreDisciplineFromHash(userId, result.identity_hash);
 
   if (!result.ok || !result.age_ok) {
     await pool.query(
@@ -436,6 +560,7 @@ export async function handleKycProviderWebhook({ rawBody, signatureHeader, provi
        SET user_id = COALESCE(identity_hashes.user_id, EXCLUDED.user_id)`,
     [identityHash, ver.user_id]
   );
+  await restoreDisciplineFromHash(ver.user_id, identityHash);
 
   await pool.query(
     `UPDATE identity_verifications

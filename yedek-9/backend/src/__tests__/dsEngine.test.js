@@ -62,6 +62,7 @@ describe('DS engine (son-part.md §6)', () => {
     expect(LOCAL_CONFIG.ds.W_CTX).toBe(0.3);
     expect(LOCAL_CONFIG.ds.W_VD).toBe(0.1);
     expect(LOCAL_CONFIG.ds.RITUAL_WINDOW).toBe(5);
+    expect(LOCAL_CONFIG.ds.AGGREGATE_MIN_N).toBe(20);
   });
 
   test('VD window score uses max_window_capacity denominator', () => {

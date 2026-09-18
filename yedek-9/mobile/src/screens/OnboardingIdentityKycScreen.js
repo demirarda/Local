@@ -20,6 +20,7 @@ import {
   startIdentityVerification,
 } from '../services/api';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 import { bootstrapKycSdk } from '../utils/kycSdkBootstrap';
 import KycIdCameraFrame from '../components/KycIdCameraFrame';
 
@@ -86,6 +87,7 @@ function StepProgress({ active }) {
  */
 export default function OnboardingIdentityKycScreen({ navigation }) {
   const { user, updateUser, setProvisionalSession } = useAuthStore();
+  const lang = useLanguageStore((s) => s.lang);
   const [step, setStep] = useState(user?.id ? 'doc' : 'account');
   const [cultureLines, setCultureLines] = useState(FALLBACK_CULTURE);
   const [cultureIndex, setCultureIndex] = useState(0);
@@ -121,12 +123,12 @@ export default function OnboardingIdentityKycScreen({ navigation }) {
   }, [cultureLines.length]);
 
   useEffect(() => {
-    getIdentityCultureLines('tr')
+    getIdentityCultureLines(lang)
       .then((data) => {
         if (data?.lines?.length) setCultureLines(data.lines);
       })
       .catch(() => {});
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     if (!user?.id) return;

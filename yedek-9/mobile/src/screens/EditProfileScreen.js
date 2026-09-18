@@ -13,7 +13,7 @@ import {
   Image,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import useAuthStore from '../store/authStore';
 import {
   fetchUserProfile,
@@ -43,7 +43,8 @@ const PULSE_ADD_PILL_BG = '#f0f0f0';
 
 export default function EditProfileScreen() {
   const navigation = useNavigation();
-  const { user } = useAuthStore();
+  const route = useRoute();
+  const { user, updateUser } = useAuthStore();
   const currentUserId = user?.id;
 
   const [loading, setLoading] = useState(true);
@@ -56,6 +57,7 @@ export default function EditProfileScreen() {
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
+  const [activeCityId, setActiveCityId] = useState(null);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [rsScore, setRsScore] = useState(null);
@@ -75,6 +77,20 @@ export default function EditProfileScreen() {
     }
     loadProfile();
   }, [currentUserId]);
+
+  useEffect(() => {
+    const picked = route.params?.selectedCity;
+    if (!picked) return;
+    setLocation(picked);
+    if (route.params?.selectedCityId !== undefined) {
+      setActiveCityId(route.params.selectedCityId || null);
+    }
+    navigation.setParams({
+      selectedCity: undefined,
+      selectedCityId: undefined,
+      selectedCountry: undefined,
+    });
+  }, [navigation, route.params?.selectedCity, route.params?.selectedCityId]);
 
   const loadProfile = async () => {
     if (!currentUserId) return;
@@ -107,6 +123,7 @@ export default function EditProfileScreen() {
       setUsername(profile.username || `@${baseName.toLowerCase().replace(/\s/g, '')}`);
       setBio(profile.bio || '');
       setLocation(profile.city || '');
+      setActiveCityId(profile.active_city_id || null);
       setEmail(profile.email || user?.email || '');
       setPhone(profile.phone || '');
       setRsScore(profile.rs_score != null ? Number(profile.rs_score) : null);
@@ -138,6 +155,7 @@ export default function EditProfileScreen() {
       await updateUserProfile(currentUserId, {
         name: name.trim() || undefined,
         city: location.trim() || undefined,
+        ...(activeCityId ? { active_city_id: activeCityId } : {}),
         university: undefined,
         ...(identityTrack !== 'identity'
           ? { uni_label_visible: uniLabelVisible }
@@ -145,6 +163,10 @@ export default function EditProfileScreen() {
         hosted_count_visible: hostedCountVisible,
         regular_vitrine_visible: regularVitrineVisible,
         bio_quote_memory_id: bioQuoteMemoryId || null,
+      });
+      await updateUser({
+        city: location.trim() || user?.city,
+        ...(activeCityId ? { active_city_id: activeCityId } : {}),
       });
       Alert.alert('Success', 'Profile updated', [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -386,13 +408,30 @@ export default function EditProfileScreen() {
               </View>
               <View style={styles.formField}>
                 <Text style={styles.fieldLabel}>Location</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={location}
-                  onChangeText={setLocation}
-                  placeholder="City, Country"
-                  placeholderTextColor={PULSE_TEXT_SUBTLE}
-                />
+                <TouchableOpacity
+                  style={styles.locationPicker}
+                  onPress={() =>
+                    navigation.navigate('CitySelection', {
+                      mode: 'profile',
+                      selected: location,
+                      suggestedCity: location || 'Istanbul',
+                    })
+                  }
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={{
+                      color: location ? PULSE_TEXT : PULSE_TEXT_SUBTLE,
+                      fontSize: 16,
+                      flex: 1,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {location || 'Şehir seç…'}
+                  </Text>
+                  <Text style={styles.locationChevron}>›</Text>
+                </TouchableOpacity>
+                <Text style={styles.helperText}>Ülke ve şehir listesinden seçilir; yazılmaz.</Text>
               </View>
             </View>
 
@@ -607,6 +646,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: PULSE_TEXT,
     backgroundColor: PULSE_INPUT_BG,
+  },
+  locationPicker: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: PULSE_BG,
+    borderRadius: 10,
+    backgroundColor: PULSE_INPUT_BG,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 48,
+  },
+  locationChevron: {
+    color: PULSE_TEXT_SUBTLE,
+    fontSize: 22,
+    marginLeft: 8,
+    lineHeight: 24,
   },
   fieldTextarea: {
     paddingVertical: 12,

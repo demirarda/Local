@@ -5,6 +5,8 @@
  */
 import pool from '../config/database.js';
 import LOCAL_CONFIG from '../config/localConfig.js';
+import { decorateAuraChip } from '../i18n/auraCopyMap.js';
+import { isAuraRelevantChip } from './megaFb.js';
 
 const {
   K,
@@ -24,8 +26,8 @@ const {
 
 const FEELING_INTERNAL = {
   green: 1.0,
-  yellow: 0.65,
-  red: 0.3,
+  yellow: 0.5,
+  red: 0.0,
 };
 
 const scale = () => Number(DISPLAY_SCALE) || 10;
@@ -47,11 +49,9 @@ export function feelingToInternal(feeling) {
 
 /** 0-based visit index → weight */
 export function repeatRaterWeight(visitIndexZeroBased) {
-  const w = Array.isArray(REPEAT_RATER_W) && REPEAT_RATER_W.length
-    ? REPEAT_RATER_W
-    : [1.0, 0.5, 0.5, 0.25];
-  const i = Math.max(0, Number(visitIndexZeroBased) || 0);
-  return Number(w[Math.min(i, w.length - 1)] ?? w[w.length - 1] ?? 1);
+  const k = Number(LOCAL_CONFIG.venue.REPEAT_RATER_K ?? 1);
+  const n = Math.max(0, Number(visitIndexZeroBased) || 0);
+  return 1 / (1 + k * n);
 }
 
 /**
@@ -118,7 +118,7 @@ export function applyMinDisplayGate(display, { audience = 'public' } = {}) {
     ...display,
     score: null,
     public_numeric: false,
-    public_label: 'Henüz az gözlem',
+    public_label: 'Yeni mekan — LOCAL beş kez tanır, sonra konuşur',
     score_hidden: true,
     score_hidden_reason: 'below_min_display_n',
     min_display_n: minN,
@@ -168,20 +168,28 @@ export function buildAuraDistribution(
   return { hidden: false, n_ritual: nRitual, categories };
 }
 
+/** Feedback rater — şemada from_user_id / rater_id (user_id kolonu yok). */
+export const RATER_ID_SQL = 'COALESCE(f.from_user_id, f.rater_id)';
+
 /**
  * Weighted ritual observations — MIN_ANSWERS_PER_OBS + REPEAT_RATER_W
  * Returns rows with avg_score on display scale (0–10) for distribution UI.
+ * 30-kişilik gece = 1 gözlem (ritüel kovası) 🔒 · kişi-başı gece MAX-2.
  */
-async function fetchRitualObservations(venueId, feedbackType, windowStart) {
+async function fetchRitualObservations(placeId, feedbackType, windowStart, { place = 'venue' } = {}) {
   const feelingColumn =
     feedbackType === 'p2v' || feedbackType === 'p2m' ? 'p2v_feeling' : 'p2r_feeling';
   const fbType = feedbackType === 'p2m' ? 'p2v' : feedbackType;
-  const minAns = Number(MIN_ANSWERS_PER_OBS) || 2;
+  const minAns = Number(LOCAL_CONFIG.venue.MIN_ANSWERS_PER_OBS ?? 1);
+  const placeSql =
+    place === 'zone'
+      ? `(r.zone_id = $1 OR r.route_id = (SELECT z.route_id FROM zones z WHERE z.id = $1 AND z.route_id IS NOT NULL))`
+      : 'r.venue_id = $1';
 
   const r = await pool.query(
     `SELECT
        f.id AS feedback_id,
-       f.user_id,
+       ${RATER_ID_SQL} AS user_id,
        f.created_at AS answered_at,
        r.id AS ritual_id,
        COALESCE(NULLIF(TRIM(r.type), ''), 'diger') AS category,
@@ -191,24 +199,37 @@ async function fetchRitualObservations(venueId, feedbackType, windowStart) {
      JOIN feedback f ON f.ritual_id = r.id AND f.feedback_type = $2
      JOIN ritual_attendance ra
        ON ra.ritual_id = r.id
-      AND ra.user_id = COALESCE(f.from_user_id, f.rater_id, f.user_id)
+      AND ra.user_id = ${RATER_ID_SQL}
       AND ra.checkin_at IS NOT NULL
       AND COALESCE(ra.checkin_phase, 'sealed') = 'sealed'
       AND ra.status::text NOT IN ('no_show', 'cancelled')
-     WHERE r.venue_id = $1
+     WHERE ${placeSql}
        AND r.suspended_at IS NULL
        AND r.start_time >= $3
        AND COALESCE(f.${feelingColumn}, f.p2r_feeling) IN ('green', 'yellow', 'red')
+       AND NOT EXISTS (
+         SELECT 1 FROM venue_managers vm
+         WHERE vm.venue_id IS NOT DISTINCT FROM r.venue_id
+           AND vm.user_id = ${RATER_ID_SQL}
+       )
+       AND ${RATER_ID_SQL} IS DISTINCT FROM r.host_id
      ORDER BY r.start_time ASC, f.created_at ASC`,
-    [venueId, fbType, windowStart]
+    [placeId, fbType, windowStart]
   );
 
-  // visit ordinal per user within window (0-based for weight)
+  const maxPerNight = Number(LOCAL_CONFIG.venue.MAX_OBS_PER_PERSON_PER_NIGHT || 2);
+  const userNightCount = new Map();
   const userVisitCount = new Map();
   const byRitual = new Map();
 
   for (const row of r.rows) {
-    const uid = String(row.user_id);
+    const uid = String(row.user_id || '');
+    if (!uid) continue;
+    const nightKey = `${uid}:${new Date(row.start_time).toISOString().slice(0, 10)}`;
+    const nightN = userNightCount.get(nightKey) || 0;
+    if (nightN >= maxPerNight) continue;
+    userNightCount.set(nightKey, nightN + 1);
+
     const visitIdx = userVisitCount.get(uid) || 0;
     userVisitCount.set(uid, visitIdx + 1);
     const internal = feelingToInternal(row.feeling);
@@ -228,7 +249,7 @@ async function fetchRitualObservations(venueId, feedbackType, windowStart) {
   const out = [];
   for (const obs of byRitual.values()) {
     const rawN = obs.answers.length;
-    if (rawN < minAns) continue; // eşik altı gözlem üretmez; chip ayrı kaydedilir
+    if (rawN < minAns) continue; // §12: 1 eligible P2V = 1 gece; 0 cevap yazmaz
     let wSum = 0;
     let vSum = 0;
     for (const a of obs.answers) {
@@ -251,6 +272,78 @@ async function fetchRitualObservations(venueId, feedbackType, windowStart) {
   return out;
 }
 
+/**
+ * §12 Aura = kelime motoru. RQ kategorisi Trust'a da Aura-tonuna da girmez.
+ * P2V-chip + RQ-chip sayacı, 120g pencere, eşiğin altında gizle.
+ */
+async function fetchAuraWords(venueId, windowStart, nEffTrust) {
+  const minWord = Number(LOCAL_CONFIG.venue.AURA_WORD_MIN) || 5;
+  const minDisplay = Number(MIN_DISPLAY_N) || 5;
+  const topN = Number(LOCAL_CONFIG.venue.AURA_TOP_N) || 3;
+  let rows = [];
+  try {
+    const r = await pool.query(
+      `SELECT f.chip_id, COUNT(*)::int AS c
+       FROM feedback f
+       JOIN rituals rit ON rit.id = f.ritual_id
+       WHERE rit.venue_id = $1
+         AND f.chip_id IS NOT NULL
+         AND f.feedback_type IN ('p2v', 'p2r', 'rq')
+         AND rit.start_time >= $2
+         AND rit.suspended_at IS NULL
+       GROUP BY f.chip_id
+       ORDER BY c DESC`,
+      [venueId, windowStart]
+    );
+    rows = r.rows.filter((row) => {
+      try {
+        return isAuraRelevantChip(row.chip_id, { place: 'venue' });
+      } catch (_e) {
+        return String(row.chip_id || '').startsWith('p2v_');
+      }
+    });
+  } catch (_e) {
+    rows = [];
+  }
+  try {
+    const extra = await pool.query(
+      `SELECT f.chip_id_2 AS chip_id, COUNT(*)::int AS c
+       FROM feedback f
+       JOIN rituals rit ON rit.id = f.ritual_id
+       WHERE rit.venue_id = $1
+         AND f.chip_id_2 IS NOT NULL
+         AND f.feedback_type IN ('p2v', 'p2r', 'rq')
+         AND rit.start_time >= $2
+         AND rit.suspended_at IS NULL
+       GROUP BY f.chip_id_2`,
+      [venueId, windowStart]
+    );
+    const map = new Map(rows.map((x) => [x.chip_id, Number(x.c)]));
+    for (const row of extra.rows) {
+      try {
+        if (!isAuraRelevantChip(row.chip_id, { place: 'venue' })) continue;
+      } catch (_e) {
+        if (!String(row.chip_id || '').startsWith('p2v_')) continue;
+      }
+      map.set(row.chip_id, (map.get(row.chip_id) || 0) + Number(row.c));
+    }
+    rows = [...map.entries()]
+      .map(([chip_id, c]) => ({ chip_id, c }))
+      .sort((a, b) => b.c - a.c);
+  } catch (_e) {
+    /* chip_id_2 may be missing */
+  }
+  const qualifying = rows.filter((row) => Number(row.c) >= minWord);
+  const hidden = nEffTrust < minDisplay || qualifying.length === 0;
+  const mapped = qualifying.map((row) => decorateAuraChip(row));
+  return {
+    hidden,
+    words: mapped.slice(0, topN).map((row) => row.label),
+    top_chips: mapped.slice(0, 5),
+    type_fallback: hidden,
+  };
+}
+
 /** Post-launch: şehir Ritual ortalamalarından prior — §18 geçiş n≥35 · dönüş 0–1 */
 async function computeCategoryPriorInternal(venueId, feedbackType, windowStart) {
   if (!CATEGORY_PRIOR_ENABLED) return priorInternal();
@@ -268,8 +361,8 @@ async function computeCategoryPriorInternal(venueId, feedbackType, windowStart) 
        SELECT AVG(
          CASE COALESCE(f.${feelingColumn}, f.p2r_feeling, '')
            WHEN 'green' THEN 10.0
-           WHEN 'yellow' THEN 6.5
-           WHEN 'red' THEN 3.0
+           WHEN 'yellow' THEN 5.0
+           WHEN 'red' THEN 0.0
            ELSE NULL
          END
        ) AS avg_score
@@ -306,28 +399,21 @@ export async function computeVenueTrustAura(venueId, opts = {}) {
   windowStart.setDate(windowStart.getDate() - WINDOW_DAYS);
   const scoreStart = venueCreated > windowStart ? venueCreated : windowStart;
 
-  const [trustRituals, auraRituals] = await Promise.all([
-    fetchRitualObservations(venueId, 'p2v', scoreStart),
-    fetchRitualObservations(venueId, 'p2r', scoreStart),
+  const [trustRituals] = await Promise.all([
+    fetchRitualObservations(venueId, 'p2v', scoreStart, { place: 'venue' }),
   ]);
+  const auraWords = await fetchAuraWords(venueId, scoreStart, trustRituals.length);
 
   const trustInternals = trustRituals.map((r) => r.avg_internal).filter((s) => s != null);
-  const auraInternals = auraRituals.map((r) => r.avg_internal).filter((s) => s != null);
 
-  const [trustPriorInt, auraPriorInt] = await Promise.all([
-    computeCategoryPriorInternal(venueId, 'p2v', scoreStart),
-    computeCategoryPriorInternal(venueId, 'p2r', scoreStart),
-  ]);
+  const trustPriorInt = await computeCategoryPriorInternal(venueId, 'p2v', scoreStart);
 
   let trustDisplay = computeVen4Display(mean(trustInternals), trustInternals.length, K, trustPriorInt);
-  let auraDisplay = computeVen4Display(mean(auraInternals), auraInternals.length, K, auraPriorInt);
 
   trustDisplay = applyMinDisplayGate(trustDisplay, { audience });
-  auraDisplay = applyMinDisplayGate(auraDisplay, { audience });
 
-  const seatingN = Math.max(trustInternals.length, auraInternals.length);
+  const seatingN = trustInternals.length;
   const seating = getSeatingLabel(seatingN);
-  const auraDistribution = buildAuraDistribution(auraRituals);
 
   return {
     trust_display: {
@@ -340,21 +426,52 @@ export async function computeVenueTrustAura(venueId, opts = {}) {
       min_answers_per_obs: Number(MIN_ANSWERS_PER_OBS) || 2,
     },
     aura_display: {
-      ...auraDisplay,
+      score: null,
+      score_hidden: true,
+      score_hidden_reason: 'aura_is_words',
+      public_numeric: false,
       label: 'Aura',
-      source: 'p2r',
+      source: 'p2v_chip+rq_chip',
       window_days: WINDOW_DAYS,
-      unit: 'Ritual',
-      distribution: auraDistribution.hidden ? null : auraDistribution,
-      distribution_hidden: auraDistribution.hidden,
-      distribution_reason: auraDistribution.hidden ? auraDistribution.reason : null,
+      words: auraWords.hidden ? [] : auraWords.words,
+      top_chips: auraWords.hidden ? [] : auraWords.top_chips,
+      hidden: auraWords.hidden,
+      type_fallback: Boolean(auraWords.hidden),
+      n_eff: trustInternals.length,
       min_display_n: Number(MIN_DISPLAY_N) || 5,
-      min_answers_per_obs: Number(MIN_ANSWERS_PER_OBS) || 2,
+      word_min: Number(LOCAL_CONFIG.venue.AURA_WORD_MIN) || 5,
     },
     seating_label: seating.label,
     seating_key: seating.key,
     score_start_at: scoreStart.toISOString(),
     audience,
+  };
+}
+
+/**
+ * §7 P2Z → Zone-Aura — Trust yok · yalnız p2z · VEN-4 (shrinkage + MIN_DISPLAY + gece=1).
+ */
+export async function computeZoneAuraDisplay(zoneId, opts = {}) {
+  const audience = opts.audience || 'public';
+  const windowStart = new Date();
+  windowStart.setDate(windowStart.getDate() - WINDOW_DAYS);
+
+  const rituals = await fetchRitualObservations(zoneId, 'p2z', windowStart, { place: 'zone' });
+  const internals = rituals.map((r) => r.avg_internal).filter((s) => s != null);
+  let display = computeVen4Display(mean(internals), internals.length, K, priorInternal());
+  display = applyMinDisplayGate(display, { audience });
+
+  return {
+    ...display,
+    score: display.score_hidden ? null : display.score,
+    n_eff: internals.length,
+    window_days: WINDOW_DAYS,
+    source: 'p2z',
+    trust: null,
+    unit: 'Ritual',
+    min_display_n: Number(MIN_DISPLAY_N) || 5,
+    min_answers_per_obs: Number(MIN_ANSWERS_PER_OBS) || 2,
+    note: 'Zone Aura — Trust yok; yalnız P2Z; VEN-4',
   };
 }
 

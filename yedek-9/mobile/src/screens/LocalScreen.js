@@ -931,56 +931,6 @@ export default function LocalScreen({ navigation, route }) {
       />
 
       <View
-        style={[styles.overlayTop, { top: insets.top + 8 }, ceremonyActive && styles.overlayLocked]}
-        pointerEvents={ceremonyActive ? 'none' : 'auto'}
-      >
-        <View style={styles.metricRow}>
-          <View style={styles.metricPill}>
-            <Text style={styles.metricText}>🕯 Bu hafta {unlockedThisWeek} iz</Text>
-          </View>
-          <View style={styles.metricPill}>
-            <Text style={styles.metricText}>⟁ Yakininda {nearbyLockedCount} muhur</Text>
-          </View>
-        </View>
-        {nearbyTier !== 'far' ? (
-          <View style={[styles.approachPill, nearbyTier === 'close' && styles.approachPillClose]}>
-            <Text style={styles.approachText}>
-              {nearbyTier === 'near' ? `🕯 Yakinda ${nearbyLockedCount} iz` : `🕯 ${nearestLockedNode?.title || 'Muhur'} cok yakinda`}
-            </Text>
-          </View>
-        ) : null}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          <TouchableOpacity
-            onPress={() => setPreviewAll((prev) => !prev)}
-            style={[styles.filterPill, previewAll && styles.filterPillActive]}
-            activeOpacity={0.9}
-          >
-            <Text style={[styles.filterText, previewAll && styles.filterTextActive]}>
-              {previewAll ? '👁 Kilitli Ac' : '👁 Kilitli Gizli'}
-            </Text>
-          </TouchableOpacity>
-          {FILTERS.map((filterKey) => (
-            <TouchableOpacity
-              key={filterKey}
-              onPress={() => setActiveFilter((prev) => (prev === filterKey ? 'all' : filterKey))}
-              style={[styles.filterPill, activeFilter === filterKey && styles.filterPillActive]}
-              activeOpacity={0.9}
-            >
-              <Text style={[styles.filterText, activeFilter === filterKey && styles.filterTextActive]}>
-                {filterKey === 'live'
-                  ? '🔴 Simdi Canli'
-                  : filterKey === 'soon'
-                    ? '⏱ 30dk Icinde'
-                    : filterKey === 'memory'
-                      ? '✦ Anilar'
-                      : '⚑ Efsaneler'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <View
         style={[styles.zoomWrap, { top: insets.top + 160 }, ceremonyActive && styles.overlayLocked]}
         pointerEvents={ceremonyActive ? 'none' : 'auto'}
       >
@@ -1021,18 +971,7 @@ export default function LocalScreen({ navigation, route }) {
               Harita dunyasi yukleniyor...
             </Text>
           </View>
-        ) : (
-          <View style={styles.loadingPill}>
-            <MaterialIcons
-              name={permissionStatus === 'granted' ? 'my-location' : 'location-disabled'}
-              size={14}
-              color={permissionStatus === 'granted' ? '#22c55e' : '#ef4444'}
-            />
-            <Text style={[styles.loadingText, isDark && styles.loadingTextDark]}>
-              {activeDwellNodeId ? `Kesif ${progressLabel(dwellProgress)}` : 'Muhur alanina girip ac'}
-            </Text>
-          </View>
-        )}
+        ) : null}
 
         {!ceremonyActive ? (
           <TouchableOpacity
@@ -1204,8 +1143,9 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
+    gap: 10,
   },
   zoomWrap: {
     position: 'absolute',

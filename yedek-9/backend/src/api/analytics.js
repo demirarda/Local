@@ -419,4 +419,15 @@ router.get('/safety', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// GET /api/analytics/at9-trace-farming — §10 AT-9 izleme (admin)
+router.get('/at9-trace-farming', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { buildAt9TraceFarmingReport } = await import('../services/at9TraceFarmingService.js');
+    const data = await buildAt9TraceFarmingReport({ windowDays: req.query.days });
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to load AT-9 metric' });
+  }
+});
+
 export default router;

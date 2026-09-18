@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Secrets / local environment
+.env
+.env.local
+.env.*.local
+.env.backup
+.env.watchman
+!.env.example
+
+# Native / build artifacts
+**/Pods/
+**/build/
+**/DerivedData/
+.expo/
+.expo-shared/
+dist/
+web-build/
+.gradle/
+*.xcuserstate
+xcuserdata/
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+.claude/
+
+# Logs / caches
+*.log
+npm-debug.log*
+yarn-error.log
+.metro-health-check*
+
+# Uploads
+**/uploads/**
+!**/uploads/.gitkeep

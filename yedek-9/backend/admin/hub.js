@@ -1,15 +1,19 @@
 const ADMIN_LINKS = [
-  { href: 'dashboard.html', label: 'Dashboard', icon: 'dashboard', desc: 'Özet metrikler' },
-  { href: 'kullanici.html', label: 'Kullanıcılar', icon: 'group', desc: 'Profil, RS, askı' },
-  { href: 'rite.html', label: 'Ritüeller', icon: 'auto_awesome', desc: 'Yaşam döngüsü' },
-  { href: 'mekan.html', label: 'Mekanlar', icon: 'location_on', desc: 'Gölge, paket, OPERATÖR/HAKİM' },
-  { href: 'bildirim.html', label: 'Bildirimler', icon: 'notifications', desc: 'NOTIF v1' },
-  { href: 'anilar.html', label: 'Anılar', icon: 'history', desc: 'Memory arşivi' },
-  { href: 'dogrulama.html', label: 'Doğrulama', icon: 'verified_user', desc: 'Üniversite / venue' },
-  { href: 'config.html', label: 'Config §12', icon: 'tune', desc: 'Kalibrasyon parametreleri' },
-  { href: 'founder-decisions.html', label: 'Founder §10', icon: 'gavel', desc: '12 karar' },
-  { href: 'score-events.html', label: 'Score Events', icon: 'timeline', desc: 'RS bypass log' },
-  { href: 'badge-llm.html', label: 'Badge LLM', icon: 'military_tech', desc: 'Onay kuyruğu' },
+  { href: 'dashboard.html', label: 'Dashboard', icon: 'dashboard', desc: 'Özet metrikler', section: 'dashboard' },
+  { href: 'mod.html', label: 'MOD kuyruğu', icon: 'gavel', desc: 'L0–L4 · four-eyes · web only', section: 'mod' },
+  { href: 'basvuru.html', label: 'Mekan başvuruları', icon: 'how_to_reg', desc: 'Ürün Ops kuyruk · onay/red (CRM değil)', section: 'applications' },
+  { href: 'nominations.html', label: 'Aday / lead', icon: 'place', desc: 'Nominasyon triage', section: 'nominations' },
+  { href: 'event-groups.html', label: 'ZONE-EVENT', icon: 'groups', desc: 'Şemsiye kart', section: 'event_groups' },
+  { href: 'kullanici.html', label: 'Kullanıcılar', icon: 'group', desc: 'Profil, RS, askı', section: 'users' },
+  { href: 'rite.html', label: 'Ritüeller', icon: 'auto_awesome', desc: 'Yaşam döngüsü', section: 'rituals' },
+  { href: 'mekan.html', label: 'Mekanlar', icon: 'location_on', desc: 'Gölge, paket, OPERATÖR/HAKİM', section: 'venues' },
+  { href: 'bildirim.html', label: 'Bildirimler', icon: 'notifications', desc: 'NOTIF v1', section: 'notifications' },
+  { href: 'anilar.html', label: 'Anılar', icon: 'history', desc: 'Memory arşivi', section: 'memories' },
+  { href: 'dogrulama.html', label: 'Doğrulama', icon: 'verified_user', desc: 'Üniversite / venue', section: 'verifications' },
+  { href: 'config.html', label: 'Config §12', icon: 'tune', desc: 'Kalibrasyon parametreleri', section: 'config' },
+  { href: 'founder-decisions.html', label: 'Founder §10', icon: 'gavel', desc: '12 karar', section: 'config' },
+  { href: 'score-events.html', label: 'Score Events', icon: 'timeline', desc: 'RS bypass log', section: 'score_events' },
+  { href: 'badge-llm.html', label: 'Badge LLM', icon: 'military_tech', desc: 'Onay kuyruğu', section: 'badges' },
 ];
 
 const MOBILE_SECTIONS = [
@@ -79,16 +83,27 @@ const STUBS = [
   { label: 'Slot ekonomi', status: 'v1 (0 EUR)' },
 ];
 
-function renderAdminGrid() {
+function renderAdminGrid(links) {
   const el = document.getElementById('adminGrid');
-  el.innerHTML = ADMIN_LINKS.map(
+  const items = Array.isArray(links) && links.length ? links : ADMIN_LINKS;
+  el.innerHTML = items.map(
     (l) => `
     <a href="${l.href}" class="block p-4 rounded-xl border border-slate-800 bg-slate-900 hover:border-blue-500/50 hover:bg-slate-800/80 transition-colors">
-      <span class="material-symbols-outlined text-blue-400 mb-2">${l.icon}</span>
+      <span class="material-symbols-outlined text-blue-400 mb-2">${l.icon || 'folder'}</span>
       <p class="font-semibold">${l.label}</p>
-      <p class="text-xs text-slate-400 mt-1">${l.desc}</p>
+      <p class="text-xs text-slate-400 mt-1">${l.desc || l.section || ''}</p>
     </a>`
   ).join('');
+}
+
+async function loadOpsNav() {
+  try {
+    const me = await api('/api/admin/me');
+    const nav = (me.data && me.data.nav) || [];
+    renderAdminGrid(nav.length ? nav : ADMIN_LINKS);
+  } catch (_e) {
+    renderAdminGrid(ADMIN_LINKS);
+  }
 }
 
 function renderMobileSections() {
@@ -157,7 +172,7 @@ async function checkHealth() {
 
 document.getElementById('healthBtn')?.addEventListener('click', checkHealth);
 
-renderAdminGrid();
+loadOpsNav();
 renderMobileSections();
 renderApiTable();
 renderStubs();

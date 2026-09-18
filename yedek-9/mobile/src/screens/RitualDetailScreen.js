@@ -15,7 +15,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { fetchRitualDetail, fetchPublicRitualDetail, joinRitual, createRitualInvite, getVenueFollows, followVenue, unfollowVenue, cancelAttendance, claimReplacementSlot, sendShareObject, publishRitual, fetchRitualMemories, createModReport, followRitualSeries, unfollowRitualSeries, cancelRitualSeries, fetchEventGroupUmbrella, cancelRitualAsHost, saveObject, unsaveObject, updateRitualFindNote, fetchRitualWindow, touchRitualWindowPresence, recordCheckinFunnelClient } from '../services/api';
+import { fetchRitualDetail, fetchPublicRitualDetail, joinRitual, createRitualInvite, getVenueFollows, followVenue, unfollowVenue, cancelAttendance, claimReplacementSlot, sendShareObject, publishRitual, fetchRitualMemories, createModReport, followRitualSeries, unfollowRitualSeries, cancelRitualSeries, fetchEventGroupUmbrella, cancelRitualAsHost, claimRitualHost, claimRitualRebuild, saveObject, unsaveObject, updateRitualFindNote, fetchRitualWindow, touchRitualWindowPresence, recordCheckinFunnelClient } from '../services/api';
 import {
   joinRitualWaitlist,
   leaveRitualWaitlist,
@@ -440,8 +440,9 @@ export default function RitualDetailScreen({ route, navigation }) {
       await saveActiveRitualSnapshot(ritual);
       if (joinResult?.blocked_peer_warning) {
         Alert.alert(
-          'Basarili',
-          'Rituale katildin.\n\nBu masada blokladigin biri var. Karsi tarafa sinyal gitmez; istersen ayrilabilirsin.'
+          'Uyumsuzluk',
+          joinResult?.blocked_peer_copy ||
+            'Bu masada seninle uyumsuzluğu olan biri var — profil verilmez. Yine de katılmak ister misin?'
         );
       } else {
         Alert.alert('Basarili', 'Rituale katildin!');
@@ -489,6 +490,41 @@ export default function RitualDetailScreen({ route, navigation }) {
     return OUTDOOR_CATEGORY_KEYS.some((k) => cat.includes(k) || cat.includes(k.replace(/_/g, ' ')));
   };
 
+  const runHostCancel = async ({ reason, rebuild_mode }) => {
+    try {
+      setHostCancelling(true);
+      const result = await cancelRitualAsHost(ritualId, {
+        reason,
+        category: ritual.category_label || ritual.category || null,
+        rebuild_mode,
+      });
+      const rebuilt = result?.rebuild?.mode === 'rebuild_now' && result?.rebuild?.clone_id;
+      Alert.alert(
+        result?.mode === 'hard_deleted' || result?.cancel_reason === 'birth_cancel'
+          ? 'Silindi'
+          : rebuilt
+            ? 'Yeniden kuruldu'
+            : 'Iptal edildi',
+        result?.mode === 'hard_deleted' || result?.cancel_reason === 'birth_cancel'
+          ? 'Ritual sessizce kaldırıldı (birth cancel).'
+          : rebuilt
+            ? 'Kabuk kopyalandı, kadroya davet gitti.'
+            : result?.rebuild?.message || 'Ritual host tarafindan iptal edildi. Kadroya kart gitti.'
+      );
+      if (result?.mode === 'hard_deleted') {
+        navigation.goBack();
+      } else if (rebuilt) {
+        navigation.replace('RitualDetail', { ritualId: result.rebuild.clone_id });
+      } else {
+        loadRitualRef.current?.();
+      }
+    } catch (e) {
+      Alert.alert('Hata', e?.detail?.reason ? `Uygun degil: ${e.detail.reason}` : (e?.message || 'Iptal basarisiz'));
+    } finally {
+      setHostCancelling(false);
+    }
+  };
+
   const handleHostCancelRitual = () => {
     if (!ritual || String(ritual.host_id) !== String(currentUserId)) return;
     const weatherOk = looksWeatherEligible(ritual);
@@ -496,68 +532,64 @@ export default function RitualDetailScreen({ route, navigation }) {
     const ageMin = created ? (Date.now() - created) / 60000 : Infinity;
     const isInstant = String(ritual.time_type || '').toLowerCase() === 'instant';
     const birthOk = isInstant && ageMin <= 10 && Number(ritual.sealed_count ?? ritual.seal_count ?? 1) === 1;
+    if (birthOk) {
+      Alert.alert('Masadan vazgeç', 'Anlık masa · 10 dk içinde · tek mühür — sessiz hard-delete, ceza yok.', [
+        { text: 'Vazgec', style: 'cancel' },
+        {
+          text: 'Vazgeç (sessiz sil)',
+          style: 'destructive',
+          onPress: () => runHostCancel({ reason: 'birth_cancel' }),
+        },
+      ]);
+      return;
+    }
     const buttons = [
       { text: 'Vazgec', style: 'cancel' },
       {
-        text: birthOk ? 'Vazgeç (sessiz sil)' : 'Iptal et',
+        text: 'İptal et & yeniden kur',
+        onPress: () => runHostCancel({ reason: 'host_cancel', rebuild_mode: 'rebuild_now' }),
+      },
+      {
+        text: 'Sadece iptal et',
         style: 'destructive',
-        onPress: async () => {
-          try {
-            setHostCancelling(true);
-            const result = await cancelRitualAsHost(ritualId, {
-              reason: birthOk ? 'birth_cancel' : 'host_cancel',
-              category: ritual.category_label || ritual.category || null,
-            });
-            Alert.alert(
-              result?.mode === 'hard_deleted' || result?.cancel_reason === 'birth_cancel'
-                ? 'Silindi'
-                : 'Iptal edildi',
-              result?.mode === 'hard_deleted' || result?.cancel_reason === 'birth_cancel'
-                ? 'Ritual sessizce kaldırıldı (birth cancel).'
-                : 'Ritual host tarafindan iptal edildi.'
-            );
-            if (result?.mode === 'hard_deleted') {
-              navigation.goBack();
-            } else {
-              loadRitualRef.current?.();
-            }
-          } catch (e) {
-            Alert.alert('Hata', e?.message || 'Iptal basarisiz');
-          } finally {
-            setHostCancelling(false);
-          }
-        },
+        onPress: () => runHostCancel({ reason: 'host_cancel', rebuild_mode: 'open_claim' }),
       },
     ];
     if (weatherOk) {
       buttons.splice(1, 0, {
         text: 'Hava nedeniyle (cezasiz)',
-        onPress: async () => {
-          try {
-            setHostCancelling(true);
-            await cancelRitualAsHost(ritualId, {
-              reason: 'weather_cancel',
-              category: ritual.category_label || ritual.category || null,
-            });
-            Alert.alert('Iptal edildi', 'Hava nedeniyle cezasiz iptal kaydedildi.');
-            loadRitualRef.current?.();
-          } catch (e) {
-            Alert.alert('Hata', e?.detail?.reason ? `Uygun degil: ${e.detail.reason}` : (e?.message || 'Iptal basarisiz'));
-          } finally {
-            setHostCancelling(false);
-          }
-        },
+        onPress: () => runHostCancel({ reason: 'weather_cancel', rebuild_mode: 'cancel_only' }),
       });
     }
     Alert.alert(
-      birthOk ? 'Masadan vazgeç' : 'Rituali iptal et',
-      birthOk
-        ? 'Anlık masa · 10 dk içinde · tek mühür — sessiz hard-delete, ceza yok.'
-        : weatherOk
-          ? 'Acik hava / zone masasi — baslangica 3 saat kala hava iptali cezasiz.'
-          : 'Bu Ritual iptal edilecek. Katilimcilar bilgilendirilir.',
+      'Rituali iptal et',
+      weatherOk
+        ? 'İptal-anı seçimi: yeniden kur (kabuk+davet) veya kadroya kart. Hava iptali cezasız.'
+        : 'İptal-anı seçimi — bekleme yok. Yeniden kur = kabuk kopyası. Sadece iptal = ilk basan alır.',
       buttons
     );
+  };
+
+  const handleClaimHost = async () => {
+    try {
+      await claimRitualHost(ritualId);
+      Alert.alert('Hostluk', 'Üstlendin.');
+      loadRitualRef.current?.();
+    } catch (e) {
+      Alert.alert('Hostluk', e?.message || 'Üstlenilemedi');
+    }
+  };
+
+  const handleClaimRebuild = async () => {
+    try {
+      const result = await claimRitualRebuild(ritualId);
+      const cloneId = result?.data?.clone_id || result?.clone_id;
+      Alert.alert('Yeniden kur', 'İlk basan aldın — kabuk senin.');
+      if (cloneId) navigation.replace('RitualDetail', { ritualId: cloneId });
+      else loadRitualRef.current?.();
+    } catch (e) {
+      Alert.alert('Yeniden kur', e?.message || 'Alınamadı');
+    }
   };
 
   const handleToggleSaveRitual = async () => {
@@ -1446,6 +1478,11 @@ export default function RitualDetailScreen({ route, navigation }) {
                 </View>
                 <View style={styles.lightHostInfo}>
                   <Text style={styles.lightVenueName}>{hostName}</Text>
+                  {ritual.host_kunya ? (
+                    <Text style={styles.lightHostRs}>{ritual.host_kunya}</Text>
+                  ) : ritual.host_label ? (
+                    <Text style={styles.lightHostRs}>{ritual.host_label}</Text>
+                  ) : null}
                   {ritual.host?.show_uni_label && ritual.host?.uni_label ? (
                     <TouchableOpacity
                       onPress={() =>
@@ -1914,9 +1951,27 @@ export default function RitualDetailScreen({ route, navigation }) {
               <ActivityIndicator color="#b91c1c" />
             ) : (
               <Text style={styles.ctaCancelBtnText}>
-                {looksWeatherEligible(ritual) ? 'Rituali iptal (hava secenegi)' : 'Rituali iptal et'}
+                {looksWeatherEligible(ritual) ? 'Rituali iptal (yeniden kur / hava)' : 'İptal et · yeniden kur'}
               </Text>
             )}
+          </TouchableOpacity>
+        ) : null}
+        {ritual.host_role_open && isParticipant && String(ritual.host_id || '') !== String(currentUserId || '') ? (
+          <TouchableOpacity
+            style={[styles.ctaCancelBtn, { marginTop: 10, borderColor: '#1B2E4A' }]}
+            onPress={handleClaimHost}
+            activeOpacity={0.9}
+          >
+            <Text style={[styles.ctaCancelBtnText, { color: '#1B2E4A' }]}>Hostluğu üstlen</Text>
+          </TouchableOpacity>
+        ) : null}
+        {ritual.status === 'cancelled' && ritual.rebuild_offer && isParticipant ? (
+          <TouchableOpacity
+            style={[styles.ctaCancelBtn, { marginTop: 10, borderColor: '#1B2E4A' }]}
+            onPress={handleClaimRebuild}
+            activeOpacity={0.9}
+          >
+            <Text style={[styles.ctaCancelBtnText, { color: '#1B2E4A' }]}>Yeniden kur — ilk basan alır</Text>
           </TouchableOpacity>
         ) : null}
         <TouchableOpacity
@@ -1947,8 +2002,19 @@ export default function RitualDetailScreen({ route, navigation }) {
               ritualId: ritual?.id || ritualId,
               categoryKey: payload.category_key || payload.reason,
               description: payload.description,
+              queueLane:
+                payload.category_key === 'guvenlik_bildir' || payload.reason === 'guvenlik_bildir'
+                  ? 'safety'
+                  : null,
             });
-            Alert.alert('Rapor', ritual?.spark_born ? 'SPARK raporu kuyruğa alındı' : 'Ritual raporu kuyruğa alındı');
+            Alert.alert(
+              payload.category_key === 'guvenlik_bildir' ? 'Güvenlik' : 'Rapor',
+              payload.category_key === 'guvenlik_bildir'
+                ? 'Güvenlik bildirimi ayrı kuyruğa alındı — FB değil, RS dokunmaz.'
+                : ritual?.spark_born
+                  ? 'SPARK raporu kuyruğa alındı'
+                  : 'Ritual raporu kuyruğa alındı'
+            );
             setShowReportModal(false);
           } catch (e) {
             Alert.alert('Hata', e?.message || 'Rapor gönderilemedi');

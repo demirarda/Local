@@ -15,7 +15,8 @@ import {
   Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { fetchBrandProfile } from '../services/api';
+import { fetchBrandProfile, fetchBrandCrowdFit } from '../services/api';
+import { DsBinsChart } from '../components/DsCompassCard';
 import BagliHostlarList from '../components/BagliHostlarList';
 
 const PRIMARY = '#f9a13d';
@@ -26,6 +27,7 @@ export default function BrandProfileScreen({ route, navigation }) {
   const brandId = route.params?.brandId;
   const [brand, setBrand] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [crowdFit, setCrowdFit] = useState(null);
 
   useEffect(() => {
     if (!brandId) return;
@@ -35,6 +37,12 @@ export default function BrandProfileScreen({ route, navigation }) {
         setLoading(true);
         const data = await fetchBrandProfile(brandId);
         if (!cancelled) setBrand(data);
+        try {
+          const fit = await fetchBrandCrowdFit(brandId);
+          if (!cancelled) setCrowdFit(fit);
+        } catch (_e) {
+          if (!cancelled) setCrowdFit(null);
+        }
       } catch (e) {
         if (!cancelled) Alert.alert('Hata', e?.message || 'Brand yüklenemedi');
       } finally {
@@ -83,6 +91,19 @@ export default function BrandProfileScreen({ route, navigation }) {
         </Text>
         <Text style={styles.muted}>Trust yok · slot yok · feed yok · ortalama yok</Text>
       </View>
+
+      {crowdFit && !crowdFit.hidden ? (
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Kitle uyumu</Text>
+          <Text style={styles.panelBody}>
+            {crowdFit.fit != null ? Number(crowdFit.fit).toFixed(2) : '—'}
+          </Text>
+          <DsBinsChart bins={crowdFit.bins || []} />
+          <Text style={styles.muted}>
+            Anonim mühürlü kitle · n={crowdFit.n} · şehir eğrisiyle örtüşme · kişisel DS yok
+          </Text>
+        </View>
+      ) : null}
 
       <BagliHostlarList
         hosts={brand?.affiliated_hosts || []}

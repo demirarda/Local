@@ -2,6 +2,16 @@ import express from 'express';
 import pool from '../config/database.js';
 import { authenticateToken, requireAdmin } from './auth.js';
 import logger from '../utils/logger.js';
+import {
+  assertVenuePermission,
+  closingTimeFromWeeklyHours,
+  getVenueAccess,
+  hasMinRole,
+  normalizeWeeklyHours,
+  permissionsFor,
+} from '../services/venueRoleService.js';
+import { isVenuePlatformOverride } from '../services/productOpsRoles.js';
+import { remoteWalkInCta } from '../services/megaSpec.js';
 
 const router = express.Router();
 
@@ -67,20 +77,11 @@ async function getVenueRS(venueId) {
 
 // Helper: check if user is admin (env) or manager of venue
 function isAdminUser(userId, email = '') {
-  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
-  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  const byId = userId && adminIds.length > 0 && adminIds.includes(userId);
-  const byEmail = email && adminEmails.length > 0 && adminEmails.includes((email || '').toLowerCase());
-  return !!(byId || byEmail);
+  return isVenuePlatformOverride(userId, email);
 }
 
-async function canManageVenue(userId, venueId, email = '') {
-  if (isAdminUser(userId, email)) return true;
-  const mgr = await pool.query(
-    `SELECT 1 FROM venue_managers WHERE venue_id = $1 AND user_id = $2 LIMIT 1`,
-    [venueId, userId]
-  );
-  return mgr.rows.length > 0;
+async function canManageVenue(userId, venueId, email = '', minRole = 'staff') {
+  return hasMinRole(userId, venueId, minRole, email);
 }
 
 // GET /api/venues - List venues (public; optional city, search)
@@ -211,6 +212,7 @@ router.get('/managed', authenticateToken, async (req, res) => {
         venue_rs_rating_count: rsMeta.venue_rs_rating_count,
         venue_rs_badge: rsMeta.venue_rs_badge,
         role: row.role,
+        permissions: permissionsFor(row.role),
         created_at: row.created_at,
       });
     }
@@ -271,6 +273,49 @@ router.patch('/applications/me/withdraw', authenticateToken, async (req, res) =>
   }
 });
 
+router.put('/applications/me/draft', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ success: false, error: 'Authentication required' });
+    const { saveVenueApplicationDraft } = await import('../services/venueApplicationService.js');
+    const result = await saveVenueApplicationDraft(userId, req.body);
+    if (!result.ok) {
+      return res.status(result.status || 400).json({ success: false, error: result.error });
+    }
+    return res.json({ success: true, data: result.application, draft: true });
+  } catch (error) {
+    logger.error('venue application draft', { error: error.message });
+    if (String(error.message || '').includes('weekly_hours') || String(error.message || '').includes('draft')) {
+      return res.status(400).json({ success: false, error: 'Taslak şema eksik — migration 124 gerekli' });
+    }
+    return res.status(500).json({ success: false, error: 'Failed to save draft' });
+  }
+});
+
+router.post('/applications/media', authenticateToken, async (req, res) => {
+  try {
+    const { initVenueApplicationUpload } = await import('../services/venueApplicationMediaService.js');
+    const result = await initVenueApplicationUpload(req.user?.userId, req.body || {});
+    if (!result.ok) return res.status(result.status || 400).json({ success: false, error: result.error });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    logger.error('venue application media init', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to init upload' });
+  }
+});
+
+router.post('/applications/media/finalize', authenticateToken, async (req, res) => {
+  try {
+    const { finalizeVenueApplicationUpload } = await import('../services/venueApplicationMediaService.js');
+    const result = await finalizeVenueApplicationUpload(req.user?.userId, req.body || {});
+    if (!result.ok) return res.status(result.status || 400).json({ success: false, error: result.error });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    logger.error('venue application media finalize', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to finalize upload' });
+  }
+});
+
 router.patch('/:venueId/onboarding', authenticateToken, async (req, res) => {
   try {
     const userId = req.user?.userId;
@@ -306,20 +351,86 @@ router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const venueResult = await pool.query(
-      `SELECT id, name, city, address, location_lat, location_lng, description, slug, created_at, updated_at,
-              COALESCE(subscription_tier, 'basic') as subscription_tier,
-              COALESCE(pro_enabled, false) as pro_enabled,
-              COALESCE(city_partner_enabled, false) as city_partner_enabled,
-              vitrine, vitrine_published, highlighted_badge_keys,
-              takeover_until, featured_event_card
-       FROM venues WHERE id = $1 LIMIT 1`,
-      [id]
-    );
+    let venueResult;
+    try {
+      venueResult = await pool.query(
+        `SELECT id, name, city, address, location_lat, location_lng, description, slug, created_at, updated_at,
+                COALESCE(subscription_tier, 'basic') as subscription_tier,
+                COALESCE(pro_enabled, false) as pro_enabled,
+                COALESCE(city_partner_enabled, false) as city_partner_enabled,
+                vitrine, vitrine_published, highlighted_badge_keys,
+                takeover_until, featured_event_card, weekly_hours, closing_time,
+                door_policy, totem_mode, regular_min_seals
+         FROM venues WHERE id = $1 LIMIT 1`,
+        [id]
+      );
+    } catch (_mega) {
+      try {
+        venueResult = await pool.query(
+          `SELECT id, name, city, address, location_lat, location_lng, description, slug, created_at, updated_at,
+                  COALESCE(subscription_tier, 'basic') as subscription_tier,
+                  COALESCE(pro_enabled, false) as pro_enabled,
+                  COALESCE(city_partner_enabled, false) as city_partner_enabled,
+                  vitrine, vitrine_published, highlighted_badge_keys,
+                  takeover_until, featured_event_card, weekly_hours, closing_time
+           FROM venues WHERE id = $1 LIMIT 1`,
+          [id]
+        );
+      } catch (_e) {
+        venueResult = await pool.query(
+          `SELECT id, name, city, address, location_lat, location_lng, description, slug, created_at, updated_at,
+                  COALESCE(subscription_tier, 'basic') as subscription_tier,
+                  COALESCE(pro_enabled, false) as pro_enabled,
+                  COALESCE(city_partner_enabled, false) as city_partner_enabled,
+                  vitrine, vitrine_published, highlighted_badge_keys,
+                  takeover_until, featured_event_card
+           FROM venues WHERE id = $1 LIMIT 1`,
+          [id]
+        );
+      }
+    }
     if (venueResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Venue not found' });
     }
     const venue = venueResult.rows[0];
+    try {
+      const extra = await pool.query(
+        `SELECT totem_path, totem_placement_photo_url, both_stamp, last_activity_at, brand_id
+         FROM venues WHERE id = $1`,
+        [id]
+      );
+      Object.assign(venue, extra.rows[0] || {});
+    } catch (_e) {
+      /* columns optional */
+    }
+
+    let liveVenEvent = false;
+    try {
+      const ev = await pool.query(
+        `SELECT id FROM rituals
+         WHERE venue_id = $1 AND origin = 'VEN_EVENT'
+           AND status::text IN ('live','prelobby','active','window')
+           AND start_time <= NOW() + INTERVAL '3 hours'
+         LIMIT 1`,
+        [id]
+      );
+      liveVenEvent = Boolean(ev.rows[0]);
+    } catch (_e) {
+      /* optional */
+    }
+
+    const {
+      eventWalkInMarketingCard,
+      detectVenueAt20,
+      venueSicilPair,
+      venueLifecyclePhase,
+    } = await import('../services/megaLaunchLocks.js');
+    const eventCard = liveVenEvent ? eventWalkInMarketingCard() : null;
+    const at20 = await detectVenueAt20(id);
+    const sicil = await venueSicilPair(id);
+    const lifecycle = venueLifecyclePhase({
+      lastActivityAt: venue.last_activity_at || venue.updated_at,
+    });
 
     const [isVerified, rsMeta] = await Promise.all([
       getVenueVerified(venue.name, venue.city),
@@ -349,7 +460,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }));
 
     const userId = req.user?.userId;
-    const canManage = userId ? await canManageVenue(userId, id, req.user?.email) : false;
+    const access = userId ? await getVenueAccess(userId, id, req.user?.email) : { ok: false, role: null, permissions: null };
+    const canManage = Boolean(access.ok);
     const { getVenueProfile } = await import('../services/venueProfileService.js');
     const profileResult = await getVenueProfile(id, userId, req.user?.email);
 
@@ -391,6 +503,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
         highlighted_badge_keys: venue.highlighted_badge_keys || [],
         locked_sections: profileResult.ok ? profileResult.profile.locked_sections : [],
         can_manage: canManage,
+        my_role: access.ok ? access.role : null,
+        permissions: access.ok ? access.permissions : null,
+        weekly_hours: venue.weekly_hours || {},
+        closing_time: venue.closing_time || null,
         archive_public_count: profileResult.ok ? profileResult.profile.archive_public_count : 0,
         archive_preview: profileResult.ok ? profileResult.profile.archive_preview : [],
         trust_display: profileResult.ok ? profileResult.profile.trust_display : null,
@@ -399,9 +515,26 @@ router.get('/:id', authenticateToken, async (req, res) => {
         chip_breakdown: profileResult.ok ? profileResult.profile.chip_breakdown : null,
         character_card: profileResult.ok ? profileResult.profile.character_card : null,
         character_volume: profileResult.ok ? profileResult.profile.character_volume : null,
+        life_line: profileResult.ok ? profileResult.profile.life_line : null,
+        membership_badge: profileResult.ok ? profileResult.profile.membership_badge : null,
+        membership: profileResult.ok ? profileResult.profile.membership : null,
+        category: profileResult.ok ? profileResult.profile.category : null,
         chain_id: profileResult.ok ? profileResult.profile.chain_id : null,
         brand_id: profileResult.ok ? profileResult.profile.brand_id : null,
         regular_progress: regularProgress,
+        door_policy: venue.door_policy || 'WALKIN_OPEN',
+        totem_mode: venue.totem_mode || 'NFC',
+        totem_path: venue.totem_path || 'STAFF_DEVICE',
+        totem_placement_photo_url: venue.totem_placement_photo_url || null,
+        both_stamp: Boolean(venue.both_stamp || (venue.brand_id && venue.id)),
+        walk_in_cta: remoteWalkInCta({
+          doorPolicy: venue.door_policy,
+          eventWalkInClosed: liveVenEvent,
+        }),
+        event_marketing_card: eventCard,
+        event_detectors: at20,
+        sicil,
+        lifecycle,
         created_at: venue.created_at,
         updated_at: venue.updated_at,
         upcoming_rituals: rituals,
@@ -419,11 +552,11 @@ router.get('/:id/regulars', authenticateToken, async (req, res) => {
   try {
     const venueId = req.params.id;
     const userId = req.user?.userId;
-    const allowed = userId ? await canManageVenue(userId, venueId, req.user?.email) : false;
-    if (!allowed) {
-      return res.status(403).json({ success: false, error: 'Venue manager access required' });
-    }
     const { listVenueRegulars } = await import('../services/regularService.js');
+    const gate = await assertVenuePermission(userId, venueId, 'regulars', req.user?.email);
+    if (!gate.ok) {
+      return res.status(gate.status || 403).json({ success: false, error: gate.error || 'Requires regulars' });
+    }
     const data = await listVenueRegulars(venueId);
     return res.json({ success: true, data });
   } catch (error) {
@@ -473,6 +606,108 @@ router.post('/:id/vitrine/publish', authenticateToken, async (req, res) => {
     return res.json({ success: true, data: result.venue });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to publish vitrine' });
+  }
+});
+
+router.get('/:id/membership', authenticateToken, async (req, res) => {
+  try {
+    const access = await getVenueAccess(req.user?.userId, req.params.id, req.user?.email);
+    const { getVenueMembershipBundle } = await import('../services/venueMembershipService.js');
+    const data = await getVenueMembershipBundle(req.params.id, {
+      canManage: Boolean(access.ok),
+      viewerUserId: req.user?.userId,
+    });
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message || 'membership failed' });
+  }
+});
+
+router.patch('/:id/membership/vitrine', authenticateToken, async (req, res) => {
+  try {
+    const gate = await assertVenuePermission(
+      req.user?.userId,
+      req.params.id,
+      'profile',
+      req.user?.email
+    );
+    if (!gate.ok) {
+      return res.status(gate.status || 403).json({ success: false, error: gate.error });
+    }
+    const { setMembershipVitrineEnabled, getVenueMembershipBundle } = await import(
+      '../services/venueMembershipService.js'
+    );
+    await setMembershipVitrineEnabled(req.params.id, req.body?.enabled !== false);
+    const data = await getVenueMembershipBundle(req.params.id, {
+      canManage: true,
+      viewerUserId: req.user?.userId,
+    });
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message || 'vitrine toggle failed' });
+  }
+});
+
+router.post('/:id/membership/plans', authenticateToken, async (req, res) => {
+  try {
+    const gate = await assertVenuePermission(
+      req.user?.userId,
+      req.params.id,
+      'profile',
+      req.user?.email
+    );
+    if (!gate.ok) {
+      return res.status(gate.status || 403).json({ success: false, error: gate.error });
+    }
+    const venueRow = await pool.query(`SELECT name, is_verified FROM venues WHERE id = $1`, [
+      req.params.id,
+    ]);
+    const { createMembershipPlan } = await import('../services/venueMembershipService.js');
+    const result = await createMembershipPlan(req.params.id, req.body || {}, {
+      hostName: venueRow.rows[0]?.name,
+      hostVerified: Boolean(venueRow.rows[0]?.is_verified),
+    });
+    if (!result.ok) {
+      return res.status(result.status || 400).json({ success: false, error: result.error });
+    }
+    return res.json({ success: true, data: result.plan });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message || 'plan create failed' });
+  }
+});
+
+router.patch('/:id/membership/plans/:planId', authenticateToken, async (req, res) => {
+  try {
+    const gate = await assertVenuePermission(
+      req.user?.userId,
+      req.params.id,
+      'profile',
+      req.user?.email
+    );
+    if (!gate.ok) {
+      return res.status(gate.status || 403).json({ success: false, error: gate.error });
+    }
+    const { setPlanActive } = await import('../services/venueMembershipService.js');
+    const result = await setPlanActive(req.params.id, req.params.planId, req.body?.active);
+    if (!result.ok) {
+      return res.status(result.status || 404).json({ success: false, error: result.error });
+    }
+    return res.json({ success: true, data: result.plan });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message || 'plan patch failed' });
+  }
+});
+
+router.post('/:id/membership/plans/:planId/enroll', authenticateToken, async (req, res) => {
+  try {
+    const { enrollMembership } = await import('../services/venueMembershipService.js');
+    const result = await enrollMembership(req.params.planId, req.user.userId);
+    if (!result.ok) {
+      return res.status(result.status || 400).json({ success: false, error: result.error });
+    }
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message || 'enroll failed' });
   }
 });
 
@@ -676,7 +911,7 @@ router.post('/:id/gps-verify', authenticateToken, async (req, res) => {
     const result = await verifyVenueGps(
       req.params.id,
       req.user.userId,
-      req.body,
+      { ...req.body, client: req.body?.client || req.get('x-local-client') },
       req.user?.email
     );
     if (!result.ok) {
@@ -979,9 +1214,30 @@ router.post('/:id/rituals/:ritualId/claim', authenticateToken, async (req, res) 
         detail: result.detail,
       });
     }
-    return res.json({ success: true, data: result.ritual, distance_m: result.distance_m });
+    return res.json({
+      success: true,
+      data: result.ritual,
+      distance_m: result.distance_m,
+      retro_trust: false,
+      pin_strength: result.pin_strength,
+    });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to claim ritual' });
+  }
+});
+
+// POST /api/venues/:id/rituals/:ritualId/claim/dispute — EK-4 itiraz (sessiz kopuş)
+router.post('/:id/rituals/:ritualId/claim/dispute', authenticateToken, async (req, res) => {
+  try {
+    const { disputeVenueClaim } = await import('../services/venueClaimService.js');
+    const result = await disputeVenueClaim({
+      ritualId: req.params.ritualId,
+      hostId: req.user.userId,
+    });
+    if (!result.ok) return res.status(result.status || 400).json({ success: false, error: result.error });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to dispute claim' });
   }
 });
 
@@ -1040,10 +1296,14 @@ router.get('/:id/ven-event-quota', authenticateToken, async (req, res) => {
 // GET /api/venues/:id/night-report — Gece Raporu digest (v2 §8)
 router.get('/:id/night-report', authenticateToken, async (req, res) => {
   try {
+    const gate = await assertVenuePermission(req.user?.userId, req.params.id, 'report_read', req.user?.email);
+    if (!gate.ok) return res.status(gate.status || 403).json({ success: false, error: gate.error });
     const { buildNightReport } = await import('../services/nightReportService.js');
+    const wantMini = req.query.mini === '1' || req.query.mini === 'true';
+    const forceMini = !gate.permissions?.night_archive;
     const data = await buildNightReport(req.params.id, {
       date: req.query.date,
-      mini: req.query.mini === '1' || req.query.mini === 'true',
+      mini: forceMini || wantMini,
     });
     return res.json({ success: true, data });
   } catch (error) {
@@ -1052,9 +1312,45 @@ router.get('/:id/night-report', authenticateToken, async (req, res) => {
   }
 });
 
+router.post('/:id/announcements', authenticateToken, async (req, res) => {
+  try {
+    const gate = await assertVenuePermission(req.user?.userId, req.params.id, 'profile', req.user?.email);
+    if (!gate.ok) return res.status(gate.status || 403).json({ success: false, error: gate.error });
+    const { resolveTierFromVenue } = await import('../services/venuePackageService.js');
+    const { assertAnnouncementAllowed } = await import('../services/megaPackages.js');
+    const v = await pool.query(
+      `SELECT subscription_tier, pro_enabled, city_partner_enabled FROM venues WHERE id = $1`,
+      [req.params.id]
+    );
+    const sent = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM venue_announcements
+       WHERE venue_id = $1 AND created_at >= date_trunc('month', NOW())`,
+      [req.params.id]
+    ).catch(() => ({ rows: [{ n: 0 }] }));
+    const quota = assertAnnouncementAllowed({
+      tierId: resolveTierFromVenue(v.rows[0] || {}),
+      sentThisMonth: Number(sent.rows[0]?.n || 0),
+    });
+    if (!quota.ok) return res.status(403).json({ success: false, error: quota.error, code: quota.code, cap: quota.cap });
+    const ins = await pool.query(
+      `INSERT INTO venue_announcements (venue_id, created_by, body)
+       VALUES ($1,$2,$3) RETURNING *`,
+      [req.params.id, req.user.userId, String(req.body?.body || '').trim().slice(0, 280)]
+    ).catch((e) => {
+      if (String(e.code) === '42P01') return { rows: [{ stub: true, body: req.body?.body }] };
+      throw e;
+    });
+    return res.json({ success: true, data: ins.rows[0], quota });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message || 'Announcement failed' });
+  }
+});
+
 // GET /api/venues/:id/monthly-pulse — Aylık Nabız (OPERATÖR+)
 router.get('/:id/monthly-pulse', authenticateToken, async (req, res) => {
   try {
+    const gate = await assertVenuePermission(req.user?.userId, req.params.id, 'reputation', req.user?.email);
+    if (!gate.ok) return res.status(gate.status || 403).json({ success: false, error: gate.error });
     const { buildMonthlyPulse } = await import('../services/monthlyPulseService.js');
     const result = await buildMonthlyPulse(req.params.id, { month: req.query.month });
     if (!result.ok) {
@@ -1069,6 +1365,8 @@ router.get('/:id/monthly-pulse', authenticateToken, async (req, res) => {
 // GET /api/venues/:id/market-share — Pazar Payı (HAKİM) / kilitli teaser (OPERATÖR)
 router.get('/:id/market-share', authenticateToken, async (req, res) => {
   try {
+    const gate = await assertVenuePermission(req.user?.userId, req.params.id, 'reputation', req.user?.email);
+    if (!gate.ok) return res.status(gate.status || 403).json({ success: false, error: gate.error });
     const { buildMarketShare } = await import('../services/monthlyPulseService.js');
     const result = await buildMarketShare(req.params.id, { month: req.query.month });
     if (!result.ok) {
@@ -1077,6 +1375,22 @@ router.get('/:id/market-share', authenticateToken, async (req, res) => {
     return res.json({ success: true, data: result });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to build market share' });
+  }
+});
+
+// GET /api/venues/:id/ds-crowd-mix — §13 hakim kitle-karışımı (kişisel DS yok)
+router.get('/:id/ds-crowd-mix', authenticateToken, async (req, res) => {
+  try {
+    const gate = await assertVenuePermission(req.user?.userId, req.params.id, 'reputation', req.user?.email);
+    if (!gate.ok) return res.status(gate.status || 403).json({ success: false, error: gate.error });
+    const { getVenueCrowdMix } = await import('../services/dsAggregateService.js');
+    const result = await getVenueCrowdMix(req.params.id);
+    if (!result.ok) {
+      return res.status(result.status || 400).json({ success: false, error: result.error });
+    }
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to build crowd mix' });
   }
 });
 
@@ -1476,12 +1790,12 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ success: false, error: 'Authentication required' });
 
-    const allowed = await canManageVenue(userId, id, req.user?.email);
+    const allowed = await canManageVenue(userId, id, req.user?.email, 'manager');
     if (!allowed) {
       return res.status(403).json({ success: false, error: 'Not allowed to update this venue' });
     }
 
-    const { name, city, address, location_lat, location_lng, description, slug, dense_canyon, gps_radius_m } = req.body;
+    const { name, city, address, location_lat, location_lng, description, slug, dense_canyon, gps_radius_m, weekly_hours, totem_path, totem_placement_photo_url } = req.body;
     const updates = [];
     const values = [];
     let idx = 1;
@@ -1504,6 +1818,26 @@ router.patch('/:id', authenticateToken, async (req, res) => {
       }
       updates.push(`gps_radius_m = $${idx}`);
       values.push(n);
+      idx++;
+    }
+    if (weekly_hours !== undefined) {
+      const hours = normalizeWeeklyHours(weekly_hours);
+      updates.push(`weekly_hours = $${idx}::jsonb`);
+      values.push(JSON.stringify(hours));
+      idx++;
+      updates.push(`closing_time = $${idx}`);
+      values.push(closingTimeFromWeeklyHours(hours));
+      idx++;
+    }
+    if (totem_path !== undefined) {
+      const { totemPathC } = await import('../services/megaLaunchLocks.js');
+      updates.push(`totem_path = $${idx}`);
+      values.push(totemPathC(totem_path));
+      idx++;
+    }
+    if (totem_placement_photo_url !== undefined) {
+      updates.push(`totem_placement_photo_url = $${idx}`);
+      values.push(totem_placement_photo_url ? String(totem_placement_photo_url).trim().slice(0, 500) : null);
       idx++;
     }
 
@@ -1575,41 +1909,115 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     logger.error('Error updating venue', { error: error.message });
+    if (String(error.message || '').includes('weekly_hours')) {
+      return res.status(400).json({ success: false, error: 'weekly_hours eksik — migration 124 gerekli' });
+    }
     res.status(500).json({ success: false, error: 'Failed to update venue' });
   }
 });
 
-// POST /api/venues/:id/managers - Add manager (admin only)
-router.post('/:id/managers', authenticateToken, requireAdmin, async (req, res) => {
+// GET /api/venues/:id/managers
+router.get('/:id/managers', authenticateToken, async (req, res) => {
+  try {
+    const gate = await assertVenuePermission(req.user?.userId, req.params.id, 'shift', req.user?.email);
+    if (!gate.ok) return res.status(gate.status || 403).json({ success: false, error: gate.error });
+    const r = await pool.query(
+      `SELECT vm.user_id, vm.role, vm.created_at, u.name, u.email
+       FROM venue_managers vm
+       JOIN users u ON u.id = vm.user_id
+       WHERE vm.venue_id = $1
+       ORDER BY CASE vm.role WHEN 'owner' THEN 0 WHEN 'manager' THEN 1 ELSE 2 END, vm.created_at`,
+      [req.params.id]
+    );
+    const { resolveTierFromVenue } = await import('../services/venuePackageService.js');
+    const { packageSeats } = await import('../services/megaPackages.js');
+    const vpkg = await pool.query(
+      `SELECT subscription_tier, pro_enabled, city_partner_enabled FROM venues WHERE id = $1`,
+      [req.params.id]
+    );
+    const seats = packageSeats(resolveTierFromVenue(vpkg.rows[0] || {}));
+    return res.json({ success: true, data: r.rows, my_role: gate.role, seats });
+  } catch (error) {
+    logger.error('Error listing venue managers', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to list managers' });
+  }
+});
+
+// POST /api/venues/:id/managers — owner adds manager/staff; manager adds staff; admin any
+router.post('/:id/managers', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { user_id, role = 'manager' } = req.body;
-    if (!user_id) {
-      return res.status(400).json({ success: false, error: 'user_id is required' });
-    }
+    const { user_id, email, role = 'staff' } = req.body;
     const validRoles = ['owner', 'manager', 'staff'];
-    const roleValue = validRoles.includes(role) ? role : 'manager';
+    const roleValue = validRoles.includes(role) ? role : 'staff';
+    const access = await getVenueAccess(req.user?.userId, id, req.user?.email);
+    if (!access.ok) return res.status(access.status || 403).json({ success: false, error: access.error });
+    if (roleValue === 'owner' && access.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Owner ataması yalnız admin / devir akışı' });
+    }
+    if (roleValue === 'manager' && !access.permissions.invite_manager) {
+      return res.status(403).json({ success: false, error: 'Manager daveti owner yetkisi ister' });
+    }
+    if (roleValue === 'staff' && !access.permissions.invite_staff) {
+      return res.status(403).json({ success: false, error: 'Staff daveti manager yetkisi ister' });
+    }
+
+    let targetId = user_id;
+    if (!targetId && email) {
+      const u = await pool.query(`SELECT id FROM users WHERE lower(email) = lower($1) LIMIT 1`, [String(email).trim()]);
+      if (u.rows.length === 0) return res.status(404).json({ success: false, error: 'User not found' });
+      targetId = u.rows[0].id;
+    }
+    if (!targetId) {
+      return res.status(400).json({ success: false, error: 'user_id or email is required' });
+    }
 
     const venueCheck = await pool.query('SELECT id FROM venues WHERE id = $1', [id]);
     if (venueCheck.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Venue not found' });
     }
-    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [user_id]);
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+
+    const counts = await pool.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE role IN ('owner', 'manager'))::int AS managers,
+         COUNT(*) FILTER (WHERE role = 'staff')::int AS staff
+       FROM venue_managers WHERE venue_id = $1`,
+      [id]
+    );
+    const existing = await pool.query(
+      `SELECT role FROM venue_managers WHERE venue_id = $1 AND user_id = $2`,
+      [id, targetId]
+    );
+    const sameRole = existing.rows[0]?.role === roleValue;
+    if (!sameRole) {
+      const { resolveTierFromVenue } = await import('../services/venuePackageService.js');
+      const { assertAuthoritySeat } = await import('../services/megaPackages.js');
+      const vpkg = await pool.query(
+        `SELECT subscription_tier, pro_enabled, city_partner_enabled FROM venues WHERE id = $1`,
+        [id]
+      );
+      const seat = assertAuthoritySeat({
+        tierId: resolveTierFromVenue(vpkg.rows[0] || {}),
+        role: roleValue,
+        managerCount: Number(counts.rows[0]?.managers || 0),
+        staffCount: Number(counts.rows[0]?.staff || 0),
+      });
+      if (!seat.ok) {
+        return res.status(403).json({ success: false, error: seat.error, code: seat.code, caps: seat.caps });
+      }
     }
 
     await pool.query(
       `INSERT INTO venue_managers (venue_id, user_id, role)
        VALUES ($1, $2, $3)
        ON CONFLICT (venue_id, user_id) DO UPDATE SET role = $3`,
-      [id, user_id, roleValue]
+      [id, targetId, roleValue]
     );
 
     res.status(201).json({
       success: true,
       message: 'Manager added',
-      data: { venue_id: id, user_id, role: roleValue },
+      data: { venue_id: id, user_id: targetId, role: roleValue },
     });
   } catch (error) {
     logger.error('Error adding venue manager', { error: error.message });
@@ -1662,10 +2070,19 @@ router.get('/:id/portals', authenticateToken, async (req, res) => {
   try {
     const [r, venue] = await Promise.all([
       pool.query(
-        `SELECT id, venue_id, portal_id, label, created_at
+        `SELECT id, venue_id, portal_id, label, created_at, deactivated_at
          FROM venue_portals WHERE venue_id = $1 ORDER BY created_at ASC`,
         [req.params.id]
-      ),
+      ).catch((e) => {
+        if (String(e.code) === '42703') {
+          return pool.query(
+            `SELECT id, venue_id, portal_id, label, created_at, NULL::timestamptz AS deactivated_at
+             FROM venue_portals WHERE venue_id = $1 ORDER BY created_at ASC`,
+            [req.params.id]
+          );
+        }
+        throw e;
+      }),
       pool.query(`SELECT multi_room_flag FROM venues WHERE id = $1`, [req.params.id]),
     ]);
     const { assertCanAddTableTotem } = await import('../services/venuePackageService.js');
@@ -1769,6 +2186,36 @@ router.delete('/:id/portals/:portalId', authenticateToken, async (req, res) => {
   }
 });
 
+/** EK-1: totem-ID panelden uzaktan deaktive */
+router.patch('/:id/portals/:portalId/deactivate', authenticateToken, async (req, res) => {
+  try {
+    const venueId = req.params.id;
+    const allowed = await canManageVenue(req.user.userId, venueId, req.user?.email);
+    if (!allowed) {
+      return res.status(403).json({ success: false, error: 'Venue staff only' });
+    }
+    const r = await pool.query(
+      `UPDATE venue_portals
+       SET deactivated_at = NOW()
+       WHERE venue_id = $1 AND portal_id = $2
+       RETURNING portal_id, deactivated_at`,
+      [venueId, req.params.portalId]
+    );
+    if (!r.rows[0]) {
+      return res.status(404).json({ success: false, error: 'Totem not found' });
+    }
+    return res.json({
+      success: true,
+      data: { ...r.rows[0], remote_deactivated: true, door_dead: true },
+    });
+  } catch (e) {
+    if (String(e.code) === '42703') {
+      return res.status(503).json({ success: false, error: 'deactivated_at schema missing' });
+    }
+    return res.status(500).json({ success: false, error: 'Failed to deactivate totem' });
+  }
+});
+
 /** C5: totem kayıp/kırık bildir → kod fallback */
 router.patch('/:id/totem-status', authenticateToken, async (req, res) => {
   try {
@@ -1799,13 +2246,42 @@ router.patch('/:id/totem-status', authenticateToken, async (req, res) => {
   }
 });
 
-/** C5: panelden totem talebi — missing + funnel olay */
+/** Staff: dönen totem kodu (statik QR kapı değil) */
+router.get('/:id/totem/rotating-code', authenticateToken, async (req, res) => {
+  try {
+    const venueId = req.params.id;
+    const allowed = await canManageVenue(req.user.userId, venueId, req.user?.email);
+    if (!allowed) {
+      return res.status(403).json({ success: false, error: 'Venue staff only' });
+    }
+    const { rotatingTotemCode } = await import('../services/megaLockFlows.js');
+    const ttl = Number(process.env.TOTEM_ROTATING_TTL_S || 30);
+    const nowMs = Date.now();
+    const code = rotatingTotemCode(venueId, nowMs, { ttlS: ttl });
+    return res.json({
+      success: true,
+      data: {
+        code,
+        ttl_s: ttl,
+        expires_at: new Date(nowMs + ttl * 1000).toISOString(),
+        via: 'ROTATING_CODE',
+        static_qr_forbidden: true,
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: 'Failed to mint rotating code' });
+  }
+});
+
+/** C5: panelden totem talebi — replacement vs [Özel Totem Sipariş Et] */
 router.post('/:id/totem-request', authenticateToken, async (req, res) => {
   try {
     const venueId = req.params.id;
     const userId = req.user.userId;
     const note =
       typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 280) : null;
+    const kindRaw = String(req.body?.kind || 'replacement').toLowerCase();
+    const customOrder = kindRaw === 'custom' || kindRaw === 'custom_figur' || kindRaw === 'figur';
     const mgr = await pool.query(
       `SELECT 1 FROM venue_managers WHERE venue_id = $1 AND user_id = $2 LIMIT 1`,
       [venueId, userId]
@@ -1813,11 +2289,13 @@ router.post('/:id/totem-request', authenticateToken, async (req, res) => {
     if (mgr.rows.length === 0) {
       return res.status(403).json({ success: false, error: 'Venue manager only' });
     }
-    const r = await pool.query(
-      `UPDATE venues SET totem_status = 'missing' WHERE id = $1
-       RETURNING id, totem_status, name`,
-      [venueId]
-    );
+    const r = customOrder
+      ? await pool.query(`SELECT id, totem_status, name FROM venues WHERE id = $1`, [venueId])
+      : await pool.query(
+          `UPDATE venues SET totem_status = 'missing' WHERE id = $1
+           RETURNING id, totem_status, name`,
+          [venueId]
+        );
     if (!r.rows[0]) {
       return res.status(404).json({ success: false, error: 'Venue not found' });
     }
@@ -1826,10 +2304,19 @@ router.post('/:id/totem-request', authenticateToken, async (req, res) => {
       void recordCheckinFunnelEvent({
         ritualId: null,
         userId,
-        event: 'totem_request',
-        meta: { venue_id: venueId, note, venue_name: r.rows[0].name },
+        event: customOrder ? 'custom_totem_order' : 'totem_request',
+        meta: {
+          venue_id: venueId,
+          note,
+          venue_name: r.rows[0].name,
+          kind: customOrder ? 'custom_figur' : 'replacement',
+        },
       });
-      await enqueueTotemOpsRequest({ venueId, userId, note });
+      await enqueueTotemOpsRequest({
+        venueId,
+        userId,
+        note: customOrder ? `Özel totem: ${note || ''}` : note,
+      });
     } catch (_e) {
       /* soft */
     }
@@ -1838,7 +2325,10 @@ router.post('/:id/totem-request', authenticateToken, async (req, res) => {
       data: {
         ...r.rows[0],
         request: 'queued',
-        message: 'Totem talebi alındı — white-glove / yedek set ops kuyruğunda',
+        kind: customOrder ? 'custom_figur' : 'replacement',
+        message: customOrder
+          ? 'Özel totem siparişi alındı — tasarım kuyruğunda (ayrı satış)'
+          : 'Totem talebi alındı — white-glove / yedek set ops kuyruğunda',
       },
     });
   } catch (e) {

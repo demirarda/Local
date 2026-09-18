@@ -4,18 +4,10 @@
  */
 import pool from '../config/database.js';
 import { updateOnboardingStep, maybeMarkVenueLive } from './venueApplicationService.js';
+import { hasMinRole } from './venueRoleService.js';
 
-async function isVenueManager(userId, venueId, email = '') {
-  if (!userId) return false;
-  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (adminIds.includes(String(userId))) return true;
-  if (email && adminEmails.includes(String(email).toLowerCase())) return true;
-  const r = await pool.query(
-    `SELECT 1 FROM venue_managers WHERE venue_id = $1 AND user_id = $2 LIMIT 1`,
-    [venueId, userId]
-  );
-  return r.rows.length > 0;
+async function isVenueManager(userId, venueId, email = '', minRole = 'staff') {
+  return hasMinRole(userId, venueId, minRole, email);
 }
 
 export function normalizeFloorPlan(raw = {}) {
@@ -67,7 +59,7 @@ export async function getVenueFloorPlan(venueId, viewerUserId, viewerEmail = '')
 }
 
 export async function updateVenueFloorPlan(venueId, userId, payload, email = '') {
-  const allowed = await isVenueManager(userId, venueId, email);
+  const allowed = await isVenueManager(userId, venueId, email, 'manager');
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed' };
   const plan = normalizeFloorPlan(payload?.floor_plan || payload);
   // §8: zon adı + kapasite zorunlu; masa-grid opsiyonel
@@ -92,7 +84,10 @@ export async function updateVenueFloorPlan(venueId, userId, payload, email = '')
   return { ok: true, floor_plan: normalizeFloorPlan(r.rows[0].floor_plan) };
 }
 
-export async function verifyVenueGps(venueId, userId, { lat, lng } = {}, email = '') {
+export async function verifyVenueGps(venueId, userId, { lat, lng, client } = {}, email = '') {
+  if (String(client || '') !== 'native') {
+    return { ok: false, status: 403, error: 'GPS mühürü yalnız uygulama içinden (web yok)' };
+  }
   const allowed = await isVenueManager(userId, venueId, email);
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed' };
   const venueR = await pool.query(

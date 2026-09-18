@@ -11,6 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { fetchWindowBubbles } from '../services/api';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 
 const PRIMARY = '#f9a13d';
 
@@ -25,6 +26,7 @@ function formatRemaining(endAt) {
 }
 
 export default function WindowBubbleBar({ navigation, style }) {
+  useLanguageStore((s) => s.lang);
   const [bubbles, setBubbles] = useState([]);
   const [loading, setLoading] = useState(true);
 

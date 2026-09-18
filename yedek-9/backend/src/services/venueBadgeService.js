@@ -1,14 +1,17 @@
 /**
- * Venue-created badges — LOCAL v2 §9
- * Shield template fixed · logo only (no venue-written text) · max 5 · admin approval
- * Conditions: visit/category/slot/event · spend/subjective forbidden
- * System grants only — venue cannot hand-distribute
+ * Venue badges — Tür-B Badge Studio (OPERATOR+).
+ * Kalkan sabit · logo + requirement_text (şartı mekan yazar) · max 5 · admin onay
+ * FREE üretim yok · System grants only — venue cannot hand-distribute
  */
 import pool from '../config/database.js';
 import LOCAL_CONFIG from '../config/localConfig.js';
+import { hasMinRole } from './venueRoleService.js';
 
 const VB = LOCAL_CONFIG.badges?.VENUE_BADGE || {};
-const ALLOWED_CONDITIONS = new Set(VB.ALLOWED_CONDITIONS || ['visit', 'category', 'slot', 'event']);
+const ALLOWED_CONDITIONS = new Set([
+  ...(VB.ALLOWED_CONDITIONS || ['visit', 'category', 'slot', 'event']),
+  'identity',
+]);
 const FORBIDDEN_CONDITIONS = new Set([
   ...(VB.FORBIDDEN_CONDITIONS || ['spend', 'subjective']),
   'manual_handout',
@@ -22,17 +25,8 @@ const SYSTEM_BADGE_NAMES = {
   event: 'Etkinlik Rozeti',
 };
 
-async function isVenueManager(userId, venueId, email = '') {
-  if (!userId) return false;
-  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (adminIds.includes(String(userId))) return true;
-  if (email && adminEmails.includes(String(email).toLowerCase())) return true;
-  const r = await pool.query(
-    `SELECT 1 FROM venue_managers WHERE venue_id = $1 AND user_id = $2 LIMIT 1`,
-    [venueId, userId]
-  );
-  return r.rows.length > 0;
+async function isVenueManager(userId, venueId, email = '', minRole = 'manager') {
+  return hasMinRole(userId, venueId, minRole, email);
 }
 
 function sanitizeSlug(raw) {
@@ -48,16 +42,35 @@ export async function createVenueBadge(venueId, managerId, payload = {}, email =
   const allowed = await isVenueManager(managerId, venueId, email);
   if (!allowed) return { ok: false, status: 403, error: 'Not allowed' };
 
+  const { resolveTierFromVenue } = await import('./venuePackageService.js');
+  const { assertBadgeStudioKind, badgeStudioQuota } = await import('./megaPackages.js');
+  const vrow = await pool.query(
+    `SELECT subscription_tier, pro_enabled, city_partner_enabled FROM venues WHERE id = $1`,
+    [venueId]
+  );
+  const tier = resolveTierFromVenue(vrow.rows[0] || {});
+  const kind = String(payload.kind || payload.badge_kind || 'A').toUpperCase() === 'B' ? 'B' : 'A';
+  const studio = assertBadgeStudioKind({
+    tierId: tier,
+    kind,
+    seller: Boolean(payload.seller),
+  });
+  if (!studio.ok) return { ok: false, status: 403, error: studio.error, code: studio.code };
+  const quota = badgeStudioQuota(tier);
+
   const countR = await pool.query(
     `SELECT COUNT(*)::int AS n FROM venue_badges
      WHERE venue_id = $1 AND status IN ('pending_approval', 'approved')`,
     [venueId]
   );
-  if (Number(countR.rows[0]?.n || 0) >= MAX_VENUE) {
-    return { ok: false, status: 403, error: `Mekan başına en fazla ${MAX_VENUE} venue-badge` };
+  if (Number(countR.rows[0]?.n || 0) >= quota.max) {
+    return { ok: false, status: 403, error: `Mekan başına en fazla ${quota.max} venue-badge` };
   }
 
-  const conditionType = String(payload.condition_type || '').toLowerCase();
+  const nameEn = payload.name_en ? String(payload.name_en).trim().slice(0, 120) : null;
+  const nameTr = payload.name_tr ? String(payload.name_tr).trim().slice(0, 120) : null;
+
+  const conditionType = String(payload.condition_type || (studio.kind === 'A' ? 'identity' : '')).toLowerCase();
   if (FORBIDDEN_CONDITIONS.has(conditionType) || !ALLOWED_CONDITIONS.has(conditionType)) {
     return {
       ok: false,
@@ -66,10 +79,19 @@ export async function createVenueBadge(venueId, managerId, payload = {}, email =
     };
   }
 
-  // Mekan metin yazamaz — rozet adı sistem şablonundan üretilir.
-  const name = SYSTEM_BADGE_NAMES[conditionType] || 'Venue Rozeti';
-  if (payload.custom_text || payload.body_text || payload.description) {
-    return { ok: false, status: 400, error: 'Mekan rozete metin yazamaz; yalnızca logo' };
+  // Tür-B: kazanım şartını mekan yazar · her rozet LOCAL onayından geçer
+  const requirement = String(payload.requirement_text || '').trim().slice(0, 280);
+  if (!requirement) {
+    return { ok: false, status: 400, error: 'Kazanım şartı zorunlu — şartı mekan yazar' };
+  }
+  if (!nameEn || !nameTr) {
+    return { ok: false, status: 400, error: 'Çift-dil zorunlu: name_en + name_tr' };
+  }
+  const name = payload.name
+    ? String(payload.name).trim().slice(0, 120)
+    : nameTr;
+  if (payload.body_text || payload.description) {
+    return { ok: false, status: 400, error: 'Rozet gövde metni yok; şart requirement_text ile yazılır' };
   }
 
   const logoUrl = payload.logo_url ? String(payload.logo_url).trim().slice(0, 1000) : null;
@@ -81,21 +103,46 @@ export async function createVenueBadge(venueId, managerId, payload = {}, email =
     category: payload.category ? String(payload.category).slice(0, 64) : null,
     slot_id: payload.slot_id || null,
     event_key: payload.event_key ? String(payload.event_key).slice(0, 64) : null,
+    requirement_text: requirement || null,
   };
 
   try {
     const r = await pool.query(
       `INSERT INTO venue_badges (
          venue_id, slug, name, logo_url, shield_template, condition_type,
-         condition_config, status, created_by
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'pending_approval',$8)
+         condition_config, status, created_by, requirement_text, kind, name_en, name_tr
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'pending_approval',$8,$9,$10,$11,$12)
        RETURNING *`,
-      [venueId, slug, name, logoUrl, SHIELD, conditionType, JSON.stringify(config), managerId]
+      [
+        venueId,
+        slug,
+        name,
+        logoUrl,
+        SHIELD,
+        conditionType,
+        JSON.stringify(config),
+        managerId,
+        requirement || null,
+        studio.kind,
+        nameEn,
+        nameTr,
+      ]
     );
     return { ok: true, venue_badge: r.rows[0] };
   } catch (e) {
     if (String(e.message || '').includes('unique')) {
       return { ok: false, status: 409, error: 'Slug already exists for venue' };
+    }
+    if (String(e.code) === '42703') {
+      const r = await pool.query(
+        `INSERT INTO venue_badges (
+           venue_id, slug, name, logo_url, shield_template, condition_type,
+           condition_config, status, created_by
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'pending_approval',$8)
+         RETURNING *`,
+        [venueId, slug, name, logoUrl, SHIELD, conditionType, JSON.stringify(config), managerId]
+      );
+      return { ok: true, venue_badge: r.rows[0] };
     }
     throw e;
   }
@@ -109,7 +156,20 @@ export async function listVenueBadges(venueId, { status } = {}) {
      ORDER BY created_at DESC`,
     [venueId, status || null]
   );
-  return { ok: true, badges: r.rows, max: MAX_VENUE, shield_template: SHIELD };
+  const { resolveTierFromVenue } = await import('./venuePackageService.js');
+  const { badgeStudioQuota } = await import('./megaPackages.js');
+  const vrow = await pool.query(
+    `SELECT subscription_tier, pro_enabled, city_partner_enabled FROM venues WHERE id = $1`,
+    [venueId]
+  );
+  const quota = badgeStudioQuota(resolveTierFromVenue(vrow.rows[0] || {}));
+  return {
+    ok: true,
+    badges: r.rows,
+    max: quota.max,
+    kinds: quota.kinds,
+    shield_template: SHIELD,
+  };
 }
 
 /** Admin approval — materializes into global badges catalog (family=VENUE) */
@@ -194,6 +254,7 @@ export async function grantVenueBadgeIfEarned(userId, venueId, { ritualId = null
 
   let granted = 0;
   for (const vb of badges.rows) {
+    if (String(vb.kind || 'B').toUpperCase() === 'A') continue;
     const already = await pool.query(
       `SELECT 1 FROM venue_badge_grants WHERE venue_badge_id = $1 AND user_id = $2`,
       [vb.id, userId]

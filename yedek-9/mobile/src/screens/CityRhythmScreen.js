@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
-import { browseRituals } from '../services/api';
+import { browseRituals, getCurrentUser } from '../services/api';
 import useAuthStore from '../store/authStore';
 import CityRhythmHtmlContent from '../components/CityRhythmHtmlContent';
 import { pulseGridCardImage } from '../constants/pulseExampleImages';
@@ -33,7 +33,7 @@ const CITY_COORDS = {
 export default function CityRhythmScreen({ route }) {
   const navigation = useNavigation();
   const isDark = !!route?.params?.forceDark;
-  const { user } = useAuthStore();
+  const { user, token, updateUser } = useAuthStore();
   const [rituals, setRituals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,12 +45,39 @@ export default function CityRhythmScreen({ route }) {
   const [selectedMapIndex, setSelectedMapIndex] = useState(0);
   const mapRef = useRef(null);
   const [mapDelta, setMapDelta] = useState({ latitudeDelta: 0.08, longitudeDelta: 0.08 });
-  const city = user?.city || 'Milano';
+  const [city, setCity] = useState(user?.city || '');
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
     hasMore: false,
   });
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!token) {
+        if (alive) setCity(user?.city || '');
+        return;
+      }
+      try {
+        const me = await getCurrentUser(token);
+        if (!alive) return;
+        const next = (me?.city || user?.city || '').trim();
+        setCity(next);
+        if (me?.city && me.city !== user?.city) {
+          await updateUser({
+            city: me.city,
+            active_city_id: me.active_city_id || user?.active_city_id,
+          });
+        }
+      } catch (_e) {
+        if (alive) setCity(user?.city || '');
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [token, user?.id]);
 
   useEffect(() => {
     loadRituals(true);
@@ -193,12 +220,6 @@ export default function CityRhythmScreen({ route }) {
   const handleRitualPress = (ritual) => {
     if (!ritual?.id || String(ritual.id).startsWith('demo-')) return;
     navigation.navigate('RitualDetail', { ritualId: ritual.id });
-  };
-
-  /** son-part.md §8.4 — primary city search surface is Local World */
-  const openLocalWorldSearch = () => {
-    const q = searchQuery.trim();
-    navigation.navigate('Local', q ? { searchQuery: q } : undefined);
   };
 
   const formatTime = (startTime, ritual) => {
@@ -355,11 +376,7 @@ export default function CityRhythmScreen({ route }) {
             placeholderTextColor={isDark ? '#94a3b8' : '#a3a3a3'}
             style={[styles.mapSearchInput, isDark && styles.mapSearchInputDark]}
             returnKeyType="search"
-            onSubmitEditing={openLocalWorldSearch}
           />
-          <TouchableOpacity style={styles.mapFilterBtn} onPress={openLocalWorldSearch} activeOpacity={0.85}>
-            <Text style={styles.mapFilterText}>Local World</Text>
-          </TouchableOpacity>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
@@ -391,7 +408,7 @@ export default function CityRhythmScreen({ route }) {
           <View style={styles.mapEmptyWrap}>
             <Text style={[styles.mapEmptyTitle, isDark && styles.mapTitleDark]}>Haritada Ritual yok</Text>
             <Text style={styles.mapEmptySub}>
-              Konum bilgisi olan acik Ritual bulunamadi. Liste gorunumune gec veya Local World haritasina bak.
+              Konum bilgisi olan acik Ritual bulunamadi. Liste gorunumune gec.
             </Text>
             <TouchableOpacity style={styles.sheetListBtn} onPress={() => setViewMode('list')} activeOpacity={0.9}>
               <Text style={styles.sheetListBtnText}>☰ Listeye Don</Text>
@@ -489,7 +506,7 @@ export default function CityRhythmScreen({ route }) {
                 hasMore={pagination.hasMore}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
-                onSearchSubmit={openLocalWorldSearch}
+                onSearchSubmit={undefined}
                 selectedType={selectedType}
                 onTypeChange={setSelectedType}
                 timeFilter={timeFilter}
@@ -509,10 +526,6 @@ export default function CityRhythmScreen({ route }) {
             <TouchableOpacity style={styles.bottomNavButton} onPress={() => navigation.navigate('Pulse')} activeOpacity={0.7}>
               <MaterialIcons name="timeline" size={20} color="#9CA3AF" />
               <Text style={styles.bottomNavLabel}>Pulse</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.bottomNavButton} onPress={() => navigation.navigate('Local')} activeOpacity={0.7}>
-              <MaterialIcons name="public" size={20} color="#9CA3AF" />
-              <Text style={styles.bottomNavLabel}>Local</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.bottomNavButtonActive} onPress={() => {}} activeOpacity={0.7}>
               <View style={styles.bottomNavActiveCircle}>

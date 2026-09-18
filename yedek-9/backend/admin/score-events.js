@@ -48,5 +48,36 @@
       load();
     }
     document.getElementById('loadBtn')?.addEventListener('click', load);
+    loadAt9();
   });
+
+  async function loadAt9() {
+    const el = document.getElementById('at9');
+    if (!el) return;
+    try {
+      const res = await api('/api/admin/at9-trace-farming?days=30');
+      const d = res.data || {};
+      const b = d.buckets || {};
+      el.innerHTML =
+        '<div class="font-semibold mb-2">AT-9 tek-tık-iz (30g)</div>' +
+        '<div>no-peer +Δ: ' +
+        (d.no_peer_positive || 0) +
+        ' · one-tap: ' +
+        (d.one_tap_positive || 0) +
+        ' · oran: ' +
+        ((Number(d.one_tap_rate) || 0) * 100).toFixed(1) +
+        '%</div>' +
+        '<div class="text-slate-500 mt-1 text-xs">R1 ' +
+        (b.one_tap_r1 || 0) +
+        ' · RQ ' +
+        (b.one_tap_rq || 0) +
+        ' · memory ' +
+        (b.one_tap_memory || 0) +
+        ' · tekrar kullanıcı ' +
+        ((d.repeat_users || []).length) +
+        '</div>';
+    } catch (e) {
+      el.innerHTML = '<p class="text-slate-500">AT-9 yüklenemedi: ' + escapeHtml(e.message) + '</p>';
+    }
+  }
 })();

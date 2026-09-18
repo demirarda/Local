@@ -16,6 +16,12 @@ export const DEFAULT_PUBLIC_CONFIG = {
     feedback_floor_hours: 12,
     /** sonMD: mutlak tek-masa tavanı 40 🔒 */
     custom_max_cap: 40,
+    planned_max_ahead_d: 30,
+    event_max_ahead_d: 60,
+    forum_default_on: true,
+    whole_window_visibility_default: 'OFF',
+    door_set_user: ['PUBLIC', 'APPROVAL', 'FRIENDS', 'SOLO'],
+    door_set_business: ['PUBLIC', 'APPROVAL'],
     /** kategori soft önerisi (host aşabilir, uyarı) */
     category_soft_caps: {
       sohbet_tartisma: { soft_min: 3, soft_max: 12 },
@@ -41,7 +47,7 @@ export const DEFAULT_PUBLIC_CONFIG = {
     kapi_max_minutes: 60,
     ais_full_threshold_pct: 0.6,
     ais_reduced: 1.0,
-    ais_late: 0.85,
+    ais_late: 0.8,
     gps_radius_meters: {
       custom: 30,
       venue: 50,
@@ -71,9 +77,9 @@ export const DEFAULT_PUBLIC_CONFIG = {
     oturma: [2, 10],
   },
   regular: {
-    threshold: 4,
-    n: 4,
-    window_d: 45,
+    threshold: 5,
+    n: 5,
+    window_d: 90,
     decay_d: 60,
     parked: false,
     vitrin_default: false,
@@ -91,11 +97,11 @@ export const DEFAULT_PUBLIC_CONFIG = {
     cap_neg: 0.15,
     raw_cap_pos: 0.075,
     raw_cap_neg: 0.3,
-    weights: { a: 0.25, iq: 0.3, cf: 0.15, mb: 0.05, if: 0.2 },
+    weights: { a: 0.3, iq: 0.4, cf: 0, mb: 0.05, if: 0.2 },
     bc: {
       pos_amp: 1.25,
       pos_damp: 0.75,
-      neg_amp: 1.35,
+      neg_amp: 1.2,
       neg_damp: 0.7,
     },
     br_upper: 8.0,
@@ -116,7 +122,7 @@ export const DEFAULT_PUBLIC_CONFIG = {
   fl_display: {
     thresholds: [1, 4, 8],
     freshness_months: 12,
-    fb_weights: [1.0, 0.5, 0.0],
+    fb_weights: [0.5, 0.5, 0.0],
   },
   music_sdk_enabled: false,
   live_avatar: {
@@ -164,7 +170,15 @@ export const DEFAULT_PUBLIC_CONFIG = {
       hold_enforced: true,
     },
   },
-  zone: { spark_enabled: false },
+  zone: {
+    spark_enabled: false,
+    trust_number: false,
+    league_launch: true,
+    door_public_only: true,
+    first_seal: ['GPS', 'ZONE_TOTEM_TAP'],
+    take_rate_z: 0.08,
+    character_window_d: 90,
+  },
   chip_bridge: { enabled: false, open: false, min_repeats: 3 },
 };
 

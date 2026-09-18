@@ -2,26 +2,80 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { log, warn } from '../utils/logger';
 
+const PRIVATE_HOST_RE = /^(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/;
+
+/** Metro's current host (LAN IP). .env IPs go stale when DHCP changes. */
+function getExpoDevHost() {
+  if (typeof __DEV__ === 'undefined' || !__DEV__) return null;
+  try {
+    const Constants = require('expo-constants').default;
+    const hostUri =
+      Constants.expoConfig?.hostUri ||
+      Constants.expoGoConfig?.debuggerHost ||
+      Constants.linkingUri;
+    if (typeof hostUri !== 'string' || !hostUri) return null;
+    const host = hostUri.replace(/^[a-zA-Z]+:\/\//, '').split('/')[0].split(':')[0];
+    if (!host || host === 'exp.host' || host.endsWith('.exp.direct') || host.endsWith('.expo.dev')) {
+      return null;
+    }
+    return host;
+  } catch (_e) {
+    return null;
+  }
+}
+
+function rewriteLocalUrlHost(url, host) {
+  if (!url || !host) return url;
+  try {
+    const parsed = new URL(url);
+    if (!PRIVATE_HOST_RE.test(parsed.hostname) || parsed.hostname === host) return url;
+    parsed.hostname = host;
+    let out = parsed.toString();
+    if (!url.endsWith('/') && out.endsWith('/')) out = out.slice(0, -1);
+    return out;
+  } catch (_e) {
+    return url;
+  }
+}
+
+function applyDevHostOverrides(url) {
+  if (!url) return url;
+  const devHost = getExpoDevHost();
+  if (devHost) url = rewriteLocalUrlHost(url, devHost);
+  if (Platform.OS === 'android' && url.includes('localhost')) {
+    url = url.replace(/localhost/g, '10.0.2.2');
+  } else if (Platform.OS === 'ios' && url.includes('localhost') && !url.includes('192.')) {
+    url = url.replace(/localhost/g, '127.0.0.1');
+  }
+  return url;
+}
+
 // Backend base URL
 // Prefer EXPO_PUBLIC_API_BASE_URL when set (.env).
-// For physical devices, set EXPO_PUBLIC_API_BASE_URL to your Mac's IP (e.g. http://192.168.1.XXX:3000/api).
+// In Expo Go / simulator, the hostname is rewritten to Metro's current LAN IP
+// so a stale Mac address in .env (DHCP) does not time out.
 // Defaults: iOS simulator → 127.0.0.1, Android emulator → 10.0.2.2 (host localhost)
 export function getApiBaseUrl() {
   let url = process.env.EXPO_PUBLIC_API_BASE_URL;
-  if (url) {
-    if (Platform.OS === 'android' && url.includes('localhost')) {
-      url = url.replace(/localhost/g, '10.0.2.2');
-    } else if (Platform.OS === 'ios' && url.includes('localhost') && !url.includes('192.')) {
-      url = url.replace(/localhost/g, '127.0.0.1');
-    }
-    return url;
-  }
+  if (url) return applyDevHostOverrides(url);
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000/api';
+    return applyDevHostOverrides('http://10.0.2.2:3000/api');
   }
+  const devHost = getExpoDevHost();
+  if (devHost) return `http://${devHost}:3000/api`;
   return 'http://127.0.0.1:3000/api';
 }
+
+export function getWsUrl() {
+  const fromEnv = process.env.EXPO_PUBLIC_WS_URL;
+  if (fromEnv) return applyDevHostOverrides(fromEnv);
+  return getApiBaseUrl().replace(/\/api\/?$/, '');
+}
+
 const API_BASE_URL = getApiBaseUrl();
+if (typeof __DEV__ !== 'undefined' && __DEV__) {
+  log('API_BASE_URL', API_BASE_URL);
+}
 
 // In-memory auth token used for authenticated requests.
 // This is set from the auth store after login/initialize.
@@ -581,6 +635,7 @@ export async function joinRitual(ritualId, userId, inviteToken = null) {
     return {
       ...(data.data || {}),
       blocked_peer_warning: Boolean(data.blocked_peer_warning),
+      blocked_peer_copy: data.blocked_peer_copy || null,
       rejoin: Boolean(data.rejoin),
     };
   } catch (error) {
@@ -629,22 +684,30 @@ export async function createRitual(ritualData) {
       headers: buildJsonHeaders(),
       body: JSON.stringify(ritualData),
     });
-    
+
+    const errorData = await parseJsonResponse(response);
+
     if (!response.ok) {
-      const errorData = await response.json();
       const error = new Error(errorData.error || 'Failed to create ritual');
       if (errorData.requires_attendance) {
         error.requires_attendance = true;
       }
       if (errorData.code) error.code = errorData.code;
       if (errorData.until) error.until = errorData.until;
+      if (errorData.conflicting_ritual_id) {
+        error.conflicting_ritual_id = errorData.conflicting_ritual_id;
+      }
       throw error;
     }
-    
-    const data = await response.json();
-    return data.data;
+
+    return errorData.data;
   } catch (error) {
-    console.error('Error creating ritual:', error);
+    const expected = ['K1_TIME_OVERLAP', 'RATE_LIMIT', 'HOST_BANNED', 'PENALTY_SUSPENDED'].includes(
+      error?.code
+    );
+    if (!expected && !error?.requires_attendance) {
+      console.error('Error creating ritual:', error);
+    }
     throw error;
   }
 }
@@ -804,6 +867,7 @@ export async function checkIn(ritualId, userId, options = {}) {
         latitude: options.latitude,
         longitude: options.longitude,
         checkin_code: options.checkin_code || options.checkin_keyword || options.host_keyword || null,
+        rotating_code: options.rotating_code || options.totem_code || null,
         nfc_marker: Boolean(options.nfc_marker),
         nfc_tag_id: options.nfc_tag_id || null,
         open_note: options.open_note || null,
@@ -833,7 +897,9 @@ export async function checkIn(ritualId, userId, options = {}) {
     }
     return data;
   } catch (error) {
-    console.error('Error checking in:', error);
+    if (error?.status >= 500 || !error?.status) {
+      console.error('Error checking in:', error);
+    }
     throw error;
   }
 }
@@ -1078,7 +1144,7 @@ export async function claimRitualEscrow(_ritualId, _payload = {}) {
   };
 }
 
-export async function leaveRitual(ritualId, userId) {
+export async function leaveRitual(ritualId, userId, { safety = false, reason = null } = {}) {
   const url = `${API_BASE_URL}/attendance/leave`;
   
   try {
@@ -1088,6 +1154,8 @@ export async function leaveRitual(ritualId, userId) {
       body: JSON.stringify({
         ritual_id: ritualId,
         user_id: userId,
+        safety: Boolean(safety),
+        reason: reason || undefined,
       }),
     });
     
@@ -1160,6 +1228,36 @@ export async function fetchDsDashboard() {
     throw new Error(err.error || 'Failed to fetch DS dashboard');
   }
   const data = await parseJsonResponse(response);
+  return data.data;
+}
+
+export async function fetchVenueCrowdMix(venueId) {
+  const url = `${API_BASE_URL}/venues/${venueId}/ds-crowd-mix`;
+  const response = await fetchWithTimeout(url, {
+    method: 'GET',
+    headers: buildJsonHeaders(),
+  });
+  const data = await parseJsonResponse(response);
+  if (!response.ok || !data.success) {
+    const err = new Error(data.error || 'Crowd mix failed');
+    err.status = response.status;
+    throw err;
+  }
+  return data.data;
+}
+
+export async function fetchBrandCrowdFit(brandId) {
+  const url = `${API_BASE_URL}/search/brands/${brandId}/ds-fit`;
+  const response = await fetchWithTimeout(url, {
+    method: 'GET',
+    headers: buildJsonHeaders(),
+  });
+  const data = await parseJsonResponse(response);
+  if (!response.ok || !data.success) {
+    const err = new Error(data.error || 'Brand crowd fit failed');
+    err.status = response.status;
+    throw err;
+  }
   return data.data;
 }
 
@@ -1472,6 +1570,53 @@ export async function fetchMyVenueApplication() {
   return { application: data.data, onboarding_steps: data.onboarding_steps || [] };
 }
 
+export async function uploadVenueApplicationFile(uri, { kind = 'photo', mimeType = 'image/jpeg' } = {}) {
+  const localResp = await fetch(uri);
+  const blob = await localResp.blob();
+  const contentType = mimeType || blob.type || 'image/jpeg';
+  const initResp = await fetch(`${API_BASE_URL}/venues/applications/media`, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify({
+      kind,
+      content_type: contentType,
+      file_size_bytes: blob.size,
+    }),
+  });
+  const initJson = await initResp.json().catch(() => ({}));
+  if (!initResp.ok) throw new Error(initJson.error || 'Yükleme başlatılamadı');
+  const d = initJson.data || {};
+  const putResp = await fetch(d.upload_url, {
+    method: 'PUT',
+    headers: { 'Content-Type': d.content_type || contentType },
+    body: blob,
+  });
+  if (!putResp.ok) throw new Error(`Yükleme başarısız (${putResp.status})`);
+  const finResp = await fetch(`${API_BASE_URL}/venues/applications/media/finalize`, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify({ storage_key: d.storage_key }),
+  });
+  const finJson = await finResp.json().catch(() => ({}));
+  if (!finResp.ok) throw new Error(finJson.error || 'Yükleme tamamlanamadı');
+  return finJson.data?.url || finJson.data?.uri;
+}
+
+export async function saveVenueApplicationDraft(payload) {
+  const url = `${API_BASE_URL}/venues/applications/me/draft`;
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || 'Failed to save draft');
+  }
+  const data = await response.json();
+  return data.data;
+}
+
 export async function submitVenueApplication(payload) {
   const url = `${API_BASE_URL}/venues/applications`;
   const response = await fetch(url, {
@@ -1559,7 +1704,7 @@ export async function verifyVenueGps(venueId, { lat, lng }) {
   const response = await fetch(url, {
     method: 'POST',
     headers: buildJsonHeaders(),
-    body: JSON.stringify({ lat, lng }),
+    body: JSON.stringify({ lat, lng, client: 'native' }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -1935,17 +2080,31 @@ export async function updateVenueTotemStatus(venueId, totemStatus) {
   return json.data || json;
 }
 
-/** C5: totem talebi (kayıp → white-glove kuyruk) */
-export async function requestVenueTotem(venueId, note = null) {
+/** C5: totem talebi (kayıp → white-glove kuyruk) veya özel figür siparişi */
+export async function requestVenueTotem(venueId, note = null, { kind } = {}) {
   const url = `${API_BASE_URL}/venues/${venueId}/totem-request`;
   const response = await fetch(url, {
     method: 'POST',
     headers: buildJsonHeaders(),
-    body: JSON.stringify({ note: note || null }),
+    body: JSON.stringify({ note: note || null, kind: kind || 'replacement' }),
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(json.error || 'Totem talebi gonderilemedi');
+  }
+  return json.data || json;
+}
+
+export async function postVenueAnnouncement(venueId, body) {
+  const url = `${API_BASE_URL}/venues/${venueId}/announcements`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify({ body }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.error || json.code || 'Duyuru gönderilemedi');
   }
   return json.data || json;
 }
@@ -1993,6 +2152,50 @@ export async function setVenueFeaturedMemories(venueId, featuredMemoryIds = []) 
   return data.data;
 }
 
+export async function fetchVenueMembership(venueId) {
+  const url = `${API_BASE_URL}/venues/${venueId}/membership`;
+  const response = await fetchWithRetry(url, { method: 'GET', headers: buildJsonHeaders() });
+  if (!response.ok) throw new Error('Üyelik vitrini yüklenemedi');
+  const data = await response.json();
+  return data.data || { plans: [], vitrine_enabled: true, badge: null };
+}
+
+export async function patchVenueMembershipVitrine(venueId, enabled) {
+  const url = `${API_BASE_URL}/venues/${venueId}/membership/vitrine`;
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify({ enabled }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(json.error || 'Vitrin güncellenemedi');
+  return json.data;
+}
+
+export async function createVenueMembershipPlan(venueId, payload = {}) {
+  const url = `${API_BASE_URL}/venues/${venueId}/membership/plans`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(json.error || 'Plan eklenemedi');
+  return json.data;
+}
+
+export async function enrollVenueMembership(venueId, planId) {
+  const url = `${API_BASE_URL}/venues/${venueId}/membership/plans/${planId}/enroll`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify({}),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(json.error || 'Kayıt alınamadı');
+  return json.data;
+}
+
 export async function getVenue(venueId) {
   const url = `${API_BASE_URL}/venues/${venueId}`;
   try {
@@ -2021,6 +2224,67 @@ export async function patchVenue(venueId, payload = {}) {
     throw new Error(json.error || 'Venue guncellenemedi');
   }
   return json.data || json;
+}
+
+export async function deactivateVenuePortal(venueId, portalId) {
+  const url = `${API_BASE_URL}/venues/${venueId}/portals/${encodeURIComponent(portalId)}/deactivate`;
+  const response = await fetch(url, { method: 'PATCH', headers: buildJsonHeaders() });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(json.error || 'Totem deaktive edilemedi');
+  return json.data || json;
+}
+
+export async function queueOrtakAn(ritualId, { kind, payload = {}, publish = true } = {}) {
+  const url = `${API_BASE_URL}/rituals/${ritualId}/ortak-an`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify({ kind, payload, publish }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(json.error || 'Ortak-an kuyruğa alınamadı');
+  return json.data || json;
+}
+
+export async function fetchOrtakAn(ritualId) {
+  const url = `${API_BASE_URL}/rituals/${ritualId}/ortak-an`;
+  const response = await fetchWithRetry(url, { method: 'GET', headers: buildJsonHeaders() });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(json.error || 'Ortak-an alınamadı');
+  return json.data || json;
+}
+
+export async function fetchVenueManagers(venueId) {
+  const url = `${API_BASE_URL}/venues/${venueId}/managers`;
+  const response = await fetchWithRetry(url, { method: 'GET', headers: buildJsonHeaders() });
+  if (!response.ok) throw new Error('Failed to list venue managers');
+  const data = await response.json();
+  const people = data.data || [];
+  people.seats = data.seats || null;
+  return people;
+}
+
+export async function addVenueManager(venueId, { email, user_id, role = 'staff' } = {}) {
+  const url = `${API_BASE_URL}/venues/${venueId}/managers`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify({ email, user_id, role }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(json.error || 'Personel eklenemedi');
+  return json.data || json;
+}
+
+export async function removeVenueManager(venueId, userId) {
+  const url = `${API_BASE_URL}/venues/${venueId}/managers/${userId}`;
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: buildJsonHeaders(),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(json.error || 'Personel kaldırılamadı');
+  return json;
 }
 
 /** §12 Arama & keşif */
@@ -2545,7 +2809,8 @@ export async function fetchPublicConfig() {
     const data = await parseJsonResponse(response);
     return data.data || null;
   } catch (error) {
-    console.error('Error fetching public config:', error);
+    // Non-fatal: app falls back to DEFAULT_PUBLIC_CONFIG. Avoid LogBox overlay.
+    warn('Error fetching public config:', error);
     return null;
   }
 }
@@ -2986,10 +3251,14 @@ export async function reactToChatMessage(messageId, emoji) {
   return data.data;
 }
 
-/** Host ritual iptali — weather_cancel cezasız · birth_cancel hard-delete */
-export async function cancelRitualAsHost(ritualId, { reason = 'host_cancel', category = null } = {}) {
+/** Host ritual iptali — weather_cancel cezasız · birth_cancel hard-delete · E6 rebuild_mode */
+export async function cancelRitualAsHost(
+  ritualId,
+  { reason = 'host_cancel', category = null, rebuild_mode = null } = {}
+) {
   const qs = new URLSearchParams({ reason });
   if (category) qs.set('category', category);
+  if (rebuild_mode) qs.set('rebuild_mode', rebuild_mode);
   const url = `${API_BASE_URL}/rituals/${ritualId}?${qs.toString()}`;
   const response = await fetch(url, {
     method: 'DELETE',
@@ -2997,7 +3266,7 @@ export async function cancelRitualAsHost(ritualId, { reason = 'host_cancel', cat
       ...buildJsonHeaders(),
       Accept: 'application/json',
     },
-    body: JSON.stringify({ reason, category }),
+    body: JSON.stringify({ reason, category, rebuild_mode }),
   });
   if (response.status === 204) return { success: true, cancel_reason: reason };
   const data = await response.json().catch(() => ({}));
@@ -3008,6 +3277,58 @@ export async function cancelRitualAsHost(ritualId, { reason = 'host_cancel', cat
     throw err;
   }
   return data;
+}
+
+export async function vacateRitualHost(ritualId) {
+  const url = `${API_BASE_URL}/rituals/${ritualId}/vacate-host`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify({}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Hostluk bırakılamadı');
+  return data;
+}
+
+export async function claimRitualHost(ritualId) {
+  const url = `${API_BASE_URL}/rituals/${ritualId}/claim-host`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify({}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Hostluk üstlenilemedi');
+  return data;
+}
+
+export async function claimRitualRebuild(ritualId) {
+  const url = `${API_BASE_URL}/rituals/${ritualId}/rebuild/claim`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify({}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Yeniden kurma alınamadı');
+  return data;
+}
+
+export async function fetchSalesPocket() {
+  const url = `${API_BASE_URL}/users/me/sales-pocket`;
+  const response = await fetch(url, { method: 'GET', headers: buildJsonHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Satışlarım yüklenemedi');
+  return data.data;
+}
+
+export async function fetchVenueRotatingTotemCode(venueId) {
+  const url = `${API_BASE_URL}/venues/${venueId}/totem/rotating-code`;
+  const response = await fetch(url, { method: 'GET', headers: buildJsonHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Dönen kod alınamadı');
+  return data.data;
 }
 
 /** §2D panel [yer veremedik] */
@@ -3967,6 +4288,15 @@ export async function fetchZones(params = {}) {
   return data.data || [];
 }
 
+export async function fetchZoneLeague(week = null) {
+  const q = week ? `?week=${encodeURIComponent(week)}` : '';
+  const url = `${API_BASE_URL}/zones/league${q}`;
+  const response = await fetch(url, { method: 'GET', headers: buildJsonHeaders() });
+  if (!response.ok) throw new Error('Zone ligi yüklenemedi');
+  const data = await response.json();
+  return data.data;
+}
+
 export async function fetchModQueue(params = {}) {
   const q = new URLSearchParams();
   if (params.status) q.append('status', params.status);
@@ -4290,6 +4620,8 @@ export async function updateUserProfile(userId, profile) {
     'hosted_count_visible',
     'regular_vitrine_visible',
     'bio_quote_memory_id',
+    'city',
+    'active_city_id',
   ];
   const hasVisibility = visibilityKeys.some((k) => profile?.[k] !== undefined);
   if (hasVisibility) {

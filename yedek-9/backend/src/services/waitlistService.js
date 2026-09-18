@@ -8,7 +8,7 @@ import LOCAL_CONFIG from '../config/localConfig.js';
 import { computePrelobbyGrace, assertCanJoinRitualConstraints } from './ritualState.js';
 
 /** Koltuğu işgal eden statüler — cancelled/no_show yer açar. */
-const OCCUPYING_STATUSES = ['confirmed', 'waitlisted'];
+const OCCUPYING_STATUSES = ['confirmed', 'waitlisted', 'offered'];
 
 export function isWaitlistEnabled() {
   return LOCAL_CONFIG.stubs?.WAITLIST_ENABLED === true;
@@ -27,7 +27,7 @@ async function countConfirmed(client, ritualId) {
 async function loadRitual(client, ritualId) {
   const result = await client.query(
     `SELECT id, title, host_id, capacity, start_time, duration, status, collapsed_at,
-            event_group_id, origin, time_type, venue_id, visibility
+            event_group_id, origin, time_type, venue_id, visibility, fee_amount
      FROM rituals WHERE id = $1`,
     [ritualId]
   );
@@ -267,10 +267,38 @@ export async function promoteWaitlistForRitual(ritualId) {
     }
 
     let seatsLeft = Number(ritual.capacity) - (await countConfirmed(client, ritualId));
+    try {
+      const held = await client.query(
+        `SELECT COUNT(*)::int AS n
+         FROM ritual_waitlist
+         WHERE ritual_id = $1
+           AND status = 'offered'
+           AND (offer_expires_at IS NULL OR offer_expires_at > NOW())`,
+        [ritualId]
+      );
+      seatsLeft -= Number(held.rows[0]?.n || 0);
+    } catch (_e) {
+      /* optional */
+    }
     if (seatsLeft <= 0) {
       await client.query('ROLLBACK');
       return [];
     }
+
+    const { waitlistPromoteMode, waitlistOfferTtlMin } = await import('./megaLaunchLocks.js');
+    const paid = Number(ritual.fee_amount || 0) > 0;
+    const mode = waitlistPromoteMode({ paid });
+    const ttlMin = waitlistOfferTtlMin();
+
+    await client.query(
+      `UPDATE ritual_waitlist
+       SET status = 'waiting', offered_at = NULL, offer_expires_at = NULL
+       WHERE ritual_id = $1
+         AND status = 'offered'
+         AND offer_expires_at IS NOT NULL
+         AND offer_expires_at < NOW()`,
+      [ritualId]
+    );
 
     const queue = await client.query(
       `SELECT * FROM ritual_waitlist
@@ -285,6 +313,24 @@ export async function promoteWaitlistForRitual(ritualId) {
 
       const gate = await assertCanJoinRitualConstraints(client, entry.user_id, ritual);
       if (!gate.ok) continue;
+
+      if (mode === 'OFFER') {
+        await client.query(
+          `UPDATE ritual_waitlist
+           SET status = 'offered', offered_at = NOW(),
+               offer_expires_at = NOW() + ($2::int * INTERVAL '1 minute')
+           WHERE id = $1`,
+          [entry.id, ttlMin]
+        );
+        promoted.push({
+          user_id: entry.user_id,
+          position: entry.position,
+          mode: 'OFFER',
+          offer_ttl_min: ttlMin,
+        });
+        seatsLeft -= 1;
+        continue;
+      }
 
       const joinedAt = new Date();
       const { graceEndsAt, exactDetailsUnlockedAt } = computePrelobbyGrace(
@@ -334,16 +380,77 @@ export async function promoteWaitlistForRitual(ritualId) {
   }
 
   for (const item of promoted) {
+    const isOffer = item.mode === 'OFFER';
     await notifyBestEffort(
       item.user_id,
-      'waitlist_promoted',
-      'Yıldız listesinden koltuk açıldı',
-      'Sıradaki koltuk senin oldu — masaya katıldın.',
-      { ritual_id: ritualId }
+      isOffer ? 'waitlist_offer' : 'waitlist_promoted',
+      isOffer ? 'Koltuk teklifi' : 'Koltuk açıldı',
+      isOffer
+        ? 'Sıradaki koltuk senin — teklif kartı. Cevapsızsa sonraki sıraya geçer.'
+        : 'Boş koltuk otomatik sana geçti.',
+      { ritual_id: ritualId, mode: item.mode || 'AUTO', offer_ttl_min: item.offer_ttl_min || null }
     );
   }
 
   return promoted;
+}
+
+export async function acceptWaitlistOffer(userId, ritualId) {
+  if (!isWaitlistEnabled()) {
+    return { ok: false, status: 410, body: { success: false, error: 'Waitlist park' } };
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const entry = await client.query(
+      `SELECT * FROM ritual_waitlist
+       WHERE ritual_id = $1 AND user_id = $2 AND status = 'offered'
+       FOR UPDATE`,
+      [ritualId, userId]
+    );
+    if (!entry.rows[0]) {
+      await client.query('ROLLBACK');
+      return { ok: false, status: 404, body: { success: false, error: 'Teklif yok veya doldu' } };
+    }
+    if (entry.rows[0].offer_expires_at && new Date(entry.rows[0].offer_expires_at) < new Date()) {
+      await client.query(
+        `UPDATE ritual_waitlist SET status = 'waiting', offered_at = NULL, offer_expires_at = NULL WHERE id = $1`,
+        [entry.rows[0].id]
+      );
+      await client.query('COMMIT');
+      return { ok: false, status: 410, body: { success: false, error: 'Teklif süresi doldu', code: 'OFFER_EXPIRED' } };
+    }
+    const ritual = await loadRitual(client, ritualId);
+    const joinedAt = new Date();
+    const { graceEndsAt, exactDetailsUnlockedAt } = computePrelobbyGrace(
+      joinedAt,
+      ritual.start_time,
+      ritual
+    );
+    await client.query(
+      `INSERT INTO ritual_attendance (
+         ritual_id, user_id, status, joined_at,
+         prelobby_grace_ends_at, exact_details_unlocked_at, join_count
+       )
+       VALUES ($1, $2, 'confirmed', $3, $4, $5, 1)
+       ON CONFLICT (ritual_id, user_id)
+       DO UPDATE SET status = 'confirmed',
+                     joined_at = EXCLUDED.joined_at,
+                     cancelled_at = NULL`,
+      [ritualId, userId, joinedAt, graceEndsAt, exactDetailsUnlockedAt]
+    );
+    await client.query(
+      `UPDATE ritual_waitlist SET status = 'promoted', promoted_at = NOW() WHERE id = $1`,
+      [entry.rows[0].id]
+    );
+    await client.query('COMMIT');
+    return { ok: true, data: { mode: 'OFFER', accepted: true } };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    return { ok: false, status: 500, body: { success: false, error: e.message } };
+  } finally {
+    client.release();
+  }
 }
 
 /** Koltuk açılınca terfi denemesi — çağıran akışı bloklamaz. */

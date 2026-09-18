@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateToken, requireAdmin } from './auth.js';
+import { authenticateToken, requireProductOps } from './auth.js';
 import {
   createReport,
   applyModAction,
@@ -76,7 +76,7 @@ router.post('/reports', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/reports', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/reports', authenticateToken, requireProductOps('mod'), async (req, res) => {
   try {
     const rows = await listModQueue({
       status: req.query.status || 'queued',
@@ -89,7 +89,7 @@ router.get('/reports', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/reports/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/reports/:id', authenticateToken, requireProductOps('mod'), async (req, res) => {
   try {
     const pool = (await import('../config/database.js')).default;
     const r = await pool.query(
@@ -107,7 +107,7 @@ router.get('/reports/:id', authenticateToken, requireAdmin, async (req, res) => 
   }
 });
 
-router.post('/actions', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/actions', authenticateToken, requireProductOps('mod'), async (req, res) => {
   try {
     const action = await applyModAction({
       reportId: req.body.report_id,
@@ -116,6 +116,7 @@ router.post('/actions', authenticateToken, requireAdmin, async (req, res) => {
       secondModeratorId: req.body.second_moderator_id,
       founderApproved: Boolean(req.body.founder_approved),
       founderUserId: req.user.userId,
+      founderEmail: req.user?.email || '',
       note: req.body.note || null,
       contentAction: req.body.content_action || null,
       rsDeltaOverride: req.body.rs_delta ?? null,
@@ -128,7 +129,7 @@ router.post('/actions', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/false-reporter', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/false-reporter', authenticateToken, requireProductOps('mod'), async (req, res) => {
   try {
     const action = await sanctionFalseReporter({
       reporterId: req.body.reporter_id,
@@ -174,7 +175,7 @@ router.get('/host-witness/pending', authenticateToken, async (req, res) => {
 });
 
 /** Check-in C1–C5 funnel özeti (admin) — LOCAL_CheckIn_Sistemi §8 */
-router.get('/checkin-funnel', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/checkin-funnel', authenticateToken, requireProductOps('funnel'), async (req, res) => {
   try {
     const { getCheckinFunnelSummary } = await import('../services/checkinFunnelService.js');
     const days = Number(req.query.days) || 7;
@@ -193,7 +194,7 @@ router.get('/checkin-funnel', authenticateToken, requireAdmin, async (req, res) 
   }
 });
 
-router.patch('/totem-ops/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.patch('/totem-ops/:id', authenticateToken, requireProductOps('funnel'), async (req, res) => {
   try {
     const { updateTotemOpsStatus } = await import('../services/checkinFunnelService.js');
     const result = await updateTotemOpsStatus(req.params.id, req.body?.status);
@@ -207,7 +208,7 @@ router.patch('/totem-ops/:id', authenticateToken, requireAdmin, async (req, res)
   }
 });
 
-router.get('/checkin-field-notes', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/checkin-field-notes', authenticateToken, requireProductOps('funnel'), async (req, res) => {
   try {
     const { listCheckinFieldNotes } = await import('../services/checkinFunnelService.js');
     const result = await listCheckinFieldNotes({ limit: Number(req.query.limit) || 40 });
@@ -220,7 +221,7 @@ router.get('/checkin-field-notes', authenticateToken, requireAdmin, async (req, 
   }
 });
 
-router.post('/checkin-field-notes', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/checkin-field-notes', authenticateToken, requireProductOps('funnel'), async (req, res) => {
   try {
     const { createCheckinFieldNote } = await import('../services/checkinFunnelService.js');
     const result = await createCheckinFieldNote({
@@ -270,7 +271,7 @@ router.post('/appeals', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/appeals/:id/resolve', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/appeals/:id/resolve', authenticateToken, requireProductOps('mod'), async (req, res) => {
   try {
     const row = await resolveAppeal({
       appealId: req.params.id,
@@ -284,7 +285,7 @@ router.post('/appeals/:id/resolve', authenticateToken, requireAdmin, async (req,
   }
 });
 
-router.get('/appeals', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/appeals', authenticateToken, requireProductOps('mod'), async (req, res) => {
   try {
     const pool = (await import('../config/database.js')).default;
     const r = await pool.query(

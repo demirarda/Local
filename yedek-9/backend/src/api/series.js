@@ -11,6 +11,7 @@ import {
   listSeriesInstances,
   decorateSeries,
   SERIES_CADENCES,
+  buildSeriesIntelligence,
 } from '../services/seriesService.js';
 import {
   listSeriesRegulars,
@@ -180,6 +181,38 @@ router.post('/:id/transfer', authenticateToken, async (req, res) => {
   } catch (error) {
     const status = /Only current host/i.test(error.message) ? 403 : 400;
     return res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/:id/intelligence', authenticateToken, async (req, res) => {
+  try {
+    const series = await getSeries(req.params.id);
+    if (!series) return res.status(404).json({ success: false, error: 'Series not found' });
+    if (String(series.host_id) !== String(req.user.userId)) {
+      return res.status(403).json({ success: false, error: 'Host only' });
+    }
+    let venueId = series.venue_id;
+    if (!venueId) {
+      const rit = await pool.query(
+        `SELECT venue_id FROM rituals WHERE series_id = $1 AND venue_id IS NOT NULL LIMIT 1`,
+        [series.id]
+      );
+      venueId = rit.rows[0]?.venue_id || null;
+    }
+    let venueTier = 'operator';
+    if (venueId) {
+      const { resolveTierFromVenue } = await import('../services/venuePackageService.js');
+      const v = await pool.query(
+        `SELECT subscription_tier, pro_enabled, city_partner_enabled FROM venues WHERE id = $1`,
+        [venueId]
+      );
+      venueTier = resolveTierFromVenue(v.rows[0] || {});
+    }
+    const data = await buildSeriesIntelligence(series.id, { venueTier });
+    if (!data.ok) return res.status(data.status || 403).json(data);
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 

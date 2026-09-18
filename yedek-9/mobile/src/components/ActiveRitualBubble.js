@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { navigateToLiveRitual } from '../utils/liveRitualNav';
 import { liveWindowHoursOf } from '../constants/localConfig';
+import useT from '../i18n/useT';
 
 const ACTIVE_RITUAL_KEY = '@local_active_ritual';
 const ACTIVE_RITUAL_UNREAD_KEY = '@local_active_ritual_unread';
@@ -58,7 +59,14 @@ export async function clearActiveRitualUnread(ritualId) {
   } catch (_) {}
 }
 
+export async function clearActiveRitualSnapshot() {
+  try {
+    await AsyncStorage.removeItem(ACTIVE_RITUAL_KEY);
+  } catch (_) {}
+}
+
 export default function ActiveRitualBubble({ navigation }) {
+  const t = useT();
   const nav = navigation || useNavigation();
   const [ritual, setRitual] = useState(null);
   const [unread, setUnread] = useState(0);
@@ -76,6 +84,14 @@ export default function ActiveRitualBubble({ navigation }) {
         const unreadMap = unreadRaw ? JSON.parse(unreadRaw) : {};
         if (!mounted) return;
         const parsed = raw ? JSON.parse(raw) : null;
+        const state = getBubbleState(parsed);
+        if (state === 'ended') {
+          await clearActiveRitualSnapshot();
+          if (!mounted) return;
+          setRitual(null);
+          setUnread(0);
+          return;
+        }
         setRitual(parsed);
         setUnread(parsed?.id ? Number(unreadMap[String(parsed.id)] || 0) : 0);
       } catch (_) {
@@ -135,14 +151,14 @@ export default function ActiveRitualBubble({ navigation }) {
 
   const glowScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
 
-  if (!ritual || !bubbleState) return null;
+  if (!ritual || !bubbleState || bubbleState === 'ended') return null;
   if (currentRouteName === 'LiveRitual' || currentRouteName === 'LiveRitualDark') return null;
 
   const stateMap = {
-    active: { label: 'AKTIF', color: '#1B2E4A', border: '#1B2E4A', hint: 'Ritual devam ediyor' },
-    near: { label: 'YAKIN', color: '#1f2937', border: '#f59e0b', hint: 'Window hala acik' },
-    upcoming: { label: 'YAKLASAN', color: '#111827', border: '#9ca3af', hint: 'Ritual yakinda basliyor' },
-    ended: { label: 'SONA ERDI', color: '#6b7280', border: '#d1d5db', hint: 'Arsivi ac' },
+    active: { label: t('bubble_active'), color: '#1B2E4A', border: '#1B2E4A', hint: t('bubble_active_hint') },
+    near: { label: t('bubble_near'), color: '#1f2937', border: '#f59e0b', hint: t('bubble_near_hint') },
+    upcoming: { label: t('bubble_upcoming'), color: '#111827', border: '#9ca3af', hint: t('bubble_upcoming_hint') },
+    ended: { label: t('bubble_ended'), color: '#6b7280', border: '#d1d5db', hint: t('bubble_ended_hint') },
   };
 
   const s = stateMap[bubbleState];

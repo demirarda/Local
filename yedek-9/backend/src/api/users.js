@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import pool from '../config/database.js';
 import LOCAL_CONFIG, { liveWindowHoursOf } from '../config/localConfig.js';
 import { authenticateToken } from './auth.js';
-import { getRsPublicFlags, resolveRsForViewer } from '../services/rsVisibility.js';
+import { getRsViewState, resolveRsForViewer } from '../services/rsVisibility.js';
 import { signMediaPath } from '../utils/mediaSigning.js';
 import { buildAvatarStoragePath } from '../utils/mediaPaths.js';
 import {
@@ -304,20 +304,30 @@ router.get('/me/connections', authenticateToken, async (req, res) => {
        ORDER BY f.created_at DESC`,
       [userId]
     );
+    const publicFlags = await getRsViewState(result.rows.map((row) => row.connection_id));
     return res.json({
       success: true,
-      data: result.rows.map((row) => ({
+      data: result.rows.map((row) => {
+        const rsResolved = resolveRsForViewer(
+          userId,
+          row.connection_id,
+          row.connection_rs_score != null ? Number(row.connection_rs_score) : null,
+          publicFlags
+        );
+        return {
         id: row.id,
         user: {
           id: row.connection_id,
           name: row.connection_name,
           city: row.connection_city,
           university: row.connection_university,
-          rs_score: Number(row.connection_rs_score) || 0,
+          rs_score: rsResolved.rs_score,
+          rs_visible: rsResolved.rs_visible,
           avatar_url: buildAvatarUrl(req, row.connection_avatar_url),
         },
         created_at: row.created_at,
-      })),
+      };
+      }),
     });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to fetch connections' });
@@ -402,12 +412,29 @@ router.get('/me/passport', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/users/me/r1-archive — §9 R1 yalnız sahip arşivi
+router.get('/me/r1-archive', authenticateToken, async (req, res) => {
+  try {
+    const { getOwnerR1Archive } = await import('../services/r1ArchiveService.js');
+    const data = await getOwnerR1Archive(req.user.userId, {
+      limit: req.query.limit,
+      offset: req.query.offset,
+    });
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to fetch R1 archive' });
+  }
+});
+
 // GET /api/users/me/ds-dashboard - private DS radar (son-part.md §6, sadece sahibi)
 router.get('/me/ds-dashboard', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { getPrivateDsDashboard } = await import('../services/dsEngine.js');
     const data = await getPrivateDsDashboard(userId);
+    for (const k of ['ds_ema', 'ds_multiplier', 'ds_raw', 'ds_full', 'ds_prev']) {
+      if (data && typeof data === 'object') delete data[k];
+    }
     return res.json({ success: true, data });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to fetch DS dashboard' });
@@ -422,6 +449,17 @@ router.get('/me/window-bubbles', authenticateToken, async (req, res) => {
     return res.json({ success: true, data: bubbles });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to fetch window bubbles' });
+  }
+});
+
+// GET /api/users/me/sales-pocket — Satışlarım 7-blok (payout ≠ vitrin)
+router.get('/me/sales-pocket', authenticateToken, async (req, res) => {
+  try {
+    const { getSalesPocket } = await import('../services/megaLockFlows.js');
+    const pocket = await getSalesPocket(req.user.userId);
+    return res.json({ success: true, data: pocket });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to fetch sales pocket' });
   }
 });
 
@@ -552,7 +590,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const sharedRitualCount = sharedCheck.rows[0]?.c || 0;
     const isSelf = String(viewerId) === String(id);
     const rsScore = parseFloat(user.rs_score) || 6.0;
-    const publicFlags = await getRsPublicFlags([id]);
+    const publicFlags = await getRsViewState([id]);
     const rsResolved = resolveRsForViewer(viewerId, id, rsScore, publicFlags);
 
     // Kapalı profil: yabancıya minimal kart
@@ -624,6 +662,16 @@ router.get('/:id', authenticateToken, async (req, res) => {
     } catch (_e) {
       friendsListPublic = false;
     }
+    let cityVeil = false;
+    if (!isSelf) {
+      try {
+        const { cityDisplayVeil, citySealsForUser } = await import('../services/megaLaunchLocks.js');
+        const n = await citySealsForUser(id, user.city_id);
+        cityVeil = cityDisplayVeil({ sealsInCity: n }).veil;
+      } catch (_e) {
+        /* optional */
+      }
+    }
     res.json({
       success: true,
       data: stripFollowerCountsFromProfile({
@@ -636,8 +684,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
         rs_score: rsResolved.rs_score,
         rs_rounded_10: rsResolved.rs_public_raw && rsResolved.rs_visible ? Math.round(rsScore) : null,
         rs_exact_visible: rsResolved.rs_public_raw === true,
-        rs_visible: rsResolved.rs_visible,
+        rs_visible: isSelf ? rsResolved.rs_visible : Boolean(rsResolved.rs_visible && !cityVeil),
         rs_ring_opacity: rsResolved.rs_ring_opacity,
+        rs_hidden_reason: cityVeil && !isSelf ? 'city_veil' : rsResolved.rs_hidden_reason || null,
+        rs_not_shown_yet: isSelf ? !rsResolved.rs_visible : !rsResolved.rs_visible || cityVeil,
+        city_display_veil: cityVeil,
+        placement_complete: publicFlags.placement?.get(String(id)) === true,
+        far_phase: publicFlags.farPhase,
         avatar_url: user.avatar_url ? buildAvatarUrl(req, user.avatar_url) : null,
         rituals_attended: parseInt(user.rituals_attended) || 0,
         /** §14 — M hosted yalnız toggle açıksa (veya self) */
@@ -1164,21 +1217,28 @@ router.get('/:id/rs-history', authenticateToken, async (req, res) => {
       [id]
     );
 
-    const currentRS = userQuery.rows.length > 0 
-      ? parseFloat(userQuery.rows[0].rs_score) 
+    const rawRS = userQuery.rows.length > 0
+      ? parseFloat(userQuery.rows[0].rs_score)
       : 5.0;
     const feedbackCount = userQuery.rows.length > 0
       ? parseInt(userQuery.rows[0].feedback_count) || 0
       : 0;
 
+    const rsState = await getRsViewState([id]);
+    const rsResolved = resolveRsForViewer(id, id, rawRS, rsState);
+    const currentRS = rsResolved.rs_visible ? rawRS : null;
+    const notShownYet = !rsResolved.rs_visible;
+
     if (historyResult.rows.length === 0) {
       return res.json({
         success: true,
         data: {
-          currentRS: currentRS,
-          feedbackCount: feedbackCount,
+          currentRS,
+          feedbackCount,
           changes: [],
-          last30DaysTrend: []
+          last30DaysTrend: [],
+          not_shown_yet: notShownYet,
+          rs_hidden_reason: rsResolved.rs_hidden_reason || null,
         }
       });
     }
@@ -1399,10 +1459,12 @@ router.get('/:id/rs-history', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       data: {
-        currentRS: currentRS,
-        feedbackCount: feedbackCount,
-        changes: changes,
-        last30DaysTrend: sampledTrendData
+        currentRS,
+        feedbackCount,
+        changes: notShownYet ? [] : changes,
+        last30DaysTrend: notShownYet ? [] : sampledTrendData,
+        not_shown_yet: notShownYet,
+        rs_hidden_reason: rsResolved.rs_hidden_reason || null,
       }
     });
   } catch (error) {

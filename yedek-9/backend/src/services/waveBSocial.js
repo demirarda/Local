@@ -127,11 +127,28 @@ export async function cancelRitualAsHost({ ritualId, hostId, reason = 'host_canc
     [ritualId, cancelReason, hostId]
   );
 
+  let refund = { refund: 'none', code: 'UNPAID' };
+  try {
+    const { paidRafRefund } = await import('./megaLaunchLocks.js');
+    const fee = await pool.query(`SELECT fee_amount, first_sealed_at FROM rituals WHERE id = $1`, [ritualId]);
+    const paid = Number(fee.rows[0]?.fee_amount || 0) > 0;
+    if (paid) {
+      const now = Date.now();
+      const start = new Date(ritual.start_time).getTime();
+      const locked = Number.isFinite(start) && now >= start - 15 * 60 * 1000;
+      const sealed = Boolean(fee.rows[0]?.first_sealed_at);
+      refund = paidRafRefund({ locked, sealed, replacementFilled: false });
+    }
+  } catch (_e) {
+    /* optional */
+  }
+
   return {
     ok: true,
     ritual: { ...ritual, status: 'cancelled', cancel_reason: cancelReason },
     weather: weatherMeta,
     penalty_free: cancelReason === 'weather_cancel',
+    refund,
   };
 }
 

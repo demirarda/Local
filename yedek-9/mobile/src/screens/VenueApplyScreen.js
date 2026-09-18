@@ -15,7 +15,11 @@ import {
   fetchMyVenueApplication,
   submitVenueApplication,
   withdrawVenueApplication,
+  saveVenueApplicationDraft,
+  uploadVenueApplicationFile,
 } from '../services/api';
+import { captureInAppMedia } from '../utils/inAppCamera';
+import * as ImagePicker from 'expo-image-picker';
 
 const BG = '#f5f5f5';
 const CARD = '#fff';
@@ -39,12 +43,27 @@ const STATUS_LABELS = {
   approved: 'Onaylandi',
   rejected: 'Reddedildi',
   withdrawn: 'Geri cekildi',
+  draft: 'Taslak',
 };
 
 const COMMITMENT_TEXT =
   'LOCAL mekan ortağı olarak doğruluğu, fiziksel mekânı ve kullanıcı güvenliğini taahhüt ederim. Sahte veya yanıltıcı bilgi hesabımı kapatır.';
 
 const PHOTO_MIN = 5;
+
+function buildWeeklyHours(weekdayClose = '23:00', weekendClose = '00:00') {
+  const wd = weekdayClose || '23:00';
+  const we = weekendClose || '00:00';
+  return {
+    mon: { open: '09:00', close: wd, closed: false },
+    tue: { open: '09:00', close: wd, closed: false },
+    wed: { open: '09:00', close: wd, closed: false },
+    thu: { open: '09:00', close: wd, closed: false },
+    fri: { open: '09:00', close: we, closed: false },
+    sat: { open: '10:00', close: we, closed: false },
+    sun: { open: '10:00', close: wd, closed: false },
+  };
+}
 
 export default function VenueApplyScreen({ navigation, route }) {
   const { user } = useAuthStore();
@@ -64,7 +83,11 @@ export default function VenueApplyScreen({ navigation, route }) {
   const [mapsUrl, setMapsUrl] = useState('');
   const [socialUrl, setSocialUrl] = useState('');
   const [photoUrlsRaw, setPhotoUrlsRaw] = useState('');
+  const [proofUrl, setProofUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [viesVat, setViesVat] = useState('');
+  const [weekdayClose, setWeekdayClose] = useState('23:00');
+  const [weekendClose, setWeekendClose] = useState('00:00');
   const [commitmentAccepted, setCommitmentAccepted] = useState(false);
 
   const load = async () => {
@@ -73,6 +96,25 @@ export default function VenueApplyScreen({ navigation, route }) {
       const data = await fetchMyVenueApplication();
       setApplication(data?.application || null);
       setOnboardingSteps(data?.onboarding_steps || []);
+      const app = data?.application;
+      if (app && (app.status === 'draft' || app.status === 'rejected' || app.status === 'withdrawn')) {
+        setBusinessName(app.business_name || '');
+        setVenueName(app.venue_name || '');
+        setCity(app.city || user?.city || 'Milano');
+        setAddress(app.address || '');
+        setCategory(app.category || 'Kahve');
+        setDescription(app.description || '');
+        setProofNotes(app.proof_notes === 'draft' ? '' : (app.proof_notes || ''));
+        setContactEmail(app.contact_email || user?.email || '');
+        setMapsUrl(app.maps_url || '');
+        setSocialUrl(app.social_url || '');
+        setPhotoUrlsRaw((app.photo_urls || []).join('\n'));
+        setProofUrl(app.proof_url || '');
+        setViesVat(app.vies_vat || '');
+        const hours = app.weekly_hours || {};
+        if (hours.mon?.close) setWeekdayClose(hours.mon.close);
+        if (hours.sat?.close) setWeekendClose(hours.sat.close);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -89,7 +131,87 @@ export default function VenueApplyScreen({ navigation, route }) {
     if (route?.params?.prefillCity) setCity(route.params.prefillCity);
   }, [route?.params?.prefillEmail, route?.params?.prefillCity]);
 
-  const canSubmit = !application || ['rejected', 'withdrawn'].includes(application.status);
+  const canSubmit = !application || ['rejected', 'withdrawn', 'draft'].includes(application.status);
+
+  const buildPayload = (photos) => ({
+    business_name: businessName.trim(),
+    venue_name: venueName.trim(),
+    city: city.trim(),
+    address: address.trim() || null,
+    category: category.trim() || null,
+    description: description.trim() || null,
+    proof_notes: proofNotes.trim(),
+    contact_email: contactEmail.trim() || null,
+    maps_url: mapsUrl.trim(),
+    social_url: socialUrl.trim() || null,
+    photo_urls: photos,
+    proof_url: proofUrl.trim() || null,
+    vies_vat: viesVat.trim() || null,
+    weekly_hours: buildWeeklyHours(weekdayClose, weekendClose),
+    commitment_accepted: commitmentAccepted,
+    commitment_text: COMMITMENT_TEXT,
+  });
+
+  const addPhotoUri = async (uri, mimeType) => {
+    setUploading(true);
+    try {
+      const url = await uploadVenueApplicationFile(uri, { kind: 'photo', mimeType });
+      setPhotoUrlsRaw((prev) => [prev, url].filter(Boolean).join('\n'));
+    } catch (e) {
+      Alert.alert('Foto', e.message || 'Yüklenemedi');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCamera = async () => {
+    const media = await captureInAppMedia('photo');
+    if (!media?.uri) return;
+    await addPhotoUri(media.uri, media.mimeType);
+  };
+
+  const handleGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Izin', 'Galeri izni gerekli.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsMultipleSelection: true,
+      selectionLimit: 8,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    for (const asset of result.assets) {
+      await addPhotoUri(asset.uri, asset.mimeType || 'image/jpeg');
+    }
+  };
+
+  const handleProof = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Izin', 'Belge icin galeri izni gerekli.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    setUploading(true);
+    try {
+      const url = await uploadVenueApplicationFile(result.assets[0].uri, {
+        kind: 'proof',
+        mimeType: result.assets[0].mimeType || 'image/jpeg',
+      });
+      setProofUrl(url);
+    } catch (e) {
+      Alert.alert('Belge', e.message || 'Yüklenemedi');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const parsePhotoUrls = (raw) =>
     String(raw || '')
@@ -117,26 +239,25 @@ export default function VenueApplyScreen({ navigation, route }) {
     }
     setSubmitting(true);
     try {
-      await submitVenueApplication({
-        business_name: businessName.trim(),
-        venue_name: venueName.trim(),
-        city: city.trim(),
-        address: address.trim() || null,
-        category: category.trim() || null,
-        description: description.trim() || null,
-        proof_notes: proofNotes.trim(),
-        contact_email: contactEmail.trim() || null,
-        maps_url: mapsUrl.trim(),
-        social_url: socialUrl.trim() || null,
-        photo_urls: photos,
-        vies_vat: viesVat.trim() || null,
-        commitment_accepted: true,
-        commitment_text: COMMITMENT_TEXT,
-      });
+      await submitVenueApplication(buildPayload(photos));
       Alert.alert('Basvuru gonderildi', 'LOCAL ekibi basvurunu inceleyecek.');
       await load();
     } catch (e) {
       Alert.alert('Hata', e.message || 'Basvuru gonderilemedi');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDraft = async () => {
+    setSubmitting(true);
+    try {
+      const photos = parsePhotoUrls(photoUrlsRaw);
+      await saveVenueApplicationDraft(buildPayload(photos));
+      Alert.alert('Taslak kaydedildi', 'Web veya bu telefondan devam edebilirsin.');
+      await load();
+    } catch (e) {
+      Alert.alert('Hata', e.message || 'Taslak kaydedilemedi');
     } finally {
       setSubmitting(false);
     }
@@ -219,7 +340,7 @@ export default function VenueApplyScreen({ navigation, route }) {
 
       <Text style={styles.title}>LOCAL Venue Basvurusu</Text>
       <Text style={styles.subtitle}>
-        Ayri uygulama yok — onay sonrasi ayni app icinde mekan arayuzune gecersin.
+        Ayni taslak web ve mobilde. Foto ve Maps burada; VAT/saatleri masada da bitirebilirsin.
       </Text>
 
       {application ? (
@@ -227,7 +348,7 @@ export default function VenueApplyScreen({ navigation, route }) {
           <Text style={styles.statusLabel}>Durum</Text>
           <Text style={styles.statusValue}>{STATUS_LABELS[application.status] || application.status}</Text>
           <Text style={styles.statusMeta}>{application.venue_name} · {application.city}</Text>
-          {application.status === 'pending' ? (
+          {['pending', 'draft'].includes(application.status) ? (
             <TouchableOpacity style={styles.linkBtn} onPress={handleWithdraw}>
               <Text style={styles.linkBtnText}>Basvuruyu geri cek</Text>
             </TouchableOpacity>
@@ -284,18 +405,30 @@ export default function VenueApplyScreen({ navigation, route }) {
             autoCapitalize="none"
             keyboardType="url"
           />
-          <Text style={styles.label}>Foto URL'leri (min {PHOTO_MIN})</Text>
-          <Text style={styles.hint}>Virgul veya satir ile ayir · en az {PHOTO_MIN} URL</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={photoUrlsRaw}
-            onChangeText={setPhotoUrlsRaw}
-            multiline
-            placeholder={'https://...\nhttps://...'}
-            autoCapitalize="none"
-          />
-          <Text style={styles.label}>VIES / VAT (opsiyonel)</Text>
-          <TextInput style={styles.input} value={viesVat} onChangeText={setViesVat} placeholder="TR1234567890" autoCapitalize="characters" />
+          <Text style={styles.label}>Fotograflar (min {PHOTO_MIN})</Text>
+          <Text style={styles.hint}>Kamera veya galeri · {parsePhotoUrls(photoUrlsRaw).length}/{PHOTO_MIN}</Text>
+          <View style={styles.checkRow}>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleCamera} disabled={uploading || submitting}>
+              <Text style={styles.secondaryBtnText}>Kamera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleGallery} disabled={uploading || submitting}>
+              <Text style={styles.secondaryBtnText}>Galeri</Text>
+            </TouchableOpacity>
+          </View>
+          {uploading ? <ActivityIndicator color="#000" style={{ marginVertical: 8 }} /> : null}
+          {parsePhotoUrls(photoUrlsRaw).map((u, i) => (
+            <Text key={`${u}-${i}`} style={styles.hint} numberOfLines={1}>{i + 1}. yüklendi</Text>
+          ))}
+          <Text style={styles.label}>Belge (PDF/foto — AB dışı VAT veya VAT yoksa zorunlu)</Text>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={handleProof} disabled={uploading || submitting}>
+            <Text style={styles.secondaryBtnText}>{proofUrl ? 'Belge yüklendi — değiştir' : 'Belge yükle'}</Text>
+          </TouchableOpacity>
+          <Text style={styles.label}>VIES / VAT</Text>
+          <TextInput style={styles.input} value={viesVat} onChangeText={setViesVat} placeholder="IT00743110157" autoCapitalize="characters" />
+          <Text style={styles.label}>Hafta ici kapanis (Gece Raporu)</Text>
+          <TextInput style={styles.input} value={weekdayClose} onChangeText={setWeekdayClose} placeholder="23:00" />
+          <Text style={styles.label}>Hafta sonu kapanis</Text>
+          <TextInput style={styles.input} value={weekendClose} onChangeText={setWeekendClose} placeholder="00:00" />
           <Text style={styles.label}>Taahhut</Text>
           <Text style={styles.commitmentText}>{COMMITMENT_TEXT}</Text>
           <TouchableOpacity
@@ -309,6 +442,9 @@ export default function VenueApplyScreen({ navigation, route }) {
               color={commitmentAccepted ? '#16a34a' : MUTED}
             />
             <Text style={styles.checkLabel}>Taahhüt metnini okudum ve kabul ediyorum</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={handleDraft} disabled={submitting}>
+            <Text style={styles.secondaryBtnText}>Taslak kaydet</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.primaryBtn} onPress={handleSubmit} disabled={submitting}>
             {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Basvuruyu Gonder</Text>}

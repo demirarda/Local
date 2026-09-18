@@ -81,9 +81,39 @@ export async function recordLateCancelEvent(userId, ritualId, context = {}) {
     return { kind: 'warning', strike };
   }
 
+  const joker = await tryConsumeLifeJoker(userId, ritualId);
+  if (joker.used) {
+    return { kind: 'none', reason: 'life_joker', strike, joker: true };
+  }
+
   const result = await applyDirectPenalty(userId, ritualId, penalty, 'late_cancel');
   await afterLateCancelPenalty(userId, ritualId, strike, result.delta);
   return { ...result, strike };
+}
+
+async function tryConsumeLifeJoker(userId, ritualId) {
+  const cfg = LOCAL_CONFIG.penalties?.LIFE_JOKER;
+  if (!cfg || !Number(cfg.COUNT)) return { used: false };
+  const days = Number(cfg.PER_DAYS || 90);
+  try {
+    const used = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM life_joker_events
+       WHERE user_id = $1 AND consumed_at >= NOW() - ($2 || ' days')::interval`,
+      [userId, String(days)]
+    );
+    if (Number(used.rows[0]?.n || 0) >= Number(cfg.COUNT)) {
+      return { used: false, exhausted: true };
+    }
+    await pool.query(
+      `INSERT INTO life_joker_events (user_id, ritual_id) VALUES ($1, $2)`,
+      [userId, ritualId || null]
+    );
+    return { used: true };
+  } catch (e) {
+    if (e.code === '42P01') return { used: false };
+    console.error('life joker:', e.message);
+    return { used: false };
+  }
 }
 
 /**

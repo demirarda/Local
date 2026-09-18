@@ -4,10 +4,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useThemeStore from '../store/themeStore';
 
-/** son-part.md §8.4 — Pulse · Local World · Social Passport · Create Ritual */
+/** Pulse · Create Ritual · Social Passport */
+export const MAIN_NAV_BODY_HEIGHT = 56;
+
+export function mainBottomNavHeight(insetsBottom) {
+  return MAIN_NAV_BODY_HEIGHT + Math.max(insetsBottom || 0, 16) + 8;
+}
 const TABS = [
   { key: 'Pulse', label: 'Pulse', isPulse: true },
-  { key: 'Local', label: 'Local World', icon: 'public', shortLabel: 'Local World' },
   { key: 'CreateRitual', label: 'Create', icon: 'add-circle-outline', shortLabel: 'Create' },
   { key: 'SocialPassport', label: 'Social Passport', icon: 'account-circle', shortLabel: 'Passport' },
 ];

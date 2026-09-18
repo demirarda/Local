@@ -204,6 +204,9 @@ export async function voteForumComment(commentId, userId, vote) {
     [commentId]
   );
   if (comment.rows.length === 0) return { ok: false, status: 404, error: 'Comment not found' };
+  if (String(comment.rows[0].user_id) === String(userId)) {
+    return { ok: false, status: 403, error: 'Cannot vote on your own comment', code: 'SELF_VOTE_FORBIDDEN' };
+  }
 
   const gate = await assertForumWritable(comment.rows[0].ritual_id, userId);
   if (!gate.ok) return gate;

@@ -206,9 +206,32 @@ app.use('/api/', limiter);
 const ritualCreationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: parseInt(process.env.RATE_LIMIT_RITUAL_MAX)
-    || (isProduction ? 5 : 10),
-  message: 'Too many rituals created. Please try again later.',
-  skip: (req) => req.method !== 'POST', // Only apply to POST requests
+    || (isProduction ? 5 : 30),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Too many rituals created. Please try again later.',
+    code: 'RATE_LIMIT',
+  },
+  keyGenerator: (req) => {
+    const auth = req.headers.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded?.userId) return `ritual-create:user:${decoded.userId}`;
+      } catch (_e) {
+        /* fall back to IP */
+      }
+    }
+    return `ritual-create:ip:${req.ip}`;
+  },
+  skip: (req) => {
+    if (req.method !== 'POST') return true;
+    const path = String(req.originalUrl || req.url || '').split('?')[0];
+    return path !== '/api/rituals' && path !== '/api/rituals/';
+  },
 });
 app.use('/api/rituals', ritualCreationLimiter);
 
@@ -467,6 +490,7 @@ app.use(`${API_V1_PREFIX}/series`, seriesRouter);
 
 // Admin panel (static)
 app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
+app.use('/venue', express.static(path.join(__dirname, '..', 'venue-web')));
 
 // Standalone admin HTML pages (served from project root)
 const projectRoot = path.join(__dirname, '..', '..');
@@ -661,7 +685,7 @@ io.on('connection', (socket) => {
         ritual_id: message.ritual_id,
         user_id: message.user_id,
         user_name: user.name || 'Unknown',
-        user_rs_score: parseFloat(user.rs_score) || 0,
+        user_rs_score: null,
         content: message.content || message.message,
         type: message.type || type,
         media_url: message.media_url,
@@ -868,39 +892,11 @@ if (process.env.NODE_ENV !== 'test') {
         }
       });
 
-      // Feedback deadline reminder: window_end - 6 hours (hourly cron)
+      // §11 — deadline'dan ~2s önce TEK hatırlatma (eski duration_end+18s job yok)
       cron.default.schedule('0 * * * *', async () => {
         try {
           const { processFeedbackClosingWarnings } = await import('./services/ritualNotificationCron.js');
           await processFeedbackClosingWarnings();
-          const feedbackNotifications = await pool.query(
-            `SELECT r.id AS ritual_id, r.title, ra.user_id
-             FROM rituals r
-             JOIN ritual_attendance ra ON ra.ritual_id = r.id
-             WHERE ra.status::text NOT IN ('no_show', 'cancelled')
-               AND (
-                 r.start_time
-                 + (COALESCE(r.duration, 60)::text || ' minutes')::interval
-                 + INTERVAL '18 hours'
-               ) <= NOW()
-               AND (
-                 r.start_time
-                 + (COALESCE(r.duration, 60)::text || ' minutes')::interval
-                 + INTERVAL '18 hours'
-               ) > NOW() - INTERVAL '1 minute'`
-          );
-          for (const row of feedbackNotifications.rows) {
-            await enqueue(
-              'feedback-deadline',
-              {
-                user_id: row.user_id,
-                ritual_id: row.ritual_id,
-                title: row.title,
-                mode: 'notify',
-              },
-              { priority: 5, jobId: `feedback-deadline-notify:${row.ritual_id}:${row.user_id}` }
-            );
-          }
         } catch (err) {
           logger.warn('Cron feedback deadline reminder failed', { error: err.message });
         }

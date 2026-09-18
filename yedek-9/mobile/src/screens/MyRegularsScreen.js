@@ -79,7 +79,7 @@ export default function MyRegularsScreen({ navigation }) {
               {item.venue_city || '—'}
               {item.is_regular
                 ? ' · Regular'
-                : ` · ${item.counter || `${item.count}/${item.threshold || 3}`}`}
+                : ` · ${item.counter || `${item.count}/${item.threshold || 5}`}`}
             </Text>
           </TouchableOpacity>
         )}

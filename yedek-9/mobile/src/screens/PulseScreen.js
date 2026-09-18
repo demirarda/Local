@@ -80,6 +80,7 @@ import { log, warn } from '../utils/logger';
 import { requireVerifiedUser } from '../utils/verificationGuard';
 import { PULSE, FONT_SERIF } from '../constants/pulseTheme';
 import { getPulseEmptyCopy } from '../utils/pulseEmptyCopy';
+import useT from '../i18n/useT';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 32 - 12) / 2; // 2 columns with padding and gap
@@ -97,7 +98,7 @@ const MORE_BUTTON_BG = PULSE.g200;
 const CARD_RADIUS = 16;
 const TAB_RADIUS = 999;
 const NOTIFICATION_UNREAD_KEY = '@local_notification_unread_count';
-const CORE_FILTERS = ['Tümü', 'Local World', 'Arkadaşlar', 'FL', 'Uni', 'Gizli'];
+const CORE_FILTERS = ['Tümü', 'Arkadaşlar', 'FL', 'Uni', 'Gizli'];
 const DISCOVERY_FILTERS = [
   'Şimdi Canlı',
   'Yer Var',
@@ -111,6 +112,27 @@ const DISCOVERY_FILTERS = [
 ];
 const FILTER_OPTIONS = [...CORE_FILTERS, ...DISCOVERY_FILTERS];
 const MORE_FILTER_CHIP = 'Daha fazla';
+const FILTER_LABEL_KEYS = {
+  Tümü: 'pulse_filter_all',
+  Arkadaşlar: 'pulse_filter_friends',
+  Gizli: 'pulse_filter_hidden',
+  'Şimdi Canlı': 'pulse_filter_live_now',
+  'Yer Var': 'pulse_filter_has_room',
+  'Başlamak Üzere': 'pulse_filter_starting',
+  Yakınımda: 'pulse_filter_nearby',
+  'Takip Edilenler': 'pulse_filter_following',
+  'Özel Etkinlikler': 'pulse_filter_special',
+  Doğrulanmışlar: 'pulse_filter_verified',
+  Seri: 'pulse_filter_series',
+  "LOCAL'de Yeni": 'pulse_filter_new',
+  'Daha fazla': 'pulse_filter_more',
+  'Daha az': 'pulse_filter_less',
+};
+
+function filterLabel(filter, translate) {
+  const key = FILTER_LABEL_KEYS[filter];
+  return key ? translate(key) : filter;
+}
 
 const cleanFriendsText = (value = '') =>
   String(value || '')
@@ -123,9 +145,6 @@ const buildPulseBrowseQueriesForFilter = (filter, { city, viewerId }) => {
   const focused = [];
 
   switch (filter) {
-    case 'Local World':
-      focused.push({ ...base, feed_scope: 'local_world', limit: 60 });
-      break;
     case 'FL':
       focused.push({ ...base, feed_scope: 'fl', limit: 80 });
       break;
@@ -445,6 +464,7 @@ const mapSpecialItemsFromData = (ritualRows = [], memoryRows = [], city = 'Milan
 };
 
 export default function PulseScreen({ navigation, route }) {
+  const t = useT();
   const isDark = !!route?.params?.forceDark;
   const [rituals, setRituals] = useState({
     live_now: [],
@@ -997,11 +1017,6 @@ export default function PulseScreen({ navigation, route }) {
       weekEnd.setDate(now.getDate() + 7);
 
       if (activeFilter === 'Tümü') return allRituals;
-      if (activeFilter === 'Local World') {
-        return allRituals.filter(
-          (r) => r.forum_enabled || String(r.window_type || '') === 'open_forum'
-        );
-      }
       if (activeFilter === 'FL') {
         return allRituals.filter((r) => r.is_fl_friend_hosting || r.is_fl_friend_attending);
       }
@@ -1216,9 +1231,9 @@ export default function PulseScreen({ navigation, route }) {
 
   const pulseEmptyCopy = getPulseEmptyCopy(useNearby ? 'Yakınımda' : activeFilter);
   const pulseEmptyProps = {
-    emptyTitle: pulseEmptyCopy.title,
-    emptyMessage: pulseEmptyCopy.message,
-    emptyActionLabel: pulseEmptyCopy.action || undefined,
+    emptyTitle: t(pulseEmptyCopy.title),
+    emptyMessage: t(pulseEmptyCopy.message),
+    emptyActionLabel: pulseEmptyCopy.action ? t(pulseEmptyCopy.action) : undefined,
     emptyActionRoute: pulseEmptyCopy.route || undefined,
   };
 
@@ -1487,7 +1502,7 @@ export default function PulseScreen({ navigation, route }) {
             </View>
             <View style={styles.headerTitleContainer}>
               <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>Pulse</Text>
-              <Text style={[styles.headerSubtitle, isDark && styles.headerSubtitleDark]}>Sehrindeki Akis</Text>
+              <Text style={[styles.headerSubtitle, isDark && styles.headerSubtitleDark]}>{t('pulse_subtitle')}</Text>
             </View>
             <TouchableOpacity style={styles.moreButton}>
               <MaterialIcons name="more-horiz" size={20} color={isDark ? '#f9fafb' : '#000000'} />
@@ -1495,8 +1510,8 @@ export default function PulseScreen({ navigation, route }) {
           </View>
         </View>
         <ErrorState
-          title="Pulse yuklenemedi"
-          message="Rituals yuklenemedi. Baglantini kontrol edip tekrar dene."
+          title={t('pulse_load_failed_title')}
+          message={t('pulse_load_failed_msg')}
           onRetry={handleRetry}
         />
       </View>
@@ -1522,7 +1537,7 @@ export default function PulseScreen({ navigation, route }) {
             </View>
             <View style={styles.headerTitleContainer}>
               <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>Pulse</Text>
-              <Text style={[styles.headerSubtitle, isDark && styles.headerSubtitleDark]}>Sehrindeki Akis</Text>
+              <Text style={[styles.headerSubtitle, isDark && styles.headerSubtitleDark]}>{t('pulse_subtitle')}</Text>
             </View>
             <TouchableOpacity style={styles.moreButton}>
               <MaterialIcons name="more-horiz" size={20} color={isDark ? '#f9fafb' : '#000000'} />
@@ -1539,12 +1554,12 @@ export default function PulseScreen({ navigation, route }) {
                 : CORE_FILTERS
               ).map((filter) => (
                 <View key={filter} style={styles.filterChip}>
-                  <Text style={styles.filterChipText}>{filter}</Text>
+                  <Text style={styles.filterChipText}>{filterLabel(filter, t)}</Text>
                 </View>
               ))}
               {!showDiscoveryFilters && !DISCOVERY_FILTERS.includes(activeFilter) ? (
                 <View style={styles.filterChip}>
-                  <Text style={styles.filterChipText}>{MORE_FILTER_CHIP}</Text>
+                  <Text style={styles.filterChipText}>{t('pulse_filter_more')}</Text>
                 </View>
               ) : null}
             </ScrollView>
@@ -1611,12 +1626,12 @@ export default function PulseScreen({ navigation, route }) {
             <TouchableOpacity
               style={[styles.createPillor, isDark && styles.createPillorDark]}
               onPress={() => {
-                if (!requireVerifiedUser(user, 'Ritual olusturmak icin universite e-postani dogrulamalisin.', navigation)) return;
+                if (!requireVerifiedUser(user, t('pulse_verify_to_create'), navigation)) return;
                 navigation.navigate(isDark ? 'CreateRitualDark' : 'CreateRitual');
               }}
               activeOpacity={0.88}
             >
-              <Text style={[styles.createPillorText, isDark && styles.createPillorTextDark]}>+ Ritual Olustur</Text>
+              <Text style={[styles.createPillorText, isDark && styles.createPillorTextDark]}>{t('pulse_create')}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.headerLogoCenter} pointerEvents="none">
@@ -1649,10 +1664,10 @@ export default function PulseScreen({ navigation, route }) {
         </View>
         <View style={[styles.headerTitleBlock, styles.headerTitleBlockExact]}>
           <Text style={[styles.headerTitle, styles.headerTitleExact, styles.headerTitleSerif, isDark && styles.headerTitleDark]}>Pulse</Text>
-          <Text style={[styles.headerSubtitle, styles.headerSubtitleExact, isDark && styles.headerSubtitleDark]}>Sehrindeki Akis</Text>
+          <Text style={[styles.headerSubtitle, styles.headerSubtitleExact, isDark && styles.headerSubtitleDark]}>{t('pulse_subtitle')}</Text>
         </View>
 
-        {/* Filter Tabs — §8.4 core: Local World / Friends / FL / Uni / Hidden; discovery in "Daha fazla" */}
+        {/* Filter Tabs — Friends / FL / Uni / Hidden; discovery in "Daha fazla" */}
         <View style={[styles.filterContainer, styles.filterContainerExact]}>
           <ScrollView
             horizontal
@@ -1695,7 +1710,7 @@ export default function PulseScreen({ navigation, route }) {
                       isActive && isDark && styles.filterChipTextActiveDark,
                     ]}
                   >
-                    {filter}
+                    {filterLabel(filter, t)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -1713,7 +1728,7 @@ export default function PulseScreen({ navigation, route }) {
                 activeOpacity={0.85}
               >
                 <Text style={[styles.filterChipText, isDark && styles.filterChipTextDark]}>
-                  {MORE_FILTER_CHIP}
+                  {t('pulse_filter_more')}
                 </Text>
               </TouchableOpacity>
             ) : showDiscoveryFilters ? (
@@ -1729,7 +1744,7 @@ export default function PulseScreen({ navigation, route }) {
                 activeOpacity={0.85}
               >
                 <Text style={[styles.filterChipText, isDark && styles.filterChipTextDark]}>
-                  Daha az
+                  {t('pulse_filter_less')}
                 </Text>
               </TouchableOpacity>
             ) : null}
@@ -2064,25 +2079,6 @@ export default function PulseScreen({ navigation, route }) {
           navigation={navigation}
           onBack={() => setActiveFilter('Tümü')}
         />
-      ) : activeFilter === 'Local World' ? (
-        <PulseExactAllContent
-          filteredRituals={displayRituals}
-          pulseMemories={pulseMemories}
-          pulseReposts={pulseReposts}
-          venueActivities={venueActivities}
-          viewer={user}
-          city={city}
-          navigation={navigation}
-          getCardType={getCardType}
-          loading={loading}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          contentMode="local_world"
-          isDark={isDark}
-          hasMore={false}
-          loadingMore={false}
-          {...pulseEmptyProps}
-        />
       ) : activeFilter === 'FL' ? (
         <PulseExactAllContent
           filteredRituals={displayRituals}
@@ -2290,13 +2286,6 @@ export default function PulseScreen({ navigation, route }) {
             <Text style={styles.bottomNavPulseLogo}>L.</Text>
           </View>
           <Text style={[styles.bottomNavLabelActive, isDark && styles.bottomNavLabelActiveDark]}>Pulse</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bottomNavButton}
-          onPress={() => navigation.navigate('Local')}
-        >
-          <MaterialIcons name="public" size={24} color={isDark ? '#9CA3AF' : TEXT_TERTIARY} />
-          <Text style={[styles.bottomNavLabel, isDark && styles.bottomNavLabelDark]}>Local</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.bottomNavButton}

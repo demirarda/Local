@@ -16,6 +16,8 @@ import {
   upsertFeedbackChipStats,
   recordOpsChipTelemetry,
 } from '../services/chipService.js';
+import { filterFeedbackRowsForViewer } from '../services/r1ArchiveService.js';
+import { isHostOrCreator } from '../services/megaSpec.js';
 
 const router = express.Router();
 
@@ -24,11 +26,13 @@ const FEEDBACK_TYPE = {
   P2HOST: 'p2host',
   P2R: 'p2r',
   P2Z: 'p2z',
+  P2C: 'p2c',
   P2M: 'p2m',
   P2V: 'p2v',
   R1_SELF: 'r1_self',
-  /** EVENT gece-geneli — RS dışı; night report / event aggregate */
   RQ_EVENT: 'rq_event',
+  P2S: 'p2s',
+  VR: 'vr',
 };
 
 const FEEDBACK_ANSWER = {
@@ -54,8 +58,8 @@ async function canSubmitPeerFeedback(ritualId, fromUserId, toUserId) {
   }
 
   try {
-    const { isRitualUnderMin } = await import('../services/underMinGate.js');
-    if (await isRitualUnderMin(ritualId)) {
+    const um = await assertFeedbackNotUnderMin(ritualId);
+    if (!um.allowed) {
       return { allowed: false, reason: 'under_min', code: 'UNDER_MIN' };
     }
   } catch (_e) {
@@ -65,6 +69,23 @@ async function canSubmitPeerFeedback(ritualId, fromUserId, toUserId) {
   const friendship = await getAcceptedFriendship(fromUserId, toUserId);
   if (!friendship) {
     return { allowed: false, reason: 'friends_only' };
+  }
+
+  try {
+    const { assertP2pPeopleCap, p2pMaxPeople } = await import('../services/megaFb.js');
+    const existingPeople = await pool.query(
+      `SELECT COUNT(DISTINCT to_user_id)::int AS n
+       FROM feedback
+       WHERE ritual_id = $1 AND from_user_id = $2 AND feedback_type = 'p2p'
+         AND to_user_id IS NOT NULL AND to_user_id <> $3`,
+      [ritualId, fromUserId, toUserId]
+    );
+    const cap = assertP2pPeopleCap(Number(existingPeople.rows[0]?.n || 0) + 1);
+    if (!cap.ok) {
+      return { allowed: false, reason: 'p2p_max_people', code: 'P2P_MAX_PEOPLE', max: p2pMaxPeople() };
+    }
+  } catch (_e) {
+    /* best effort */
   }
 
   // Block does NOT erase FB eligibility snapshot (sonMD)
@@ -163,22 +184,43 @@ async function assertRitualAttendance(ritualId, userId) {
   return attendanceCheck.rows[0] || null;
 }
 
+/** §8 UNDER_MIN — skor+FB+P2V hiç doğmaz (P2R/P2Z/P2C/RQ dahil). */
+async function assertFeedbackNotUnderMin(ritualId, ritualRow = null) {
+  const ritual = ritualRow || (await getRitualRow(ritualId));
+  if (ritual?.under_min === true) {
+    return { allowed: false, reason: 'under_min', code: 'UNDER_MIN', ritual };
+  }
+  try {
+    const { isRitualUnderMin } = await import('../services/underMinGate.js');
+    if (await isRitualUnderMin(ritualId)) {
+      return { allowed: false, reason: 'under_min', code: 'UNDER_MIN', ritual };
+    }
+  } catch (_e) {
+    /* ignore */
+  }
+  return { allowed: true, ritual };
+}
+
+async function denyIfUnderMin(res, ritualId, ritualRow = null) {
+  const gate = await assertFeedbackNotUnderMin(ritualId, ritualRow);
+  if (!gate.allowed) {
+    res.status(403).json({
+      success: false,
+      error: 'UNDER_MIN — skor ve feedback doğmaz',
+      code: 'UNDER_MIN',
+    });
+    return true;
+  }
+  return false;
+}
+
 async function assertSelfOrVenueFeedback(ritualId, authUserId, feedbackType, { r1_self, p2v_feeling } = {}) {
   const ritual = await getRitualRow(ritualId);
   if (!ritual) {
     return { allowed: false, reason: 'ritual_not_found' };
   }
-  if (ritual.under_min === true) {
-    return { allowed: false, reason: 'under_min', code: 'UNDER_MIN' };
-  }
-  try {
-    const { isRitualUnderMin } = await import('../services/underMinGate.js');
-    if (await isRitualUnderMin(ritualId)) {
-      return { allowed: false, reason: 'under_min', code: 'UNDER_MIN' };
-    }
-  } catch (_e) {
-    /* ignore */
-  }
+  const um = await assertFeedbackNotUnderMin(ritualId, ritual);
+  if (!um.allowed) return um;
   const windowInfo = getFeedbackWindowInfo(ritual);
   if (!windowInfo.open) {
     return { allowed: false, reason: 'feedback_window_closed', window: windowInfo };
@@ -196,9 +238,41 @@ async function assertSelfOrVenueFeedback(ritualId, authUserId, feedbackType, { r
     if (!ritual.venue_id) {
       return { allowed: false, reason: 'venue_required' };
     }
+    if (ritual.host_id && String(ritual.host_id) === String(authUserId)) {
+      return { allowed: false, reason: 'host_p2v_forbidden', code: 'HOST_P2V_FORBIDDEN' };
+    }
+    const staff = await pool.query(
+      `SELECT 1 FROM venue_managers WHERE venue_id = $1 AND user_id = $2 LIMIT 1`,
+      [ritual.venue_id, authUserId]
+    );
+    if (staff.rows.length > 0) {
+      return { allowed: false, reason: 'staff_p2v_forbidden' };
+    }
+    try {
+      const { resolveOrgFren } = await import('../services/megaLaunchLocks.js');
+      const fren = await resolveOrgFren({
+        userId: authUserId,
+        venueId: ritual.venue_id,
+        brandId: ritual.brand_id,
+      });
+      if (fren.self_p2v === false) {
+        return { allowed: false, reason: 'staff_p2v_forbidden', code: 'ORG_BOND_P2V' };
+      }
+    } catch (_e) {
+      /* optional */
+    }
     return { allowed: true, reason: 'ok', window: windowInfo, venue_id: ritual.venue_id };
   }
   return { allowed: true, reason: 'ok', window: windowInfo };
+}
+
+function denyHostOwnRq(ritual, authUserId, feedbackType) {
+  const t = String(feedbackType || '').toLowerCase();
+  if (t !== 'p2r' && t !== 'rq' && t !== 'rq_event') return null;
+  if (isHostOrCreator(ritual, authUserId)) {
+    return { allowed: false, reason: 'host_rq_forbidden', code: 'HOST_RQ_FORBIDDEN' };
+  }
+  return null;
 }
 
 async function upsertFeedbackRow({
@@ -214,6 +288,7 @@ async function upsertFeedbackRow({
   friendship_level,
   rs_weight,
   chip_id,
+  chip_id_2,
 }) {
   const chipGate = validateChipSelection({
     feedbackType,
@@ -221,6 +296,9 @@ async function upsertFeedbackRow({
     p2r_feeling,
     p2v_feeling,
     r1_self,
+    q1_comfort,
+    q2_energy,
+    chipId2: chip_id_2,
   });
   if (!chipGate.ok) {
     const err = new Error(chipGate.error || 'Invalid chip');
@@ -228,6 +306,10 @@ async function upsertFeedbackRow({
     throw err;
   }
   const resolvedChipId = chipGate.chip_id;
+  const resolvedChipId2 =
+    chip_id_2 && String(chip_id_2).trim() && String(chip_id_2).trim() !== resolvedChipId
+      ? String(chip_id_2).trim()
+      : null;
   const resolvedChipRoute = chipGate.chip_route || (resolvedChipId ? routeForChip(resolvedChipId) : null);
 
   const existingCheck = await pool.query(
@@ -309,20 +391,35 @@ async function upsertFeedbackRow({
   }
 
   // Venue chip stats + ops telemetry
-  if (resolvedChipId) {
+  const chipIds = [resolvedChipId, resolvedChipId2].filter(Boolean);
+  if (resolvedChipId2) {
+    try {
+      await pool.query(`UPDATE feedback SET chip_id_2 = $2 WHERE id = $1`, [
+        result.rows[0].id,
+        resolvedChipId2,
+      ]);
+    } catch (_e) {
+      /* pre-migration */
+    }
+  }
+  if (chipIds.length) {
     try {
       const venueR = await pool.query(`SELECT venue_id FROM rituals WHERE id = $1`, [ritualId]);
       const venueId = venueR.rows[0]?.venue_id;
       const feeling =
         p2v_feeling || p2r_feeling || r1_self || q1_comfort || null;
       if (venueId && feeling) {
-        await upsertFeedbackChipStats(venueId, resolvedChipId, feeling);
+        for (const cid of chipIds) {
+          await upsertFeedbackChipStats(venueId, cid, feeling);
+        }
       }
-      await recordOpsChipTelemetry({
-        chipId: resolvedChipId,
-        ritualId,
-        userId: authUserId,
-      });
+      for (const cid of chipIds) {
+        await recordOpsChipTelemetry({
+          chipId: cid,
+          ritualId,
+          userId: authUserId,
+        });
+      }
     } catch (_e) {
       /* best effort */
     }
@@ -341,6 +438,17 @@ router.get('/window/:ritualId', authenticateToken, async (req, res) => {
     const attendance = await assertRitualAttendance(req.params.ritualId, req.user.userId);
     if (!attendance) {
       return res.status(403).json({ success: false, error: 'User did not attend this ritual' });
+    }
+    const um = await assertFeedbackNotUnderMin(req.params.ritualId, ritual);
+    if (!um.allowed) {
+      return res.json({
+        success: true,
+        data: {
+          open: false,
+          code: 'UNDER_MIN',
+          reason: 'under_min',
+        },
+      });
     }
     const window = getFeedbackWindowInfo(ritual);
     const { eventGeneralRqMeta } = await import('../services/eventGeneralRq.js');
@@ -366,6 +474,7 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
       r1_self,
       p2v_feeling,
       chip_id,
+      chip_id_2,
     } = req.body;
 
     const authUserId = req.user?.userId;
@@ -457,13 +566,16 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
       (resolvedType === FEEDBACK_TYPE.P2R ||
         resolvedType === FEEDBACK_TYPE.RQ_EVENT ||
         resolvedType === FEEDBACK_TYPE.P2Z ||
+        resolvedType === FEEDBACK_TYPE.P2C ||
         resolvedType === FEEDBACK_TYPE.P2V ||
+        resolvedType === FEEDBACK_TYPE.P2S ||
+        resolvedType === FEEDBACK_TYPE.VR ||
         resolvedType === FEEDBACK_TYPE.R1_SELF) &&
       to_user_id
     ) {
       return res.status(400).json({
         success: false,
-        error: 'to_user_id should be null for P2R/RQ_EVENT/R1/P2V feedback',
+          error: 'to_user_id should be null for P2R/RQ_EVENT/R1/P2V/P2C feedback',
       });
     }
 
@@ -487,6 +599,26 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
 
     if (!(await assertRitualAttendance(ritual_id, authUserId))) {
       return res.status(400).json({ success: false, error: 'User did not attend this ritual' });
+    }
+    if (await denyIfUnderMin(res, ritual_id)) return;
+
+    if (resolvedType === FEEDBACK_TYPE.P2R || resolvedType === FEEDBACK_TYPE.RQ_EVENT) {
+      const ritualRow = await getRitualRow(ritual_id);
+      const hostRq = denyHostOwnRq(ritualRow, authUserId, resolvedType);
+      if (hostRq) {
+        return res.status(403).json({
+          success: false,
+          error: 'Kurucu/host kendi R’sinin RQ’suna katılamaz',
+          code: hostRq.code,
+        });
+      }
+      if (resolvedType === FEEDBACK_TYPE.P2R) {
+        const { assertSubRqCap } = await import('../services/eventGeneralRq.js');
+        const cap = await assertSubRqCap(ritual_id, authUserId);
+        if (!cap.ok) {
+          return res.status(403).json({ success: false, error: cap.error, code: cap.code });
+        }
+      }
     }
 
     let flMeta = null;
@@ -518,7 +650,11 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
               ? 'Venue feedback only applies to venue rituals'
               : gate.reason === 'feedback_window_closed'
                 ? 'Feedback window is closed for this ritual'
-                : 'Feedback is not allowed',
+                : gate.reason === 'host_p2v_forbidden'
+                  ? 'Host cannot submit P2V for own ritual'
+                  : gate.reason === 'staff_p2v_forbidden'
+                    ? 'Venue staff cannot submit P2V'
+                    : 'Feedback is not allowed',
           details: gate,
         });
       }
@@ -547,9 +683,9 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
       friendship_level: flMeta?.friendship_level,
       rs_weight: flMeta?.rs_weight,
       chip_id,
+      chip_id_2,
     });
 
-    // v2 §9 — chip→badge signal (auto-grant gated by CHIP_BRIDGE.enabled)
     if (chip_id || result.rows[0]?.chip_id) {
       try {
         const { observeChipForBadgeSignal } = await import('../services/chipBadgeBridgeService.js');
@@ -565,6 +701,21 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
       }
     }
 
+    try {
+      const { maybeSignalRaterPattern, maybeSignalP2vCluster, maybeLogR1RqCalibration } = await import(
+        '../services/trustSignals.js'
+      );
+      if (resolvedType === FEEDBACK_TYPE.P2P || resolvedType === FEEDBACK_TYPE.P2HOST) {
+        await maybeSignalRaterPattern({ fromUserId: authUserId, toUserId: to_user_id });
+      }
+      if (resolvedType === FEEDBACK_TYPE.P2V && p2v_feeling === 'red') {
+        await maybeSignalP2vCluster({ ritualId: ritual_id, fromUserId: authUserId });
+      }
+      await maybeLogR1RqCalibration({ userId: authUserId, ritualId: ritual_id });
+    } catch (_e) {
+      /* best effort */
+    }
+
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     if (error?.status === 400) {
@@ -576,10 +727,11 @@ router.post('/', authenticateToken, requireIdentityVerified, async (req, res) =>
 });
 
 // GET /api/feedback/ritual/:ritualId
-router.get('/ritual/:ritualId', async (req, res) => {
+router.get('/ritual/:ritualId', authenticateToken, async (req, res) => {
   try {
     const { ritualId } = req.params;
     const { user_id } = req.query;
+    const viewerId = req.user?.userId;
 
     let query = `
       SELECT f.*, u1.name as from_user_name, u2.name as to_user_name
@@ -598,7 +750,10 @@ router.get('/ritual/:ritualId', async (req, res) => {
     query += ' ORDER BY f.created_at DESC';
 
     const result = await pool.query(query, params);
-    res.json({ success: true, data: result.rows });
+    res.json({
+      success: true,
+      data: filterFeedbackRowsForViewer(result.rows, viewerId),
+    });
   } catch (error) {
     console.error('Error fetching feedback:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch feedback' });
@@ -632,6 +787,7 @@ router.post('/batch', authenticateToken, requireIdentityVerified, async (req, re
     if (!(await assertRitualAttendance(ritual_id, authUserId))) {
       return res.status(400).json({ success: false, error: 'User did not attend this ritual' });
     }
+    if (await denyIfUnderMin(res, ritual_id)) return;
 
     // v2 §5: Bildir-ve-ayrıl → FB veremez (alabilir)
     let leaveAfterBlocked = false;
@@ -655,6 +811,7 @@ router.post('/batch', authenticateToken, requireIdentityVerified, async (req, re
           r1_self,
           p2v_feeling,
           chip_id,
+          chip_id_2,
         } = feedback;
         const resolvedType =
           feedback_type === FEEDBACK_TYPE.P2M ? FEEDBACK_TYPE.P2V : feedback_type;
@@ -666,6 +823,19 @@ router.post('/batch', authenticateToken, requireIdentityVerified, async (req, re
             feedback_type: resolvedType,
           });
           continue;
+        }
+
+        if (resolvedType === FEEDBACK_TYPE.P2R || resolvedType === FEEDBACK_TYPE.RQ_EVENT) {
+          const ritualRow = await getRitualRow(ritual_id);
+          const hostRq = denyHostOwnRq(ritualRow, authUserId, resolvedType);
+          if (hostRq) {
+            results.push({
+              error: 'Kurucu/host kendi R’sinin RQ’suna katılamaz',
+              code: hostRq.code,
+              feedback_type: resolvedType,
+            });
+            continue;
+          }
         }
 
         if (leaveAfterBlocked) {
@@ -709,7 +879,13 @@ router.post('/batch', authenticateToken, requireIdentityVerified, async (req, re
           });
           if (!gate.allowed) {
             results.push({
-              error: gate.reason,
+              error:
+                gate.reason === 'host_p2v_forbidden'
+                  ? 'Host cannot submit P2V for own ritual'
+                  : gate.reason === 'staff_p2v_forbidden'
+                    ? 'Venue staff cannot submit P2V'
+                    : gate.reason,
+              code: gate.code || gate.reason,
               feedback_type: resolvedType,
             });
             continue;
@@ -766,6 +942,7 @@ router.post('/batch', authenticateToken, requireIdentityVerified, async (req, re
           friendship_level: flMeta?.friendship_level,
           rs_weight: flMeta?.rs_weight,
           chip_id,
+          chip_id_2,
         });
 
         if (result.rows[0]?.chip_id) {
@@ -788,6 +965,13 @@ router.post('/batch', authenticateToken, requireIdentityVerified, async (req, re
         console.error('Error processing feedback:', error);
         results.push({ error: error.message, status: error.status || 500 });
       }
+    }
+
+    try {
+      const { maybeLogR1RqCalibration } = await import('../services/trustSignals.js');
+      await maybeLogR1RqCalibration({ userId: authUserId, ritualId: ritual_id });
+    } catch (_e) {
+      /* best effort */
     }
 
     res.json({ success: true, data: results });

@@ -46,6 +46,7 @@ function mergePublicConfig(remote) {
         ...(remote.stubs?.csam || {}),
       },
     },
+    zone: { ...DEFAULT_PUBLIC_CONFIG.zone, ...(remote.zone || {}) },
   };
 }
 

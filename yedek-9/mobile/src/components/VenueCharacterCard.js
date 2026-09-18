@@ -7,14 +7,11 @@ const BORDER = '#e5e5e0';
 
 function ChipLine({ chip }) {
   if (!chip) return null;
-  const parts = [];
-  if (chip.green) parts.push(`🟢${chip.green}`);
-  if (chip.red) parts.push(`🔴${chip.red}`);
-  if (chip.yellow) parts.push(`🟡${chip.yellow}`);
+  const count = Number(chip.count || chip.total || 0);
+  const label = chip.label || chip.chip_id;
   return (
     <Text style={styles.chipLine}>
-      {chip.chip_id}
-      {parts.length ? ` · ${parts.join(' ')}` : ''}
+      {label}{count ? ` ×${count}` : ''}
     </Text>
   );
 }
@@ -40,16 +37,26 @@ export default function VenueCharacterCard({
         <View style={styles.scoreCol}>
           <Text style={styles.scoreLabel}>Trust</Text>
           <Text style={styles.scoreValue}>
-            {card.trust?.score != null ? Number(card.trust.score).toFixed(2) : '—'}
+            {card.trust?.score != null
+              ? Number(card.trust.score).toFixed(1)
+              : card.trust?.public_label || card.trust?.label || '—'}
           </Text>
-          <Text style={styles.scoreMeta}>{card.trust?.label || '—'}</Text>
+          <Text style={styles.scoreMeta}>
+            {card.trust?.score != null
+              ? card.trust?.label || '—'
+              : ''}
+          </Text>
         </View>
         <View style={styles.scoreCol}>
           <Text style={styles.scoreLabel}>Aura</Text>
           <Text style={styles.scoreValue}>
-            {card.aura?.score != null ? Number(card.aura.score).toFixed(2) : '—'}
+            {card.aura?.words?.length
+              ? card.aura.words.slice(0, 3).join(' · ')
+              : card.aura?.type_tag || card.aura?.label || '—'}
           </Text>
-          <Text style={styles.scoreMeta}>{card.aura?.label || '—'}</Text>
+          <Text style={styles.scoreMeta}>
+            {card.aura?.words?.length ? '' : 'Tür'}
+          </Text>
         </View>
       </View>
       {chips.slice(0, 3).map((c) => (

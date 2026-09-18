@@ -12,14 +12,16 @@ import {
 } from 'react-native';
 import { fetchModCategories } from '../services/api';
 import { t } from '../i18n/stringTable';
+import useLanguageStore from '../store/languageStore';
 
-const FALLBACK_CATEGORIES = [
-  { key: 'report_cat_uncomfortable', label: t('report_cat_uncomfortable') },
-  { key: 'report_cat_boundary', label: t('report_cat_boundary') },
-  { key: 'report_cat_mismatch', label: t('report_cat_mismatch') },
-  { key: 'report_cat_other', label: t('report_cat_other') },
-  { key: 'report_cat_csam', label: t('report_cat_csam') },
-  { key: 'report_cat_sexual_assault', label: t('report_cat_sexual_assault') },
+const FALLBACK_CATEGORY_KEYS = [
+  'report_cat_uncomfortable',
+  'report_cat_boundary',
+  'report_cat_mismatch',
+  'report_cat_other',
+  'report_cat_csam',
+  'report_cat_sexual_assault',
+  'guvenlik_bildir',
 ];
 
 /**
@@ -32,7 +34,9 @@ export default function ReportModal({
   reportType = 'user',
   leaveAfter = false,
 }) {
-  const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
+  const lang = useLanguageStore((s) => s.lang);
+  const fallbackCategories = FALLBACK_CATEGORY_KEYS.map((key) => ({ key, label: t(key, lang) }));
+  const [categories, setCategories] = useState(fallbackCategories);
   const [loadingCats, setLoadingCats] = useState(false);
   const [selectedKey, setSelectedKey] = useState(null);
   const [description, setDescription] = useState('');
@@ -47,8 +51,9 @@ export default function ReportModal({
     (async () => {
       try {
         setLoadingCats(true);
-        const rows = await fetchModCategories('tr');
+        const rows = await fetchModCategories(lang);
         if (!cancelled && Array.isArray(rows) && rows.length) setCategories(rows);
+        else if (!cancelled) setCategories(fallbackCategories);
       } catch (_e) {
         /* fallback */
       } finally {
@@ -58,7 +63,7 @@ export default function ReportModal({
     return () => {
       cancelled = true;
     };
-  }, [visible]);
+  }, [visible, lang]);
 
   const handleReport = () => {
     if (!selectedKey) {

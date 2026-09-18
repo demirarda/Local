@@ -88,8 +88,12 @@ async function stripePost(path, payload, { idempotencyKey = null } = {}) {
   return json;
 }
 
-function frontendBase() {
-  return process.env.FRONTEND_URL || 'http://localhost:19006';
+function venueWebBase() {
+  return (
+    process.env.VENUE_WEB_URL ||
+    process.env.API_PUBLIC_URL ||
+    `http://127.0.0.1:${process.env.PORT || 3000}`
+  ).replace(/\/$/, '');
 }
 
 /**
@@ -125,8 +129,8 @@ export async function createPackageCheckoutSession({
       mode: recurring ? 'subscription' : 'payment',
       success_url:
         process.env.STRIPE_SUCCESS_URL ||
-        `${frontendBase()}/venue-package/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: process.env.STRIPE_CANCEL_URL || `${frontendBase()}/venue-package/cancel`,
+        `${venueWebBase()}/venue/panel.html?paid=1&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: process.env.STRIPE_CANCEL_URL || `${venueWebBase()}/venue/panel.html?canceled=1`,
       client_reference_id: requestId,
       customer_email: customerEmail || null,
       line_items: [lineItem],

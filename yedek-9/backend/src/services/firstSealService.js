@@ -304,7 +304,22 @@ export async function witnessPendingCheckin(ritualId, witnessUserId, subjectUser
        WHERE r.id = $1 AND r.venue_id IS NOT NULL LIMIT 1`,
       [ritualId, witnessUserId]
     );
-    if (isStaff.rows.length > 0) {
+    let ekipFren = isStaff.rows.length > 0;
+    if (!ekipFren) {
+      try {
+        const rit = await client.query(`SELECT venue_id, brand_id FROM rituals WHERE id = $1`, [ritualId]);
+        const { resolveOrgFren } = await import('./megaLaunchLocks.js');
+        const fren = await resolveOrgFren({
+          userId: witnessUserId,
+          venueId: rit.rows[0]?.venue_id,
+          brandId: rit.rows[0]?.brand_id,
+        });
+        ekipFren = fren.witness === false;
+      } catch (_e) {
+        /* optional */
+      }
+    }
+    if (ekipFren) {
       await client.query('ROLLBACK');
       return { ok: false, status: 403, body: { success: false, error: 'Venue staff cannot witness' } };
     }
@@ -403,6 +418,12 @@ export async function witnessPendingCheckin(ritualId, witnessUserId, subjectUser
     });
 
     await client.query('COMMIT');
+    try {
+      const { applySealCreditDrop } = await import('./venueMembershipService.js');
+      await applySealCreditDrop({ userId: subjectUserId, venueId: ritual.venue_id });
+    } catch (_e) {
+      /* non-fatal */
+    }
     await runPostCheckinJobs(ritualId, subjectUserId);
     await noteWitnessForSicil(witnessUserId, ritualId);
     try {

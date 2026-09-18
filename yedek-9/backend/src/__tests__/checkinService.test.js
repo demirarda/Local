@@ -12,7 +12,7 @@ describe('check-in window (son-part.md §3)', () => {
 
   test('AIS on-time vs late slices', () => {
     expect(computeAis(3, 30)).toEqual({ ais: 1, status: 'on_time' });
-    expect(computeAis(8, 30)).toEqual({ ais: 0.85, status: 'late' });
+    expect(computeAis(8, 30)).toEqual({ ais: 0.8, status: 'late' });
     expect(computeAis(11, 30)).toEqual({ ais: 0, status: 'no_show' });
   });
 

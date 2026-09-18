@@ -12,6 +12,8 @@ import LOCAL_CONFIG, {
   updateDsEma,
   tierLabelTr,
   computeWindowVd,
+  dsTrendFromEmaRaw,
+  binDsValues,
 } from '../config/localConfig.js';
 import { getFlMetaForPair } from './friendshipLevel.js';
 
@@ -317,6 +319,28 @@ export async function getDsMultiplierFromState(userId, completedRitualIndex = 1)
 }
 
 export async function getPrivateDsDashboard(userId) {
+  let placementComplete = true;
+  try {
+    const { getPlacementCompleteMap } = await import('./rsVisibility.js');
+    const map = await getPlacementCompleteMap([userId]);
+    placementComplete = map.get(String(userId)) === true;
+  } catch (_e) {
+    placementComplete = false;
+  }
+
+  const hiddenPayload = (extra = {}) => ({
+    user_id: userId,
+    hidden: true,
+    hidden_reason: 'placement',
+    placement_complete: false,
+    note: 'Keşif Pusulası placement bitince açılır — yalnız sahibine.',
+    ...extra,
+  });
+
+  if (!placementComplete) {
+    return hiddenPayload();
+  }
+
   const r = await pool.query(
     `SELECT *
      FROM user_diversity_state
@@ -326,34 +350,72 @@ export async function getPrivateDsDashboard(userId) {
   );
   if (r.rows.length === 0) {
     const tier = tierFromDsFull(DS_INIT);
+    const { trend, label: trend_label } = dsTrendFromEmaRaw(DS_INIT, DS_INIT);
     return {
       user_id: userId,
-      ds_ema: DS_INIT,
+      placement_complete: true,
+      hidden: false,
       ds_full_ema: DS_INIT,
       ds_tier: tier,
       ds_tier_label: tierLabelTr(tier),
-      ds_multiplier: computeDsMultiplierFromEma(DS_INIT, 1),
+      trend,
+      trend_label,
       pd_score: null,
       ctxd_score: null,
       vd_score: null,
+      city_curve: await getCityDsCurve(userId),
     };
   }
   const row = r.rows[0];
-  const tier = row.ds_tier || tierFromDsFull(row.ds_full_ema);
+  const ema = row.ds_full_ema != null ? Number(row.ds_full_ema) : DS_INIT;
+  const raw = row.ds_full != null ? Number(row.ds_full) : ema;
+  const tier = row.ds_tier || tierFromDsFull(ema);
+  const { trend, label: trend_label } = dsTrendFromEmaRaw(ema, raw);
   return {
     user_id: userId,
-    ds_ema: row.ds_prev != null ? Number(row.ds_prev) : DS_INIT,
-    ds_full_ema: row.ds_full_ema != null ? Number(row.ds_full_ema) : DS_INIT,
-    ds_raw: row.ds_raw != null ? Number(row.ds_raw) : null,
-    ds_full: row.ds_full != null ? Number(row.ds_full) : null,
+    placement_complete: true,
+    hidden: false,
+    ds_full_ema: ema,
     ds_tier: tier,
     ds_tier_label: tierLabelTr(tier),
-    ds_multiplier: row.ds_multiplier != null
-      ? Number(row.ds_multiplier)
-      : computeDsMultiplierFromEma(row.ds_prev, 1),
+    trend,
+    trend_label,
     pd_score: row.pd_score != null ? Number(row.pd_score) : null,
     ctxd_score: row.ctxd_score != null ? Number(row.ctxd_score) : null,
     vd_score: row.vd_score != null ? Number(row.vd_score) : null,
     last_updated_at: row.last_updated_at,
+    city_curve: await getCityDsCurve(userId),
   };
+}
+
+const CITY_DS_MIN_N = Number(LOCAL_CONFIG.ds.AGGREGATE_MIN_N) || 20;
+
+export async function getCityDsCurveByCityId(cityId) {
+  if (!cityId) return { hidden: true, reason: 'no_city', n: 0, min_n: CITY_DS_MIN_N };
+  try {
+    const rows = await pool.query(
+      `SELECT uds.ds_full_ema
+       FROM user_diversity_state uds
+       JOIN users usr ON usr.id = uds.user_id
+       WHERE usr.active_city_id = $1
+         AND usr.deleted_at IS NULL
+         AND uds.ds_full_ema IS NOT NULL`,
+      [cityId]
+    );
+    return binDsValues(
+      rows.rows.map((row) => row.ds_full_ema),
+      CITY_DS_MIN_N
+    );
+  } catch (_e) {
+    return { hidden: true, reason: 'unavailable', n: 0, min_n: CITY_DS_MIN_N };
+  }
+}
+
+async function getCityDsCurve(userId) {
+  try {
+    const u = await pool.query(`SELECT active_city_id FROM users WHERE id = $1`, [userId]);
+    return getCityDsCurveByCityId(u.rows[0]?.active_city_id);
+  } catch (_e) {
+    return null;
+  }
 }

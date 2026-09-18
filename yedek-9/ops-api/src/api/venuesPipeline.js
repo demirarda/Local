@@ -66,7 +66,15 @@ router.get('/', async (req, res) => {
       if (grouped[row.pipeline_status]) grouped[row.pipeline_status].push(row);
     }
 
-    res.json({ success: true, data: { list: result.rows, grouped } });
+    res.json({
+      success: true,
+      data: {
+        list: result.rows,
+        grouped,
+        surface: 'launch_crm',
+        approves_applications: false,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: 'Failed to list venues' });

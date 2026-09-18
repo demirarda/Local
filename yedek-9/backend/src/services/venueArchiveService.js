@@ -3,6 +3,7 @@
  * Mekan silemez; yalnizca featured kurasyonu (vitrine).
  */
 import pool from '../config/database.js';
+import { isVenuePlatformOverride } from './productOpsRoles.js';
 
 export const PUBLIC_ARCHIVE_SQL = `
   (m.privacy::text = 'public'
@@ -13,10 +14,7 @@ export const PUBLIC_ARCHIVE_SQL = `
 
 async function isVenueManager(userId, venueId, email = '') {
   if (!userId) return false;
-  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (adminIds.includes(String(userId))) return true;
-  if (email && adminEmails.includes(String(email).toLowerCase())) return true;
+  if (isVenuePlatformOverride(userId, email)) return true;
   const r = await pool.query(
     `SELECT 1 FROM venue_managers WHERE venue_id = $1 AND user_id = $2 LIMIT 1`,
     [venueId, userId]

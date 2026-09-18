@@ -110,8 +110,6 @@ router.get('/', async (req, res) => {
     if (canAccessSection(role, 'venues')) nav.push('venues');
     if (canAccessSection(role, 'screens')) nav.push('screens');
     if (canAccessSection(role, 'bridge')) nav.push('bridge');
-    if (canAccessSection(role, 'venues') || canAccessSection(role, 'bridge')) nav.push('nominations');
-    if (canAccessSection(role, 'venues') || canAccessSection(role, 'bridge')) nav.push('event_groups');
     if (canAccessSection(role, 'team')) nav.push('team');
 
     out.nav = nav;
@@ -134,20 +132,10 @@ router.get('/permissions', (req, res) => {
       nav: [
         canAccessSection(role, 'dashboard') && { key: 'dashboard', path: '/dashboard', label: 'Özet' },
         canAccessSection(role, 'hosts') && { key: 'hosts', path: '/hosts', label: 'Hostlar' },
-        canAccessSection(role, 'venues') && { key: 'venues', path: '/venues', label: 'Mekanlar' },
+        canAccessSection(role, 'venues') && { key: 'venues', path: '/venues', label: 'Launch CRM' },
         canAccessSection(role, 'screens') && { key: 'screens', path: '/screens', label: 'Ekranlar' },
         canAccessSection(role, 'projects') && { key: 'projects', path: '/', label: 'Kanban' },
         canAccessSection(role, 'bridge') && { key: 'bridge', path: '/bridge', label: 'Köprü' },
-        (canAccessSection(role, 'venues') || canAccessSection(role, 'bridge')) && {
-          key: 'nominations',
-          path: '/nominations',
-          label: 'Öneriler',
-        },
-        (canAccessSection(role, 'venues') || canAccessSection(role, 'bridge')) && {
-          key: 'event_groups',
-          path: '/event-groups',
-          label: 'ZONE-EVENT',
-        },
         canAccessSection(role, 'team') && { key: 'team', path: '/team', label: 'Ekip' },
       ].filter(Boolean),
       default_route:

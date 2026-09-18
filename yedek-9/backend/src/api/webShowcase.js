@@ -224,12 +224,12 @@ router.get('/venue/:slug', async (req, res) => {
  * App'li kullanıcı `local://portal/...` derin-linkiyle buradasın-moduna gider.
  */
 router.get('/t/:venueId/:portalId', async (req, res) => {
-  if (!gate(res)) return;
+  /* Appsiz-tap hunisi launch-direkt — WEB_SHOWCASE flag'e bağlı değil */
   try {
     const { venueId, portalId } = req.params;
     const v = await pool.query(
       `SELECT v.id, v.name, v.city, v.slug, v.description, v.logo_url,
-              p.label AS portal_label
+              p.label AS portal_label, p.deactivated_at
        FROM venues v
        LEFT JOIN venue_portals p ON p.venue_id = v.id AND p.portal_id = $2
        WHERE v.slug = $1 OR v.id::text = $1
@@ -240,6 +240,14 @@ router.get('/t/:venueId/:portalId', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Totem not found', cta: ctaLinks() });
     }
     const venue = v.rows[0];
+    if (venue.deactivated_at) {
+      return res.status(410).json({
+        success: false,
+        error: 'Bu totem uzaktan deaktive',
+        code: 'TOTEM_REMOTE_DEAD',
+        cta: ctaLinks(),
+      });
+    }
     return res.json({
       success: true,
       data: {
@@ -251,6 +259,9 @@ router.get('/t/:venueId/:portalId', async (req, res) => {
           description: venue.description,
         },
         portal: { portal_id: portalId, label: venue.portal_label || null },
+        live_tables: null,
+        install_cta: ctaLinks(),
+        copy: 'LOCAL\'i indir',
         app_link: `local://portal/${venue.id}/${encodeURIComponent(portalId)}`,
         cta: ctaLinks(),
         seo: seoMeta({
@@ -292,7 +303,9 @@ router.get('/zone/:slug', async (req, res) => {
         joined,
       })),
       trust: null,
+      ds_discovery: undefined,
     };
+    delete safe.ds_discovery;
     return res.json({
       success: true,
       data: {
@@ -398,6 +411,13 @@ router.get('/ritual/:id', async (req, res) => {
     );
     if (!r.rows[0]) return res.status(404).json({ success: false, error: 'Ritual not found', cta: ctaLinks() });
     const ritual = r.rows[0];
+    let p2cTag = null;
+    try {
+      const { getP2cArchiveTag } = await import('../services/p2cArchiveService.js');
+      p2cTag = await getP2cArchiveTag(ritual.id);
+    } catch (_e) {
+      p2cTag = null;
+    }
     // Web: never participants; window content only if TRANSPARENT for city-readable cue
     return res.json({
       success: true,
@@ -413,6 +433,7 @@ router.get('/ritual/:id', async (req, res) => {
           window_visibility: ritual.window_visibility || 'CLOSED',
           brand_id: ritual.brand_id || null,
         },
+        p2c_tag: p2cTag,
         participants: [],
         participant_list_visible: false,
         cta: ctaLinks(),

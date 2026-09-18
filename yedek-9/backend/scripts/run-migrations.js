@@ -149,6 +149,21 @@ const migrationFiles = [
   '120_sosyal_pct100_gaps.sql',
   '121_lokasyon_pct100.sql',
   '122_dort_cephe_pct100.sql',
+  '123_city_scope_s12s13.sql',
+  '124_venue_self_serve_complete.sql',
+  '125_venue_application_draft_index.sql',
+  '126_venue_surface_complete.sql',
+  '127_rs_trust_engine_vfinal.sql',
+  '128_rs_trust_engine_gaps.sql',
+  '129_rs_discipline_memory.sql',
+  '130_venue_membership_vitrine.sql',
+  '131_mega_0_16_ekler.sql',
+  '132_mega_lock_flows.sql',
+  '133_mega_launch_locks.sql',
+  '134_totem_remote_deactivate.sql',
+  '135_venue_packages_locks.sql',
+  '136_zone_vision_locks.sql',
+  '137_fb_tree_locks.sql',
 ];
 
 const V2_START = '082_v2_delta_wave1.sql';

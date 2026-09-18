@@ -2,6 +2,7 @@ import express from 'express';
 import pool from '../config/database.js';
 import { ritualDiscoveryAudienceSql } from '../services/ritualState.js';
 import { feeDtoFromRow } from '../services/ritualCreateValidation.js';
+import { cityNameScopeSql, foldCityName } from '../services/cityScope.js';
 
 const router = express.Router();
 
@@ -51,11 +52,14 @@ router.get('/browse', async (req, res) => {
     let paramIndex = 1;
     const conditions = ['(r.suspended_at IS NULL)'];
 
-    // City filter (from users table)
+    // City filter: İstanbul ≡ Istanbul (host name or ritual city_id)
     if (city) {
-      conditions.push(`u.city = $${paramIndex}`);
-      params.push(city);
-      paramIndex++;
+      const scope = cityNameScopeSql(foldCityName(city), paramIndex);
+      if (scope.sql) {
+        conditions.push(scope.sql.replace(/^\s*AND\s+/i, ''));
+        params.push(...scope.params);
+        paramIndex += scope.params.length;
+      }
     }
 
     // Search filter (title, venue_name, type)
@@ -239,7 +243,7 @@ router.get('/browse', async (req, res) => {
       SELECT COUNT(DISTINCT r.id) as total
       FROM rituals r
       LEFT JOIN users u ON r.host_id = u.id
-      ${whereClause.replace(/r\.city/g, 'u.city')}
+      ${whereClause}
     `;
     const countResult = await pool.query(countQuery, params);
     const total = parseInt(countResult.rows[0].total);
@@ -257,7 +261,7 @@ router.get('/browse', async (req, res) => {
       FROM rituals r
       LEFT JOIN users u ON r.host_id = u.id
       LEFT JOIN ritual_attendance ra ON r.id = ra.ritual_id
-      ${whereClause.replace(/r\.city/g, 'u.city')}
+      ${whereClause}
       GROUP BY r.id, u.name, u.city
       ${orderClause}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}

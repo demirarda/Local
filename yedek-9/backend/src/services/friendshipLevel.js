@@ -1,13 +1,13 @@
 /**
- * Friend Level (FL) — son-part.md §4.2
- * Counter unit = peer feedback events (p2p/p2host), fresh within FL_FRESHNESS months.
+ * Friend Level (FL) — 24 Ağu mühür-bazlı
+ * Counter unit = ortak mühür (co_seal), taze 12 ay. FB-sayacı emekli.
  */
 import pool from '../config/database.js';
-import LOCAL_CONFIG, { levelFromFbCount, fbWeightFromLevel } from '../config/localConfig.js';
+import LOCAL_CONFIG, { levelFromCoSealCount, fbWeightFromLevel } from '../config/localConfig.js';
 
 const PEER_FEEDBACK_TYPES = ['p2p', 'p2host'];
 
-export { levelFromFbCount, fbWeightFromLevel };
+export { levelFromCoSealCount, levelFromCoSealCount as levelFromFbCount, fbWeightFromLevel };
 
 export async function getAcceptedFriendship(userA, userB) {
   const r = await pool.query(
@@ -24,6 +24,27 @@ export async function getAcceptedFriendship(userA, userB) {
   return r.rows[0] || null;
 }
 
+export async function countFreshCoSealsBetween(userA, userB, client = pool) {
+  const months = LOCAL_CONFIG.fl.FRESHNESS_MONTHS;
+  try {
+    const r = await client.query(
+      `SELECT COUNT(*)::int AS c
+       FROM friendship_co_seals s
+       WHERE (
+           (s.user_a = $1 AND s.user_b = $2)
+           OR (s.user_a = $2 AND s.user_b = $1)
+         )
+         AND s.created_at >= NOW() - ($3::text || ' months')::interval`,
+      [userA, userB, String(months)]
+    );
+    return r.rows[0]?.c ?? 0;
+  } catch (_e) {
+    const friendship = await getAcceptedFriendship(userA, userB);
+    return Number(friendship?.co_seal_count || 0);
+  }
+}
+
+/** @deprecated FL artık co-seal; kalibrasyon logu için FB sayımı duruyor */
 export async function countFreshFeedbackBetween(userA, userB, client = pool) {
   const months = LOCAL_CONFIG.fl.FRESHNESS_MONTHS;
   const r = await client.query(
@@ -48,19 +69,17 @@ export async function countFreshFeedbackBetween(userA, userB, client = pool) {
 }
 
 export async function getFlMetaForPair(userA, userB, client = pool) {
-  const fbCount = await countFreshFeedbackBetween(userA, userB, client);
-  const level = levelFromFbCount(fbCount);
+  const sealCount = await countFreshCoSealsBetween(userA, userB, client);
+  const level = levelFromCoSealCount(sealCount);
   return {
-    fb_count: fbCount,
+    fb_count: sealCount,
+    co_seal_count: sealCount,
     friendship_level: level,
-    rs_weight: fbWeightFromLevel(level),
+    rs_weight: fbWeightFromLevel(level, sealCount),
   };
 }
 
-/**
- * Recompute and persist FL on friendships row after a peer feedback event.
- */
-export async function recomputeFlForPair(userA, userB, client = pool) {
+async function persistFlFromSeals(userA, userB, client = pool) {
   const friendship = await getAcceptedFriendship(userA, userB);
   if (!friendship) return null;
 
@@ -68,17 +87,27 @@ export async function recomputeFlForPair(userA, userB, client = pool) {
   const levelEnum = meta.friendship_level === 'stranger' ? 'stranger' : meta.friendship_level;
   const prevLevel = friendship.friendship_level;
 
-  const updated = await client.query(
-    `UPDATE friendships
-     SET fb_count = $2,
-         friendship_level = $3::friendship_level_enum,
-         last_feedback_at = CURRENT_TIMESTAMP,
-         first_feedback_at = COALESCE(first_feedback_at, CURRENT_TIMESTAMP),
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $1
-     RETURNING *`,
-    [friendship.id, meta.fb_count, levelEnum]
-  );
+  let updated;
+  try {
+    updated = await client.query(
+      `UPDATE friendships
+       SET co_seal_count = $2,
+           friendship_level = $3::friendship_level_enum,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING *`,
+      [friendship.id, meta.co_seal_count, levelEnum]
+    );
+  } catch (_e) {
+    updated = await client.query(
+      `UPDATE friendships
+       SET friendship_level = $2::friendship_level_enum,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING *`,
+      [friendship.id, levelEnum]
+    );
+  }
 
   if (prevLevel && levelEnum && prevLevel !== levelEnum) {
     const { notifyFlChange } = await import('./notifications.js');
@@ -108,15 +137,53 @@ export async function recomputeFlForPair(userA, userB, client = pool) {
 }
 
 /**
- * Called after a new p2p/p2host feedback insert (not updates).
+ * Ortak mühür: aynı ritüelde iki accepted-arkadaş mühürlendiğinde atomik kayıt.
  */
-export async function applyFlOnPeerFeedback(fromUserId, toUserId, client = pool) {
-  return recomputeFlForPair(fromUserId, toUserId, client);
+export async function applyCoSealOnCheckin(ritualId, userId, client = pool) {
+  const others = await client.query(
+    `SELECT ra.user_id
+     FROM ritual_attendance ra
+     INNER JOIN friendships fr ON fr.status = 'accepted'
+       AND (
+         (fr.requester_id = $2 AND fr.receiver_id = ra.user_id)
+         OR (fr.receiver_id = $2 AND fr.requester_id = ra.user_id)
+       )
+     WHERE ra.ritual_id = $1
+       AND ra.user_id <> $2
+       AND ra.checkin_at IS NOT NULL
+       AND COALESCE(ra.checkin_phase, 'sealed') = 'sealed'`,
+    [ritualId, userId]
+  );
+
+  const updates = [];
+  for (const row of others.rows) {
+    const otherId = row.user_id;
+    const a = String(userId) < String(otherId) ? userId : otherId;
+    const b = String(userId) < String(otherId) ? otherId : userId;
+    try {
+      await client.query(
+        `INSERT INTO friendship_co_seals (user_a, user_b, ritual_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_a, user_b, ritual_id) DO NOTHING`,
+        [a, b, ritualId]
+      );
+    } catch (_e) {
+      /* table may be missing pre-migration */
+    }
+    const meta = await persistFlFromSeals(userId, otherId, client);
+    if (meta) updates.push(meta);
+  }
+  return { updated_pairs: updates.length, pairs: updates };
 }
 
-/**
- * @deprecated FL advances on feedback only (§4.2) — check-in no longer mutates FL.
- */
-export async function applyFriendshipLevelOnCheckin() {
-  return { updated_pairs: 0, badge_updates: 0 };
+export async function recomputeFlForPair(userA, userB, client = pool) {
+  return persistFlFromSeals(userA, userB, client);
+}
+
+export async function applyFlOnPeerFeedback(fromUserId, toUserId, client = pool) {
+  return persistFlFromSeals(fromUserId, toUserId, client);
+}
+
+export async function applyFriendshipLevelOnCheckin(ritualId, userId, client = pool) {
+  return applyCoSealOnCheckin(ritualId, userId, client);
 }

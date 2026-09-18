@@ -23,6 +23,12 @@ function readMobile(rel) {
 }
 
 describe('§14–§16 pct100', () => {
+  test('§0 Pulse feed never locks on RS', () => {
+    const feed = readSrc('api/rituals.js');
+    expect(feed).toMatch(/const rsLocked = false/);
+    expect(feed).not.toMatch(/viewerRS < minRs/);
+  });
+
   test('user ritual rejects min-RS; uni gates exist', () => {
     expect(rejectUserRitualMinRs({ min_rs: 6 }).ok).toBe(false);
     expect(rejectUserRitualMinRs({ university_gate: 'same_uni' }).ok).toBe(true);

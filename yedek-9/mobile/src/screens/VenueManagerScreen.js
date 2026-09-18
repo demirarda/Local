@@ -18,6 +18,7 @@ import {
   fetchVenueNightReport,
   fetchVenueMonthlyPulse,
   fetchVenueMarketShare,
+  fetchVenueCrowdMix,
   fetchVenueBadges,
   createVenueBadge,
   fetchVenueVenEventQuota,
@@ -26,14 +27,21 @@ import {
   claimVenueRitual,
   fetchVenueSuggestionInbox,
   requestVenueTotem,
+  fetchVenueRotatingTotemCode,
+  fetchVenueManagers,
+  addVenueManager,
+  removeVenueManager,
+  patchVenue,
+  postVenueAnnouncement,
 } from '../services/api';
 import VenueBusinessScreen from './VenueBusinessScreen';
 import VenueSlotsScreen from './VenueSlotsScreen';
+import { DsBinsChart } from '../components/DsCompassCard';
 
 const TABS = [
   { id: 'today', label: 'Bugun' },
   { id: 'gece', label: 'GECE' },
-  { id: 'slots', label: 'Slot & Takvim' },
+  { id: 'slots', label: 'Raf & Takvim' },
   { id: 'regulars', label: 'Regular' },
   { id: 'reputation', label: 'Itibar' },
   { id: 'profile', label: 'Profil' },
@@ -44,9 +52,10 @@ const PRIMARY = '#f9a13d';
 const MUTED = '#6b6b6b';
 const BORDER = '#e5e5e0';
 const VENUE_BADGE_CONDITIONS = [
+  { id: 'identity', label: 'Kimlik (TÜR-A)' },
   { id: 'visit', label: 'Gelis' },
   { id: 'category', label: 'Kategori' },
-  { id: 'slot', label: 'Slot' },
+  { id: 'slot', label: 'Raf' },
   { id: 'event', label: 'Etkinlik' },
 ];
 
@@ -65,23 +74,48 @@ export default function VenueManagerScreen({ route, navigation }) {
   const [nightLoading, setNightLoading] = useState(false);
   const [marketShare, setMarketShare] = useState(null);
   const [marketLoading, setMarketLoading] = useState(false);
+  const [crowdMix, setCrowdMix] = useState(null);
+  const [crowdLoading, setCrowdLoading] = useState(false);
   const [monthlyPulse, setMonthlyPulse] = useState(null);
   const [pulseLoading, setPulseLoading] = useState(false);
   const [venueBadges, setVenueBadges] = useState([]);
   const [venueBadgeMax, setVenueBadgeMax] = useState(5);
   const [badgeName, setBadgeName] = useState('');
+  const [badgeNameEn, setBadgeNameEn] = useState('');
+  const [badgeNameTr, setBadgeNameTr] = useState('');
+  const [badgeKind, setBadgeKind] = useState('A');
   const [badgeLogo, setBadgeLogo] = useState('');
-  const [badgeCondition, setBadgeCondition] = useState('visit');
+  const [badgeCondition, setBadgeCondition] = useState('identity');
   const [badgeThreshold, setBadgeThreshold] = useState('1');
+  const [badgeRequirement, setBadgeRequirement] = useState('');
   const [badgeSaving, setBadgeSaving] = useState(false);
+  const [announceBody, setAnnounceBody] = useState('');
+  const [announceSaving, setAnnounceSaving] = useState(false);
+  const [rotatingTotem, setRotatingTotem] = useState(null);
   const [venEventQuota, setVenEventQuota] = useState(null);
   const [unansweredCount, setUnansweredCount] = useState(0);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('staff');
+  const [weekdayClose, setWeekdayClose] = useState('23:00');
+  const [weekendClose, setWeekendClose] = useState('00:00');
+  const [staffList, setStaffList] = useState([]);
+  const [staffSeats, setStaffSeats] = useState(null);
 
   const load = useCallback(async () => {
     if (!venueId) return;
     try {
       const data = await getVenue(venueId);
       setVenue(data);
+      const hours = data?.weekly_hours || {};
+      if (hours.mon?.close) setWeekdayClose(hours.mon.close);
+      if (hours.sat?.close) setWeekendClose(hours.sat.close);
+      try {
+        const people = await fetchVenueManagers(venueId);
+        setStaffList(Array.isArray(people) ? people : []);
+        setStaffSeats(people?.seats || null);
+      } catch (_e) {
+        setStaffList([]);
+      }
       try {
         const list = await fetchVenueRituals(venueId, { limit: 40 });
         const now = Date.now();
@@ -105,8 +139,12 @@ export default function VenueManagerScreen({ route, navigation }) {
         setClaimable([]);
       }
       try {
-        const regs = await fetchVenueRegulars(venueId);
-        setRegulars(Array.isArray(regs) ? regs : []);
+        if (data?.permissions?.regulars) {
+          const regs = await fetchVenueRegulars(venueId);
+          setRegulars(Array.isArray(regs) ? regs : []);
+        } else {
+          setRegulars([]);
+        }
       } catch (_e) {
         setRegulars([]);
       }
@@ -142,22 +180,29 @@ export default function VenueManagerScreen({ route, navigation }) {
   }, [venueId]);
 
   const submitVenueBadge = async () => {
-    if (!badgeName.trim() || !badgeLogo.trim()) {
-      Alert.alert('Eksik', 'Etiket ve logo URL zorunlu (metin serbest yazılamaz)');
+    if (!badgeNameEn.trim() || !badgeNameTr.trim() || !badgeLogo.trim() || !badgeRequirement.trim()) {
+      Alert.alert('Eksik', 'Çift-dil (EN/TR), logo ve kazanım şartı zorunlu (şartı mekan yazar)');
       return;
     }
     setBadgeSaving(true);
     try {
       await createVenueBadge(venueId, {
-        name: badgeName.trim(),
+        name: badgeName.trim() || badgeNameTr.trim(),
+        name_en: badgeNameEn.trim(),
+        name_tr: badgeNameTr.trim(),
+        kind: badgeKind,
         logo_url: badgeLogo.trim(),
-        condition_type: badgeCondition,
+        condition_type: badgeKind === 'A' ? 'identity' : badgeCondition,
         threshold: Number(badgeThreshold) || 1,
+        requirement_text: badgeRequirement.trim(),
       });
       setBadgeName('');
+      setBadgeNameEn('');
+      setBadgeNameTr('');
       setBadgeLogo('');
       setBadgeThreshold('1');
-      Alert.alert('Gonderildi', 'Admin onayina dustu · kalkan sablonu sabit');
+      setBadgeRequirement('');
+      Alert.alert('Gonderildi', 'Badge Studio · admin onayina dustu · şartı sen yazdın');
       await loadVenueBadges();
     } catch (e) {
       Alert.alert('Hata', e?.message || 'Rozet olusturulamadi');
@@ -170,7 +215,9 @@ export default function VenueManagerScreen({ route, navigation }) {
     if (!venueId) return;
     setNightLoading(true);
     try {
-      const data = await fetchVenueNightReport(venueId);
+      const data = await fetchVenueNightReport(venueId, {
+        mini: !venue?.permissions?.night_archive,
+      });
       setNightReport(data);
     } catch (e) {
       setNightReport(null);
@@ -178,11 +225,12 @@ export default function VenueManagerScreen({ route, navigation }) {
     } finally {
       setNightLoading(false);
     }
-  }, [venueId]);
+  }, [venueId, venue?.permissions?.night_archive]);
 
   const loadMarketShare = useCallback(async () => {
     if (!venueId) return;
     setMarketLoading(true);
+    setCrowdLoading(true);
     try {
       const data = await fetchVenueMarketShare(venueId);
       setMarketShare(data);
@@ -190,6 +238,14 @@ export default function VenueManagerScreen({ route, navigation }) {
       setMarketShare({ locked: true, error: e?.message || 'Pazar payi yuklenemedi' });
     } finally {
       setMarketLoading(false);
+    }
+    try {
+      const mix = await fetchVenueCrowdMix(venueId);
+      setCrowdMix(mix);
+    } catch (e) {
+      setCrowdMix({ locked: true, error: e?.message || 'Kitle karisimi yuklenemedi' });
+    } finally {
+      setCrowdLoading(false);
     }
   }, [venueId]);
 
@@ -268,6 +324,17 @@ export default function VenueManagerScreen({ route, navigation }) {
     setLoading(true);
     load();
   }, [load]);
+
+  useEffect(() => {
+    const p = venue?.permissions;
+    if (!p) return;
+    const blocked =
+      (tab === 'business' && !p.business) ||
+      (tab === 'slots' && !p.slots) ||
+      (tab === 'regulars' && !p.regulars) ||
+      (tab === 'reputation' && !p.reputation);
+    if (blocked) setTab('today');
+  }, [venue, tab]);
 
   useEffect(() => {
     if (tab === 'gece') loadNightReport();
@@ -351,9 +418,16 @@ export default function VenueManagerScreen({ route, navigation }) {
       );
     }
     if (tab === 'profile') {
+      const perms = venue?.permissions || {};
+      const tier = String(venue?.subscription_tier || venue?.package || venue?.tier || '').toLowerCase();
+      const badgeStudioOk =
+        ['operator', 'hakim', 'landmark'].includes(tier) || venue?.pro_enabled === true;
       return (
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>Vitrin & Profil</Text>
+          <Text style={styles.mutedSmall}>Rol: {venue?.my_role || '—'}</Text>
+          {perms.profile ? (
+            <>
           <TouchableOpacity style={styles.linkBtn} onPress={() => navigation.navigate('VenueVitrineEdit', { venueId })}>
             <Text style={styles.linkBtnText}>Vitrini duzenle</Text>
           </TouchableOpacity>
@@ -363,6 +437,39 @@ export default function VenueManagerScreen({ route, navigation }) {
           <TouchableOpacity style={styles.linkBtn} onPress={() => navigation.navigate('VenueFloorPlan', { venueId })}>
             <Text style={styles.linkBtnText}>Kat plani & GPS</Text>
           </TouchableOpacity>
+          <Text style={styles.mutedSmall}>Hafta ici kapanis</Text>
+          <TextInput style={styles.badgeInput} value={weekdayClose} onChangeText={setWeekdayClose} placeholder="23:00" />
+          <Text style={styles.mutedSmall}>Hafta sonu kapanis</Text>
+          <TextInput style={styles.badgeInput} value={weekendClose} onChangeText={setWeekendClose} placeholder="00:00" />
+          <TouchableOpacity
+            style={styles.linkBtn}
+            onPress={async () => {
+              try {
+                await patchVenue(venueId, {
+                  weekly_hours: {
+                    mon: { open: '09:00', close: weekdayClose, closed: false },
+                    tue: { open: '09:00', close: weekdayClose, closed: false },
+                    wed: { open: '09:00', close: weekdayClose, closed: false },
+                    thu: { open: '09:00', close: weekdayClose, closed: false },
+                    fri: { open: '09:00', close: weekendClose, closed: false },
+                    sat: { open: '10:00', close: weekendClose, closed: false },
+                    sun: { open: '10:00', close: weekdayClose, closed: false },
+                  },
+                });
+                Alert.alert('Saatler', 'Kapanis kaydedildi — Gece Raporu bu saate bagli.');
+              } catch (e) {
+                Alert.alert('Saatler', e?.message || 'Kaydedilemedi');
+              }
+            }}
+          >
+            <Text style={styles.linkBtnText}>Calisma saatlerini kaydet</Text>
+          </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity style={styles.linkBtn} onPress={() => navigation.navigate('VenueFloorPlan', { venueId })}>
+              <Text style={styles.linkBtnText}>GPS muhuru (iceride)</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.linkBtn} onPress={() => navigation.navigate('VenuePortals', { venueId })}>
             <Text style={styles.linkBtnText}>Totem seti (QR/NFC)</Text>
           </TouchableOpacity>
@@ -371,7 +478,20 @@ export default function VenueManagerScreen({ route, navigation }) {
             style={styles.linkBtn}
             onPress={async () => {
               try {
-                await requestVenueTotem(venueId, 'Panel totem talebi');
+                await requestVenueTotem(venueId, 'Özel totem siparişi', { kind: 'custom_figur' });
+                Alert.alert('Özel Totem', 'Sipariş alındı — tasarım kuyruğunda (ayrı satış). LANDMARK’ta figür pakete dahildir.');
+              } catch (e) {
+                Alert.alert('Totem', e?.message || 'Sipariş gönderilemedi');
+              }
+            }}
+          >
+            <Text style={styles.linkBtnText}>Özel Totem Sipariş Et</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.linkBtn}
+            onPress={async () => {
+              try {
+                await requestVenueTotem(venueId, 'Panel totem talebi', { kind: 'replacement' });
                 Alert.alert('Totem talebi', 'Talebiniz alındı — white-glove / yedek set kuyruğunda (C5).');
               } catch (e) {
                 Alert.alert('Totem', e?.message || 'Talep gönderilemedi');
@@ -408,26 +528,100 @@ export default function VenueManagerScreen({ route, navigation }) {
           >
             <Text style={styles.linkBtnText}>Totem OK işaretle</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.linkBtn}
+            onPress={async () => {
+              try {
+                const data = await fetchVenueRotatingTotemCode(venueId);
+                setRotatingTotem(data);
+              } catch (e) {
+                Alert.alert('Dönen kod', e?.message || 'Alınamadı');
+              }
+            }}
+          >
+            <Text style={styles.linkBtnText}>Dönen totem kodu göster</Text>
+          </TouchableOpacity>
+          {rotatingTotem?.code ? (
+            <Text style={styles.scoreMeta}>
+              Kod {rotatingTotem.code} · {rotatingTotem.ttl_s || 30}sn · statik QR kapı değil
+            </Text>
+          ) : null}
+          <Text style={styles.mutedSmall}>Yol-C: staff-cihaz → tap-noktası → figür</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            {['STAFF_DEVICE', 'TAP_POINT', 'FIGUR'].map((p) => (
+              <TouchableOpacity
+                key={p}
+                style={[
+                  styles.linkBtn,
+                  String(venue?.totem_path || 'STAFF_DEVICE').toUpperCase() === p && { borderColor: PRIMARY },
+                ]}
+                onPress={async () => {
+                  try {
+                    const next = await patchVenue(venueId, { totem_path: p });
+                    setVenue((prev) => ({ ...(prev || {}), ...(next || {}), totem_path: p }));
+                  } catch (e) {
+                    Alert.alert('Yol-C', e?.message || 'Kaydedilemedi');
+                  }
+                }}
+              >
+                <Text style={styles.linkBtnText}>
+                  {p === 'STAFF_DEVICE' ? 'Staff cihaz' : p === 'TAP_POINT' ? 'Tap-noktası' : 'Figür'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
+          {perms.badges ? (
           <View style={styles.subPanel}>
-            <Text style={styles.subPanelTitle}>🛡 Venue Rozetleri</Text>
+            <Text style={styles.subPanelTitle}>Badge Studio</Text>
             <Text style={styles.mutedSmall}>
-              Kalkan sabit · sadece logo · max {venueBadgeMax} · admin onay · sistem verir
+              TÜR-A kimlik · TÜR-B verilen · çift-dil zorunlu · max {venueBadgeMax} · OPEN=0 · şartı mekan yazar
             </Text>
             {venueBadges.length === 0 ? (
               <Text style={styles.muted}>Henuz rozet yok</Text>
             ) : (
               venueBadges.map((b) => (
                 <Text key={b.id} style={styles.scoreMeta}>
-                  {b.name} · {b.condition_type} · {b.status}
+                  {b.kind ? `TÜR-${b.kind} · ` : ''}{b.name_tr || b.name} / {b.name_en || '—'} · {b.status}
                 </Text>
               ))
             )}
             {venueBadges.filter((b) => b.status !== 'rejected').length < venueBadgeMax ? (
+              !badgeStudioOk ? (
+                <Text style={styles.mutedSmall}>FREE’de badge üretimi yok — OPERATOR+ gerekli</Text>
+              ) : (
               <View style={{ marginTop: 10, gap: 8 }}>
+                <View style={styles.condRow}>
+                  {['A', ...( ['hakim', 'landmark'].includes(tier) || venue?.city_partner_enabled ? ['B'] : [])].map((k) => (
+                    <TouchableOpacity
+                      key={k}
+                      style={[styles.condChip, badgeKind === k && styles.condChipOn]}
+                      onPress={() => {
+                        setBadgeKind(k);
+                        if (k === 'A') setBadgeCondition('identity');
+                      }}
+                    >
+                      <Text style={[styles.condChipText, badgeKind === k && styles.condChipTextOn]}>
+                        TÜR-{k}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
                 <TextInput
                   style={styles.badgeInput}
-                  placeholder="Kisa etiket (metin serbest yazı değil)"
+                  placeholder="Name EN"
+                  value={badgeNameEn}
+                  onChangeText={setBadgeNameEn}
+                />
+                <TextInput
+                  style={styles.badgeInput}
+                  placeholder="İsim TR"
+                  value={badgeNameTr}
+                  onChangeText={setBadgeNameTr}
+                />
+                <TextInput
+                  style={styles.badgeInput}
+                  placeholder="Kisa etiket (opsiyonel)"
                   value={badgeName}
                   onChangeText={setBadgeName}
                 />
@@ -438,8 +632,9 @@ export default function VenueManagerScreen({ route, navigation }) {
                   onChangeText={setBadgeLogo}
                   autoCapitalize="none"
                 />
+                {badgeKind === 'B' ? (
                 <View style={styles.condRow}>
-                  {VENUE_BADGE_CONDITIONS.map((c) => (
+                  {VENUE_BADGE_CONDITIONS.filter((c) => c.id !== 'identity').map((c) => (
                     <TouchableOpacity
                       key={c.id}
                       style={[styles.condChip, badgeCondition === c.id && styles.condChipOn]}
@@ -451,6 +646,15 @@ export default function VenueManagerScreen({ route, navigation }) {
                     </TouchableOpacity>
                   ))}
                 </View>
+                ) : (
+                  <Text style={styles.mutedSmall}>TÜR-A: mekan kimliği — şartı sen yazarsın</Text>
+                )}
+                <TextInput
+                  style={styles.badgeInput}
+                  placeholder="Kazanım şartı (mekan yazar)"
+                  value={badgeRequirement}
+                  onChangeText={setBadgeRequirement}
+                />
                 <TextInput
                   style={styles.badgeInput}
                   placeholder="Esik (ornek: 3 gelis)"
@@ -464,8 +668,119 @@ export default function VenueManagerScreen({ route, navigation }) {
                   </Text>
                 </TouchableOpacity>
               </View>
+              )
             ) : (
               <Text style={styles.mutedSmall}>Mekan basina limit doldu ({venueBadgeMax})</Text>
+            )}
+          </View>
+          ) : null}
+          {perms.invite_staff ? (
+            <View style={styles.subPanel}>
+              <Text style={styles.subPanelTitle}>Personel · yetki koltukları</Text>
+              <Text style={styles.mutedSmall}>
+                Bağ sınırsız · koltuk kıt
+                {staffSeats
+                  ? ` · manager ${staffSeats.manager === Number.POSITIVE_INFINITY || staffSeats.manager == null ? '∞' : staffSeats.manager} · staff-door ${staffSeats.staff_door}`
+                  : ' · OPEN 1M+2D · OPERATOR 3M+5D · LANDMARK ∞M+12D'}
+              </Text>
+              {staffList.map((p) => (
+                <View key={p.user_id} style={styles.condRow}>
+                  <Text style={[styles.scoreMeta, { flex: 1 }]}>
+                    {p.name || p.email} · {p.role}
+                  </Text>
+                  {perms.invite_manager && p.role !== 'owner' ? (
+                    <TouchableOpacity
+                      onPress={async () => {
+                        try {
+                          await removeVenueManager(venueId, p.user_id);
+                          const people = await fetchVenueManagers(venueId);
+                          setStaffList(Array.isArray(people) ? people : []);
+                          setStaffSeats(people?.seats || null);
+                        } catch (e) {
+                          Alert.alert('Personel', e?.message || 'Kaldırılamadı');
+                        }
+                      }}
+                    >
+                      <Text style={styles.linkBtnText}>Kaldır</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ))}
+              <TextInput
+                style={styles.badgeInput}
+                placeholder="LOCAL e-posta"
+                value={inviteEmail}
+                onChangeText={setInviteEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <View style={styles.condRow}>
+                <TouchableOpacity
+                  style={[styles.condChip, inviteRole === 'staff' && styles.condChipOn]}
+                  onPress={() => setInviteRole('staff')}
+                >
+                  <Text style={[styles.condChipText, inviteRole === 'staff' && styles.condChipTextOn]}>Staff</Text>
+                </TouchableOpacity>
+                {perms.invite_manager ? (
+                  <TouchableOpacity
+                    style={[styles.condChip, inviteRole === 'manager' && styles.condChipOn]}
+                    onPress={() => setInviteRole('manager')}
+                  >
+                    <Text style={[styles.condChipText, inviteRole === 'manager' && styles.condChipTextOn]}>Manager</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+              <TouchableOpacity
+                style={styles.linkBtn}
+                onPress={async () => {
+                  try {
+                    await addVenueManager(venueId, { email: inviteEmail.trim(), role: inviteRole });
+                    setInviteEmail('');
+                    const people = await fetchVenueManagers(venueId);
+                    setStaffList(Array.isArray(people) ? people : []);
+                    setStaffSeats(people?.seats || null);
+                    Alert.alert('Personel', 'Davet edildi.');
+                  } catch (e) {
+                    Alert.alert('Personel', e?.message || 'Eklenemedi');
+                  }
+                }}
+              >
+                <Text style={styles.linkBtnText}>Davet et</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          <View style={styles.subPanel}>
+            <Text style={styles.subPanelTitle}>Takipçi duyurusu</Text>
+            {badgeStudioOk ? (
+              <>
+                <Text style={styles.mutedSmall}>OPERATOR 4/ay · LANDMARK 12/ay · OPEN’da duyuru-push yok</Text>
+                <TextInput
+                  style={styles.badgeInput}
+                  placeholder="Duyuru metni"
+                  value={announceBody}
+                  onChangeText={setAnnounceBody}
+                />
+                <TouchableOpacity
+                  style={styles.linkBtn}
+                  disabled={announceSaving || !announceBody.trim()}
+                  onPress={async () => {
+                    setAnnounceSaving(true);
+                    try {
+                      await postVenueAnnouncement(venueId, announceBody.trim());
+                      setAnnounceBody('');
+                      Alert.alert('Duyuru', 'Takipçilere düştü.');
+                    } catch (e) {
+                      Alert.alert('Duyuru', e?.message || 'Gönderilemedi');
+                    } finally {
+                      setAnnounceSaving(false);
+                    }
+                  }}
+                >
+                  <Text style={styles.linkBtnText}>{announceSaving ? 'Gönderiliyor…' : 'Duyuru gönder'}</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={styles.mutedSmall}>OPEN takipçi-zili var; duyuru-push yok — OPERATOR+ gerekir</Text>
             )}
           </View>
         </View>
@@ -481,11 +796,20 @@ export default function VenueManagerScreen({ route, navigation }) {
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>Gece Raporu</Text>
           <Text style={styles.mutedSmall}>
-            Gün-sonu digest · kapanış + 30dk · OPERATÖR+ paket
+            {nightReport?.mode === 'summary_3'
+              ? 'OPEN özet · 3 satır: masa · mühür · top-chip'
+              : 'Gün-sonu digest · kapanış + 30dk · OPERATOR+ tam rapor'}
             {nightReport?.date ? ` · ${nightReport.date}` : ''}
           </Text>
           {nightLoading && !nightReport ? (
             <ActivityIndicator color={PRIMARY} style={{ marginVertical: 16 }} />
+          ) : nightReport?.mode === 'summary_3' ? (
+            <>
+              {(nightReport.lines || []).map((line) => (
+                <Text key={line} style={styles.scoreMeta}>{line}</Text>
+              ))}
+              {nightReport?.teaser ? <Text style={styles.mutedSmall}>{nightReport.teaser}</Text> : null}
+            </>
           ) : (
             <>
               <View style={styles.scoreCard}>
@@ -534,7 +858,9 @@ export default function VenueManagerScreen({ route, navigation }) {
           <TouchableOpacity style={styles.linkBtn} onPress={loadNightReport} disabled={nightLoading}>
             <Text style={styles.linkBtnText}>{nightLoading ? 'Yukleniyor…' : 'Digest yükle'}</Text>
           </TouchableOpacity>
-          {renderMonthlyPulseBlock()}
+          {venue?.permissions?.night_archive ? renderMonthlyPulseBlock() : (
+            <Text style={styles.mutedSmall}>Staff: push özeti · arşiv ve nabız web/manager</Text>
+          )}
         </View>
       );
     }
@@ -653,6 +979,29 @@ export default function VenueManagerScreen({ route, navigation }) {
             )}
           </View>
 
+          <View style={styles.subPanel}>
+            <Text style={styles.subPanelTitle}>Kitle karışımı</Text>
+            {crowdLoading && !crowdMix ? (
+              <ActivityIndicator color={PRIMARY} />
+            ) : crowdMix?.locked || crowdMix?.teaser ? (
+              <>
+                <Text style={styles.blurCopy}>{crowdMix.blur_copy || 'Kitle karışımı ···'}</Text>
+                <Text style={styles.mutedSmall}>{crowdMix.upgrade_hint || crowdMix.error || 'HAKİM ile açılır'}</Text>
+              </>
+            ) : crowdMix?.hidden ? (
+              <Text style={styles.mutedSmall}>MIN-N altında — anonim karışım henüz yok</Text>
+            ) : Array.isArray(crowdMix?.bins) && crowdMix.bins.length > 0 ? (
+              <>
+                <DsBinsChart bins={crowdMix.bins} />
+                <Text style={styles.scoreMeta}>
+                  ortalama {crowdMix.mean ?? '—'} · n={crowdMix.n} · yargı yok · kişisel DS yok
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.muted}>Kitle karışımı bu pakette yok</Text>
+            )}
+          </View>
+
           {renderMonthlyPulseBlock()}
 
           <TouchableOpacity style={styles.linkBtn} onPress={() => navigation.navigate('VenueDetail', { venueId })}>
@@ -665,12 +1014,13 @@ export default function VenueManagerScreen({ route, navigation }) {
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Bugünün Ritualı</Text>
           <Text style={styles.mutedSmall}>Canlı sinyal · open_note · totem/personel açılışı</Text>
-          {unansweredCount > 0 ? (
+          {unansweredCount > 0 && venue?.permissions?.slots ? (
             <View style={styles.venEventBox}>
               <Text style={styles.venEventTitle}>Cevapsız istek: {unansweredCount}</Text>
               <Text style={styles.mutedSmall}>Slot öneri kuyruğu · kabul / alternatif / red</Text>
             </View>
           ) : null}
+        {venue?.permissions?.events ? (
         <View style={styles.venEventBox}>
           <Text style={styles.venEventTitle}>VEN-EVENT · Etkinlik kur</Text>
           <Text style={styles.mutedSmall}>
@@ -683,6 +1033,7 @@ export default function VenueManagerScreen({ route, navigation }) {
                 : 'Aylık tavan config açık · değer boş'}
           </Text>
         </View>
+        ) : null}
         {liveRituals.length > 0 ? (
           liveRituals.map((r) => (
             <View key={`live-${r.id}`} style={styles.ritualRow}>
@@ -734,7 +1085,7 @@ export default function VenueManagerScreen({ route, navigation }) {
             </View>
           ))
         ) : null}
-        {claimable.length > 0 ? (
+        {claimable.length > 0 && venue?.permissions?.events ? (
           <View style={{ marginTop: 16 }}>
             <Text style={styles.panelTitle}>Civardaki custom · Sahiplen</Text>
             {claimable.map((c) => (
@@ -784,7 +1135,9 @@ export default function VenueManagerScreen({ route, navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>{venue?.name || 'Mekan Yonetimi'}</Text>
-        <Text style={styles.sub}>6 sekme · VAPP-UNIFIED · GECE digest</Text>
+        <Text style={styles.sub}>
+          {venue?.my_role || 'yonetici'} · {venue?.permissions?.business ? 'isletme' : venue?.permissions?.slots ? 'mudur' : 'vardiya'}
+        </Text>
       </View>
       <ScrollView
         horizontal
@@ -792,7 +1145,15 @@ export default function VenueManagerScreen({ route, navigation }) {
         style={styles.tabBar}
         contentContainerStyle={styles.tabBarContent}
       >
-        {TABS.map((t) => (
+        {TABS.filter((t) => {
+          const p = venue?.permissions;
+          if (!p) return true;
+          if (t.id === 'business') return p.business;
+          if (t.id === 'slots') return p.slots;
+          if (t.id === 'regulars') return p.regulars;
+          if (t.id === 'reputation') return p.reputation;
+          return true;
+        }).map((t) => (
           <TouchableOpacity
             key={t.id}
             style={[styles.tab, tab === t.id && styles.tabOn]}

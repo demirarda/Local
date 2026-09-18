@@ -7,12 +7,12 @@ import { STRING_TABLE, t } from '../i18n/stringTable.js';
 describe('EVENT gece-geneli RQ + chip i18n stubs', () => {
   test('EVENT_GENERAL_RQ_ENABLED locked on', () => {
     expect(LOCAL_CONFIG.chip.EVENT_GENERAL_RQ_ENABLED).toBe(true);
-    expect(LOCAL_CONFIG.chip.MAX_CHIP_SELECT).toBe(1);
+    expect(LOCAL_CONFIG.chip.MAX_CHIP_SELECT).toBe(2);
     expect(isEventGeneralRqEnabled()).toBe(true);
   });
 
-  test('rq_event has no chip kind (feeling-only)', () => {
-    expect(chipKindForFeedbackType('rq_event')).toBeNull();
+  test('rq_event uses E chips (renk→chip, max-2)', () => {
+    expect(chipKindForFeedbackType('rq_event')).toBe('E');
     expect(chipKindForFeedbackType('p2r')).toBe('RQ');
   });
 
@@ -24,7 +24,7 @@ describe('EVENT gece-geneli RQ + chip i18n stubs', () => {
     expect(STRING_TABLE.fb_event_general_q.TR).toMatch(/Gece geneli/i);
     expect(STRING_TABLE.rq_g_1.open).toBe(false);
     expect(STRING_TABLE.p2v_r_ucret.open).toBe(false);
-    expect(t('rq_g_1', 'tr')).toMatch(/Sohbet/);
+    expect(t('rq_g_1', 'tr')).toMatch(/sohbet/i);
     expect(t('fb_event_general_q', 'en')).toMatch(/night overall/i);
 
     const chipKeys = Object.values(LOCAL_CONFIG.chip.SETS).flat();
@@ -37,7 +37,7 @@ describe('EVENT gece-geneli RQ + chip i18n stubs', () => {
     }
   });
 
-  test('RQ 3/renk · P2V 5/renk seed counts match sonMD §9', () => {
+  test('RQ 5/renk · P2V 5/renk seed counts match FB-ağacı', () => {
     const { SETS } = LOCAL_CONFIG.chip;
     for (const color of ['RQ_GREEN', 'RQ_YELLOW', 'RQ_RED']) {
       expect(SETS[color]).toHaveLength(LOCAL_CONFIG.chip.RQ_OPTIONS_PER_COLOR);

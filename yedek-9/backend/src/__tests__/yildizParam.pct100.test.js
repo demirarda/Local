@@ -8,7 +8,7 @@ import { getRepeatPinThreshold } from '../services/venueLeadService.js';
 import { getPublicConfig } from '../services/publicConfigService.js';
 
 describe('yıldız liste %100 gaps', () => {
-  test('PLANNED_MAX_AHEAD 21g enforce', () => {
+  test('PLANNED_MAX_AHEAD 30g enforce', () => {
     const now = new Date('2026-08-12T12:00:00Z');
     const ok = assertStartHorizon({
       startDate: new Date('2026-08-20T12:00:00Z'),
@@ -25,7 +25,7 @@ describe('yıldız liste %100 gaps', () => {
     });
     expect(far.ok).toBe(false);
     expect(far.code).toBe('PLANNED_MAX_AHEAD');
-    expect(far.max_ahead_d).toBe(21);
+    expect(far.max_ahead_d).toBe(30);
   });
 
   test('EVENT_MAX_AHEAD 60g for VEN_EVENT / event_group', () => {
@@ -74,7 +74,7 @@ describe('yıldız liste %100 gaps', () => {
 
   test('publicConfig exposes horizon + self-rez + leads', () => {
     const cfg = getPublicConfig();
-    expect(cfg.ritual.planned_max_ahead_d).toBe(21);
+    expect(cfg.ritual.planned_max_ahead_d).toBe(30);
     expect(cfg.ritual.event_max_ahead_d).toBe(60);
     expect(cfg.ritual.self_rez_per_day_per_venue).toBe(1);
     expect(cfg.venue.suggestion_pending_per_venue).toBe(1);
